@@ -1,0 +1,19 @@
+[
+    {
+        "rp_client_id": "35505dc7-8937-4743-9510-e797dd4eca7d",
+        "rp_client_name": "rp_simulator",
+        "rp_redirect_uri": "http://localhost:8080/auth/callback/client2",
+        "IDP": [
+            {
+                "client_id": "e1a58c16-a649-45e1-b80c-3cd3daaeea0d",
+                "client_name": "SIC",
+                "client_secret": "C6SsNghkFONJ06gpg0lltWmUlOWzbDm7Kw36hm50",
+                "openid_configuration": "https://te-auth.id.tbs-sct.gc.ca/.well-known/openid-configuration",
+                "redirect_uris": ["http://localhost:8000/v1/auth/legacy/callback"],
+                "scope": "openid profile email",
+                "max_age": 3600,
+                "code_challenge_method": "S256"
+            }
+        ]
+    }
+]
