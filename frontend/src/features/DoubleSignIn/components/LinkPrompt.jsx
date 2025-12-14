@@ -17,6 +17,7 @@ import { getPageContent } from "../../../utils/functions.jsx";
 import { MIGRATION_END_POINTS, PAGES } from "../../../utils/constants.jsx";
 import { useParams } from "react-router";
 import { useSearchParams } from "react-router-dom";
+import { MigrationStepper } from "./MigrationStepper.jsx";
 
 export default function LinkPrompt() {
   const { language } = useParams();
@@ -66,17 +67,21 @@ export default function LinkPrompt() {
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
 
+  const steps = [
+    { description: "Create a GC Sign in or sign in" },
+    { description: "Link your old sign-in method" },
+    { description: "Access your existing account" },
+  ];
+
   return (
     <GcdsContainer>
+      <MigrationStepper steps={steps} currentStep={2} />
       <GcdsHeading tag="h1" lang={language}>
         {pageContentJson["title"]}
       </GcdsHeading>
+
       <GcdsText>{errorMessage}</GcdsText>
-      <GcdsText class="mb-500">
-        <GcdsIcon name="checkmark-circle" size="inherit"></GcdsIcon>
-        <span>&nbsp;</span>
-        {pageContentJson["text_1"]}
-      </GcdsText>
+
       <GcdsText>{pageContentJson["text_2"]}</GcdsText>
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
       <GcdsButton type="link" href={links.LinkingLink}>

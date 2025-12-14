@@ -25,6 +25,37 @@ async def legacy_login(
 ):
     try:
 
+        
+        # RP with SIC only has 1 IDP
+        rp = await get_config(rp_client_id)
+        
+        # the [0] is the only value returned, just looks odd 
+        legacy_idp = rp.IDP[0]
+
+        # handle SIC legacy login
+        if (legacy_idp.client_name == "SIC"):
+            return await SIC_legacy_login_auth(request, user_access_token, session_user_token, rp_client_id)
+
+        # handle GCCF legacy login
+
+        # handle GCKey legacy login
+
+        # handle Interac legacy login
+
+    except Exception as e:
+        logger.error(f"Exception Error: {e}")
+        raise
+
+
+
+
+async def SIC_legacy_login_auth(
+    request: Request,
+    user_access_token: str,
+    session_user_token: str,
+    rp_client_id: str,
+) : 
+    try:
         global_http_client = request.app.state.request_client
 
         # RP with SIC only has 1 IDP
@@ -85,7 +116,7 @@ async def legacy_login(
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
         )
-
+    
     except Exception as e:
         logger.error(f"Exception Error: {e}")
         raise
