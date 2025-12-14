@@ -475,9 +475,9 @@
     "title": "Sign in with your old method",
     "subtitle": "First time on Canada Dental Care Plan Account?",
     "text_1": "Completed: Use the new sign-in method",
-    "text_2": "To keep your Canada Dental Care Plan Account data, you’ll need to use your old sign-in method one last time on this service. This will update your sign-in method to GC Sign in for this account.",
+    "text_2": "To keep your Canada Dental Care Plan Account data, you’ll need to use your old sign-in method one last time on this service. This will update your sign-in method to Canada Connect for this account.",
     "text_3": "Use the sign-in method you used the last time you signed in to this service.",
-    "text_4": "If you have not signed in to this portal with your bank or GCKey in the past, you can skip this step.",
+    "text_4": "If you have not signed in to this service with your bank or GCKey in the past, you can skip this step.",
     "link_1": "How to update your sign-in method",
     "link_2": "Skip and create a new account",
     "btn_1": "Sign in with your bank or GCKey"
@@ -491,8 +491,9 @@
   },
   "LinkSuccess": {
     "title": "Your sign-in method has been updated",
-    "text_1": "You can now use GC Sign in to access your Canada Dental Care Plan Account.",
-    "text_2": "If you use your bank or GCKey to access other accounts, you’ll need to update them on each service.",
-    "btn_1": "Finish"
+    "text_1": "You can now use Canada Connect to access your Canada Dental Care Plan Account.",
+    "text_2": "If you use your bank or GCKey to access other services, <strong>you’ll need to link them to your GC Sign in on each service</strong>.",
+    "text_3": "You should receive an email when other services you use move to GC Sign in.",
+    "btn_1": "Access your account"
   }
 }

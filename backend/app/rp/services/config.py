@@ -16,9 +16,7 @@ async def get_config(
     rp_client_id: str,
 ):
     try:
-
-        with open("/app/migration_rp.json") as f:
-            data = json.load(f)
+        data = await get_config_json()
 
         rp_configs = [RPSchema(**item) for item in data]
 
@@ -40,6 +38,17 @@ async def get_config(
         logger.error(f"Exception Error: {e}")
         raise
 
+#load the legacy idp config, from where ever it is stored
+async def get_config_json() :
+    try:
+        #switch this to load from secrets manager
+        with open("/app/migration_rp.json") as f:
+            data = json.load(f)
+
+        return data
+    except Exception as e:
+        logger.error(f"Exception Error: {e}")
+        raise
 
 # Fetch and cache legacy IdP metadata in Redis.
 async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 86400):
