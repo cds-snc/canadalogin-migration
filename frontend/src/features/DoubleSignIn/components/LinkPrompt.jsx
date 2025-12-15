@@ -88,15 +88,18 @@ export default function LinkPrompt() {
         {pageContentJson["btn_1"]}
       </GcdsButton>
 
-      <GcdsNotice
-        type="info"
-        noticeTitle="For more information"
-        lang={language}
-      >
-        <GcdsLink href="#" external>
-          {pageContentJson["link_1"]}
-        </GcdsLink>
-      </GcdsNotice>
+      <div className="mt-500 mb-700">
+        <GcdsNotice
+          type="info"
+          noticeTitle="For more information"
+          noticeTitleTag="h2"
+          lang={language}
+        >
+          <GcdsLink href="#" external>
+            {pageContentJson["link_1"]}
+          </GcdsLink>
+        </GcdsNotice>
+      </div>
 
       <GcdsHeading tag="h2">{pageContentJson["subtitle"]}</GcdsHeading>
       <GcdsText>{pageContentJson["text_4"]}</GcdsText>

@@ -75,6 +75,30 @@
   z-index: 1;
 }
 
+/* Completed step styling (filled dot + checkmark) */
+.gc-stepper__item.is-complete .gc-stepper__dot {
+  background: #2b50d9;
+  border-color: #2b50d9;
+}
+
+/* Pure-CSS checkmark */
+.gc-stepper__item.is-complete .gc-stepper__dot::after {
+  content: "";
+  position: absolute;
+  width: 0.65rem;
+  height: 1.1rem;
+  border-right: 0.22rem solid #fff;
+  border-bottom: 0.22rem solid #fff;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%) rotate(45deg);
+}
+
+/* Current step should not inherit completed fill */
+.gc-stepper__item.is-current .gc-stepper__dot {
+  background: #fff;
+}
+
 /* Current step styling */
 .gc-stepper__item.is-current .gc-stepper__dot {
   border-color: #2b50d9;
@@ -129,10 +153,17 @@
   }
 
   .gc-stepper__item:not(:last-child)::after {
-    left: 1.25rem;
-    top: 2.5rem;
+    left: 1.15rem;
+
+    /* start at bottom of the dot */
+    top: calc(0.15rem + 2.5rem);
+
     width: 4px;
-    height: calc(100% - 2.25rem);
+
+    /* extend through content + gap + up to the next dot (without overshooting) */
+    height: calc(100% + 1rem);
+
+    background: #4b4b4b;
   }
 
   .gc-stepper__desc {
