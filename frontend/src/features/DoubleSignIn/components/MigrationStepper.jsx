@@ -8,11 +8,12 @@ export function MigrationStepper({ steps, currentStep }) {
           const stepNumber = index + 1;
           const isCurrent = stepNumber === currentStep;
           const isLast = index === steps.length - 1;
+          const isComplete = stepNumber < currentStep;
 
           return (
             <li
               key={stepNumber}
-              className={`gc-stepper__item ${isCurrent ? "is-current" : ""}`}
+              className={`gc-stepper__item ${isComplete ? "is-complete" : ""} ${isCurrent ? "is-current" : ""}`}
               aria-current={isCurrent ? "step" : undefined}
             >
               <div className="gc-stepper__rail" aria-hidden="true">
@@ -21,7 +22,11 @@ export function MigrationStepper({ steps, currentStep }) {
               </div>
 
               <span className="sr-only">
-                {isCurrent ? "Current step: " : "Step "}
+                {isCurrent
+                  ? "Current step: "
+                  : isComplete
+                    ? "Completed step: "
+                    : "Step "}
                 {stepNumber}. {step.description}
               </span>
 
