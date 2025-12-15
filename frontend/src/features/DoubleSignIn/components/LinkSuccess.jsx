@@ -67,8 +67,13 @@ export default function LinkSuccess() {
 
       <GcdsText>{errorMessage}</GcdsText>
       <gcds-text>{pageContentJson["text_1"]}</gcds-text>
-      <gcds-text>{pageContentJson["text_2"]}</gcds-text>
-      <gcds-text>{pageContentJson["text_3"]}</gcds-text>
+      <gcds-text>
+        {pageContentJson["text_2"]}
+        <ul class="list-disc">
+          <li>{pageContentJson["list_text_1"]}</li>
+          <li>{pageContentJson["list_text_2"]}</li>
+        </ul>
+      </gcds-text>
       <GcdsButton
         onGcdsClick={(ev) => {
           ev.preventDefault();
