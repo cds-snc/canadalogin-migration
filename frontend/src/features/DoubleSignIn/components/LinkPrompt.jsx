@@ -87,11 +87,17 @@ export default function LinkPrompt() {
       <GcdsButton type="link" href={links.LinkingLink}>
         {pageContentJson["btn_1"]}
       </GcdsButton>
-      <GcdsText marginTop="500">
+
+      <GcdsNotice
+        type="info"
+        noticeTitle="For more information"
+        lang={language}
+      >
         <GcdsLink href="#" external>
           {pageContentJson["link_1"]}
         </GcdsLink>
-      </GcdsText>
+      </GcdsNotice>
+
       <GcdsHeading tag="h2">{pageContentJson["subtitle"]}</GcdsHeading>
       <GcdsText>{pageContentJson["text_4"]}</GcdsText>
       <GcdsText>
