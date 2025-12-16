@@ -2,6 +2,8 @@
     {
         "rp_client_id": "35505dc7-8937-4743-9510-e797dd4eca7d",
         "rp_client_name": "rp_simulator",
+        "rp_client_name_en": "FCAC Secure Portal",
+        "rp_client_name_fr": "FCAC Secure Portal FR",
         "rp_redirect_uri": "http://localhost:8080/auth/callback/client1",
         "IDP": [
             {

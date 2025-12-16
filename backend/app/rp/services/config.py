@@ -181,7 +181,14 @@ async def get_callback_url(
 
         rp = await get_config(rp_client_id)
 
-        return rp.rp_redirect_uri
+        rpConfig = {
+            "rp_redirect_url": rp.rp_redirect_uri,
+            "rp_client_name": rp.rp_client_name,
+            "rp_client_name_en": rp.rp_client_name_en,
+            "rp_client_name_fr": rp.rp_client_name_fr
+        }
+
+        return rpConfig
 
     except ValidationError as e:
         logger.error(f"Validation Error: {e.json()}")
