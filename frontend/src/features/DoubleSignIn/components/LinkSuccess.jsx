@@ -30,18 +30,18 @@ export default function LinkSuccess() {
   const configRef = useRef(null);
 
   useEffect(() => {
-    async function getRPAuthUrl() {
-      configRef.rpAuthUrl = await updateLinkStateAPI.getRPAuthUrl();
+    async function getRPData() {
+      configRef.rpData = await updateLinkStateAPI.getRPAuthUrl();
     }
 
-    getRPAuthUrl();
+    getRPData();
   }, []);
 
   const continueToRP = async () => {
     try {
       console.log("info", "clicked start linking and continue back to rp");
 
-      window.location.replace(configRef.rpAuthUrl);
+      window.location.replace(configRef.rpData.rp_redirect_url);
     } catch (err) {
       if (err && err.data && err.data.message) {
         setServerErrorMessage(err.data.message);

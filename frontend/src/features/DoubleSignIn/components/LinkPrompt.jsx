@@ -14,6 +14,8 @@ import {
   GcdsNotice,
 } from "@cdssnc/gcds-components-react";
 import { getPageContent } from "../../../utils/functions.jsx";
+
+import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
 import { MIGRATION_END_POINTS, PAGES } from "../../../utils/constants.jsx";
 import { useParams } from "react-router";
 import { useSearchParams } from "react-router-dom";
@@ -34,7 +36,21 @@ export default function LinkPrompt() {
     SkipLink: "",
   });
 
+  const [rpData, setRpData] = useState(null);
+
   useEffect(() => {
+    async function getRPData() {
+      const data = await updateLinkStateAPI.getRPAuthUrl();
+
+      setRpData(data);
+
+      // optional: keep ref if other non-UI logic uses it
+      configRef.current = {
+        ...configRef.current,
+        rpData: data,
+      };
+    }
+
     (async () => {
       try {
         // 1) Fetch/build values
@@ -58,6 +74,7 @@ export default function LinkPrompt() {
         console.error("Failed building links", e);
       }
     })();
+    getRPData();
     // include deps that change this computation
   }, [language, searchParams]);
 
@@ -100,7 +117,6 @@ export default function LinkPrompt() {
           </GcdsLink>
         </GcdsNotice>
       </div>
-
       <GcdsHeading tag="h2">{pageContentJson["subtitle"]}</GcdsHeading>
       <GcdsText>{pageContentJson["text_4"]}</GcdsText>
       <GcdsText>
