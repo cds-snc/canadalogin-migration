@@ -3,6 +3,7 @@ import logging
 from fastapi import HTTPException, Request
 
 from app.rp.services.config import get_config
+from app.constants.session_keys import SessionKeys
 from app.users.services.custom_attributes import get_user_custom_attributes
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_processing_data
@@ -22,6 +23,7 @@ async def legacy_login(
     user_access_token: str,
     session_user_token: str,
     rp_client_id: str,
+    lang: str = "en",
 ):
     try:
 
@@ -34,7 +36,7 @@ async def legacy_login(
 
         # handle SIC legacy login
         if (legacy_idp.client_name == "SIC"):
-            return await SIC_legacy_login_auth(request, user_access_token, session_user_token, rp_client_id)
+            return await SIC_legacy_login_auth(request, user_access_token, session_user_token, rp_client_id, lang)
 
         # handle GCCF legacy login
 
@@ -54,6 +56,7 @@ async def SIC_legacy_login_auth(
     user_access_token: str,
     session_user_token: str,
     rp_client_id: str,
+    lang: str,
 ) : 
     try:
         global_http_client = request.app.state.request_client
@@ -65,12 +68,15 @@ async def SIC_legacy_login_auth(
         # Unique for RP / IDP combo
         client_name = f"{rp.rp_client_name}_{legacy_idp.client_name}"
 
+        ui_locales = f"{lang}-CA"
+        request.session[SessionKeys.CURRENT_LANGUAGE.value] = lang
         # Register
-        await register_client(request, client_name, legacy_idp)
+        await register_client(request, client_name, legacy_idp, ui_locales)
 
         client = await create_client(client_name)
 
         redirect_uri = legacy_idp.redirect_uris[0]
+        #redirect_uri = f"{redirect_uri}?lang={lang}"
         logger.info(f"Redirect_uri: {redirect_uri}")
 
         state = generate_secure_token()
@@ -108,6 +114,8 @@ async def SIC_legacy_login_auth(
                 detail=error_detail,
             )
 
+        
+
         return await client.authorize_redirect(
             request,
             redirect_uri,
@@ -115,6 +123,7 @@ async def SIC_legacy_login_auth(
             state=state,
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
+            ui_locales=ui_locales,
         )
     
     except Exception as e:
