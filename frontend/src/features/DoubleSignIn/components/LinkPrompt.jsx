@@ -54,7 +54,7 @@ export default function LinkPrompt() {
     (async () => {
       try {
         // 1) Fetch/build values
-        const LinkingLink = MIGRATION_END_POINTS.login;
+        const LinkingLink = MIGRATION_END_POINTS.login + "?lang=" + language;
         const SkipLink = MIGRATION_END_POINTS.skip;
 
         // 2) Write to ref (safe)
