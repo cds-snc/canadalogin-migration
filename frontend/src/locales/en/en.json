@@ -492,8 +492,7 @@
   "LinkSuccess": {
     "title": "Your sign-in method has been updated",
     "text_1": "You can now use GC Sign in to access your FCAC Secure Portal Account.",
-    "text_2": "If you use your bank or GCKey to access other services:",
-    "text_3": "You should receive an email when other services you use move to GC Sign in.",
+    "text_2": "If you use your GCKey or Interac sign-in on other services:",
     "list_text_1": "you should receive an email when the service starts using GC Sign in",
     "list_text_2": "you will need to update GCKey or Interact sign-in to your GC Sign in on each service",
     "btn_1": "Access your account"
