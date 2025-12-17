@@ -99,7 +99,14 @@ export default function LinkPrompt() {
 
       <GcdsText>{errorMessage}</GcdsText>
 
-      <GcdsText>{pageContentJson["text_2"]}</GcdsText>
+      <GcdsText>
+        {pageContentJson["text_2"].replace(
+          "{RP_Name}",
+          language != "en"
+            ? rpData?.rp_client_name_fr
+            : rpData?.rp_client_name_en,
+        )}
+      </GcdsText>
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
       <GcdsButton type="link" href={links.LinkingLink}>
         {pageContentJson["btn_1"]}
@@ -117,7 +124,14 @@ export default function LinkPrompt() {
           </GcdsLink>
         </GcdsNotice>
       </div>
-      <GcdsHeading tag="h2">{pageContentJson["subtitle"]}</GcdsHeading>
+      <GcdsHeading tag="h2">
+        {pageContentJson["subtitle"].replace(
+          "{RP_Name}",
+          language != "en"
+            ? rpData?.rp_client_name_fr
+            : rpData?.rp_client_name_en,
+        )}
+      </GcdsHeading>
       <GcdsText>{pageContentJson["text_4"]}</GcdsText>
       <GcdsText>
         <GcdsLink key={skipHref} href={links.SkipLink}>
