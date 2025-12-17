@@ -66,7 +66,14 @@ export default function LinkSuccess() {
       </GcdsHeading>
 
       <GcdsText>{errorMessage}</GcdsText>
-      <gcds-text>{pageContentJson["text_1"]}</gcds-text>
+      <gcds-text>
+        {pageContentJson["text_1"].replace(
+          "{RP_Name}",
+          language != "en"
+            ? rpData?.rp_client_name_fr
+            : rpData?.rp_client_name_en,
+        )}
+      </gcds-text>
       <gcds-text>
         {pageContentJson["text_2"]}
         <ul class="list-disc">
