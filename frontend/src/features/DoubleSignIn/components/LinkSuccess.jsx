@@ -29,9 +29,19 @@ export default function LinkSuccess() {
 
   const configRef = useRef(null);
 
+  const [rpData, setRpData] = useState(null);
+
   useEffect(() => {
     async function getRPData() {
-      configRef.rpData = await updateLinkStateAPI.getRPAuthUrl();
+      const data = await updateLinkStateAPI.getRPAuthUrl();
+      console.log("data", data);
+      setRpData(data);
+
+      // optional: keep ref if other non-UI logic uses it
+      configRef.current = {
+        ...configRef.current,
+        rpData: data,
+      };
     }
 
     getRPData();
