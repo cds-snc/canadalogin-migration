@@ -50,8 +50,9 @@ export default function LinkSuccess() {
   const continueToRP = async () => {
     try {
       console.log("info", "clicked start linking and continue back to rp");
-
-      window.location.replace(configRef.rpData.rp_redirect_url);
+      const redirectUrl =
+        language != "en" ? rpData?.rp_redirect_url : rpData?.rp_redirect_url;
+      window.location.replace(redirectUrl);
     } catch (err) {
       if (err && err.data && err.data.message) {
         setServerErrorMessage(err.data.message);
