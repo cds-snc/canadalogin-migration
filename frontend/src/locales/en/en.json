@@ -480,7 +480,8 @@
     "text_4": "If you have not signed in to this service with your GCKey or bank in the past, you can skip this step.",
     "link_1": "How to update your sign-in method",
     "link_2": "Skip and create a new account",
-    "btn_1": "Sign in with your GCKey or bank"
+    "btn_1": "Sign in with your GCKey or bank",
+    "notice_title": "For your information"
   },
   "SkipLink": {
     "title": "Are you sure you don’t have an existing account?",
@@ -496,5 +497,15 @@
     "list_text_1": "you should receive an email when the service starts using GC Sign in",
     "list_text_2": "you will need to update GCKey or Interac sign-in to your GC Sign in on each service",
     "btn_1": "Access your account"
+  },
+  "MigrationStepper": {
+    "aria_label": "Sign-in migration progress",
+    "sr_current_prefix": "Current step: ",
+    "sr_completed_prefix": "Completed step: ",
+    "sr_step_prefix": "Step ",
+    "step_title": "Step {n}",
+    "step_1": "Create a GC Sign in or sign in",
+    "step_2": "Link your old sign-in method",
+    "step_3": "Access your existing account"
   }
 }

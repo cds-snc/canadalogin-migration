@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   GcdsContainer,
   GcdsText,
@@ -18,19 +18,16 @@ import { getPageContent } from "../../../utils/functions.jsx";
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
 import { MIGRATION_END_POINTS, PAGES } from "../../../utils/constants.jsx";
 import { useParams } from "react-router";
-import { useSearchParams } from "react-router-dom";
 import { MigrationStepper } from "./MigrationStepper.jsx";
 
 export default function LinkPrompt() {
   const { language } = useParams();
 
   const [serverErrorMessage] = useState("");
-  const [searchParams] = useSearchParams();
 
   const pageContentJson = getPageContent(language, PAGES.LinkPrompt);
   const errorPageJson = getPageContent(language, PAGES.error);
 
-  const configRef = useRef({}); // <-- never null
   const [links, setLinks] = useState({
     LinkingLink: "",
     SkipLink: "",
@@ -40,43 +37,25 @@ export default function LinkPrompt() {
 
   useEffect(() => {
     async function getRPData() {
-      const data = await updateLinkStateAPI.getRPAuthUrl();
-
-      setRpData(data);
-
-      // optional: keep ref if other non-UI logic uses it
-      configRef.current = {
-        ...configRef.current,
-        rpData: data,
-      };
+      try {
+        const data = await updateLinkStateAPI.getRPAuthUrl();
+        setRpData(data);
+      } catch (e) {
+        console.error("Failed loading RP data", e);
+      }
     }
 
-    (async () => {
-      try {
-        // 1) Fetch/build values
-        const LinkingLink = MIGRATION_END_POINTS.login + "?lang=" + language;
-        const SkipLink = MIGRATION_END_POINTS.skip;
+    try {
+      const LinkingLink = MIGRATION_END_POINTS.login + "?lang=" + language;
+      const SkipLink = MIGRATION_END_POINTS.skip;
 
-        // 2) Write to ref (safe)
-        configRef.current = {
-          ...configRef.current,
-          LinkingLink,
-          SkipLink,
-        };
+      setLinks({ LinkingLink, SkipLink });
+    } catch (e) {
+      console.error("Failed building links", e);
+    }
 
-        // 3) Mirror to state so UI updates
-        setLinks(configRef.current);
-
-        // Debug
-        console.log("linkSuccess:", LinkingLink);
-        console.log("skipLink   :", SkipLink);
-      } catch (e) {
-        console.error("Failed building links", e);
-      }
-    })();
     getRPData();
-    // include deps that change this computation
-  }, [language, searchParams]);
+  }, [language]);
 
   const skipHref = links.toSkipLinkPage?.startsWith("http")
     ? links.toSkipLinkPage
@@ -84,15 +63,9 @@ export default function LinkPrompt() {
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
 
-  const steps = [
-    { description: "Create a GC Sign in or sign in" },
-    { description: "Link your old sign-in method" },
-    { description: "Access your existing account" },
-  ];
-
   return (
     <GcdsContainer>
-      <MigrationStepper steps={steps} currentStep={2} />
+      <MigrationStepper currentStep={2} />
       <GcdsHeading tag="h1" lang={language}>
         {pageContentJson["title"]}
       </GcdsHeading>
@@ -115,7 +88,7 @@ export default function LinkPrompt() {
       <div className="mt-500 mb-700">
         <GcdsNotice
           type="info"
-          noticeTitle="For more information"
+          noticeTitle={pageContentJson["notice_title"]}
           noticeTitleTag="h2"
           lang={language}
         >
@@ -124,7 +97,7 @@ export default function LinkPrompt() {
           </GcdsLink>
         </GcdsNotice>
       </div>
-      <GcdsHeading tag="h2">
+      <GcdsHeading tag="h2" lang={language}>
         {pageContentJson["subtitle"].replace(
           "{RP_Name}",
           language != "en"

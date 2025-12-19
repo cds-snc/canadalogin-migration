@@ -1,13 +1,33 @@
 import "./MigrationStepper.css";
+import { PAGES } from "../../../utils/constants.jsx";
+import { useParams } from "react-router";
+import { getPageContent } from "../../../utils/functions.jsx";
 
 export function MigrationStepper({ steps, currentStep }) {
+  const { language } = useParams();
+
+  const pageContentJson = getPageContent(language, PAGES.MigrationStepper);
+
+  const resolvedSteps = (
+    steps && steps.length
+      ? steps
+      : [
+          { description: pageContentJson["step_1"] },
+          { description: pageContentJson["step_2"] },
+          { description: pageContentJson["step_3"] },
+        ].filter((s) => Boolean(s?.description))
+  ).filter(Boolean);
+
   return (
-    <nav className="gc-stepper-wrapper" aria-label="Sign-in migration progress">
+    <nav
+      className="gc-stepper-wrapper"
+      aria-label={pageContentJson["aria_label"]}
+    >
       <ol className="gc-stepper">
-        {steps.map((step, index) => {
+        {resolvedSteps.map((step, index) => {
           const stepNumber = index + 1;
           const isCurrent = stepNumber === currentStep;
-          const isLast = index === steps.length - 1;
+          const isLast = index === resolvedSteps.length - 1;
           const isComplete = stepNumber < currentStep;
 
           return (
@@ -23,14 +43,19 @@ export function MigrationStepper({ steps, currentStep }) {
 
               <span className="sr-only">
                 {isCurrent
-                  ? "Current step: "
+                  ? pageContentJson["sr_current_prefix"]
                   : isComplete
-                    ? "Completed step: "
-                    : "Step "}
+                    ? pageContentJson["sr_completed_prefix"]
+                    : pageContentJson["sr_step_prefix"]}
                 {stepNumber}. {step.description}
               </span>
 
-              <div className="gc-stepper__title">Step {stepNumber}</div>
+              <div className="gc-stepper__title">
+                {pageContentJson["step_title"].replace(
+                  "{n}",
+                  String(stepNumber),
+                )}
+              </div>
               <div className="gc-stepper__desc">{step.description}</div>
             </li>
           );

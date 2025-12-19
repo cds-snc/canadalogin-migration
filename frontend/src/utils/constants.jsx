@@ -99,6 +99,7 @@ export const PAGES = {
   LinkPrompt: "LinkPrompt",
   SkipLink: "SkipLink",
   LinkSuccess: "LinkSuccess",
+  MigrationStepper: "MigrationStepper",
 };
 
 export const FOOTERS = {
