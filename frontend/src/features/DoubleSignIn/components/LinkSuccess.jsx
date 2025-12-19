@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   GcdsContainer,
   GcdsText,
@@ -27,8 +27,6 @@ export default function LinkSuccess() {
   const pageContentJson = getPageContent(language, PAGES.LinkSuccess);
   const errorPageJson = getPageContent(language, PAGES.error);
 
-  const configRef = useRef(null);
-
   const [rpData, setRpData] = useState(null);
 
   useEffect(() => {
@@ -36,12 +34,6 @@ export default function LinkSuccess() {
       const data = await updateLinkStateAPI.getRPAuthUrl();
       console.log("data", data);
       setRpData(data);
-
-      // optional: keep ref if other non-UI logic uses it
-      configRef.current = {
-        ...configRef.current,
-        rpData: data,
-      };
     }
 
     getRPData();
@@ -63,15 +55,9 @@ export default function LinkSuccess() {
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
 
-  const steps = [
-    { description: "Create a GC Sign in or sign in" },
-    { description: "Link your old sign-in method" },
-    { description: "Access your existing account" },
-  ];
-
   return (
     <GcdsContainer>
-      <MigrationStepper steps={steps} currentStep={3} />
+      <MigrationStepper currentStep={3} />
       <GcdsHeading tag="h1" lang={language}>
         {pageContentJson["title"]}
       </GcdsHeading>
