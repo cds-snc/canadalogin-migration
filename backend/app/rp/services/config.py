@@ -174,7 +174,7 @@ async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 864
     return metadata
 
 
-async def get_callback_url(
+async def get_rp_config_details(
     rp_client_id: str,
 ):
     try:

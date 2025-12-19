@@ -35,8 +35,14 @@ async def legacy_login(
         legacy_idp = rp.IDP[0]
 
         # handle SIC legacy login
-        if (legacy_idp.client_name == "SIC"):
-            return await SIC_legacy_login_auth(request, user_access_token, session_user_token, rp_client_id, lang)
+        if legacy_idp.client_name == "SIC":
+            return await SIC_legacy_login_auth(
+                request,
+                user_access_token,
+                session_user_token,
+                rp_client_id,
+                lang,
+            )
 
         # handle GCCF legacy login
 
@@ -70,14 +76,23 @@ async def SIC_legacy_login_auth(
 
         ui_locales = f"{lang}-CA"
         request.session[SessionKeys.CURRENT_LANGUAGE.value] = lang
+        request.session["legacy_provider"] = legacy_idp.client_name
+        request.session["legacy_client_name"] = client_name
         # Register
         await register_client(request, client_name, legacy_idp, ui_locales)
 
         client = await create_client(client_name)
 
-        redirect_uri = legacy_idp.redirect_uris[0]
-        #redirect_uri = f"{redirect_uri}?lang={lang}"
-        logger.info(f"Redirect_uri: {redirect_uri}")
+        redirect_uris = getattr(legacy_idp, "redirect_uris", None) or []
+        if not redirect_uris:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Legacy IDP '{legacy_idp.client_name}' has no redirect_uris configured",
+            )
+
+        redirect_uri = redirect_uris[0]
+        # redirect_uri = f"{redirect_uri}?lang={lang}"
+        logger.info("Redirect_uri: %s", redirect_uri)
 
         state = generate_secure_token()
         nonce = generate_secure_token()
@@ -106,16 +121,22 @@ async def SIC_legacy_login_auth(
         )
 
         if patch_processing_data_response.status_code != 204:
-            # parse error details safely
-            json_data = patch_processing_data_response.json()
-            error_detail = json_data.get("detail", "Unknown error")
+            # Parse error details safely (some backends may not return JSON)
+            error_detail = "Unknown error"
+            try:
+                json_data = patch_processing_data_response.json()
+                error_detail = json_data.get("detail", error_detail)
+            except Exception:
+                try:
+                    error_detail = patch_processing_data_response.text or error_detail
+                except Exception:
+                    pass
+
             raise HTTPException(
                 status_code=patch_processing_data_response.status_code,
                 detail=error_detail,
             )
-
         
-
         return await client.authorize_redirect(
             request,
             redirect_uri,
