@@ -149,7 +149,7 @@ export const SUBMIT_END_POINTS = {
 export const MIGRATION_END_POINTS = {
   login: `${config.apiUrl}/v1/auth/legacy/login`,
   skip: `${config.apiUrl}/v1/auth/legacy/skip`,
-  rpcallback: `${config.apiUrl}/v1/rp/callback_url`,
+  rpcallback: `${config.apiUrl}/v1/rp/rpConfigDetails`,
 };
 export const RP_CLIENT_ID_KEY = "rp_client_id";
 
