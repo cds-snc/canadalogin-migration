@@ -51,11 +51,7 @@ def get_callback_redirect_uri(request: Request):
     return redirect_uri
 
 
-async def redirect_user_to_idp_verify(
-    request: Request,
-    clientId: str,
-    lang: str
-):
+async def redirect_user_to_idp_verify(request: Request, clientId: str, lang: str):
     """
     Get the redirect URL for the OAuth login flow.
     This function is used to initiate the login process with IBM Verify.
@@ -128,7 +124,9 @@ async def callback_handler(request: Request, lang: str):
         RequestErrorHandler.handle(e, context="Unexpected error during idp redirect")
 
 
-async def reauthenticate_user(request: Request, returnToPage: str = "/", lang: str = None):
+async def reauthenticate_user(
+    request: Request, returnToPage: str = "/", lang: str = None
+):
     """
     Get the redirect URL for the OAuth login flow.
     This function is used to initiate a reauthentication flow with IBM Verify.

@@ -1,7 +1,10 @@
 import pytest
 
 from app.users.schemas import CustomAttribute
-from app.users.services.custom_attributes import get_attribute_value, get_custom_attribute
+from app.users.services.custom_attributes import (
+    get_attribute_value,
+    get_custom_attribute,
+)
 
 
 @pytest.mark.asyncio

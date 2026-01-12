@@ -119,7 +119,9 @@ async def _get_secret_string(secret_name: str) -> str:
         try:
             resp = client.get_secret_value(SecretId=secret_name)
         except (BotoCoreError, ClientError) as e:
-            raise RuntimeError(f"Failed to read secret '{secret_name}' from Secrets Manager") from e
+            raise RuntimeError(
+                f"Failed to read secret '{secret_name}' from Secrets Manager"
+            ) from e
 
         secret_string = resp.get("SecretString")
         if secret_string:
@@ -131,7 +133,9 @@ async def _get_secret_string(secret_name: str) -> str:
                 return secret_binary.decode("utf-8")
             return bytes(secret_binary).decode("utf-8")
 
-        raise RuntimeError(f"Secret '{secret_name}' had no SecretString or SecretBinary")
+        raise RuntimeError(
+            f"Secret '{secret_name}' had no SecretString or SecretBinary"
+        )
 
     return await asyncio.to_thread(_sync_fetch)
 
@@ -192,7 +196,7 @@ async def get_rp_config_details(
             "rp_redirect_url": rp.rp_redirect_uri,
             "rp_client_name": rp.rp_client_name,
             "rp_client_name_en": rp.rp_client_name_en,
-            "rp_client_name_fr": rp.rp_client_name_fr
+            "rp_client_name_fr": rp.rp_client_name_fr,
         }
 
         return rpConfig

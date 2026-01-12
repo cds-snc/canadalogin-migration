@@ -34,7 +34,9 @@ async def test_legacy_login_routes_to_sic_handler():
     rp = SimpleNamespace(IDP=[legacy_idp])
 
     with (
-        patch("app.auth_legacy.services.login.get_config", new=AsyncMock(return_value=rp)),
+        patch(
+            "app.auth_legacy.services.login.get_config", new=AsyncMock(return_value=rp)
+        ),
         patch(
             "app.auth_legacy.services.login.SIC_legacy_login_auth",
             new=AsyncMock(return_value="ok"),
@@ -61,7 +63,9 @@ async def test_sic_legacy_login_auth_missing_redirect_uris_raises():
     rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
 
     with (
-        patch("app.auth_legacy.services.login.get_config", new=AsyncMock(return_value=rp)),
+        patch(
+            "app.auth_legacy.services.login.get_config", new=AsyncMock(return_value=rp)
+        ),
         patch("app.auth_legacy.services.login.register_client", new=AsyncMock()),
         patch("app.auth_legacy.services.login.create_client", new=AsyncMock()),
     ):
@@ -78,13 +82,18 @@ async def test_skip_account_linking_redirects_to_rp():
     rp = SimpleNamespace(rp_redirect_uri="https://rp.example.test/landing")
 
     with (
-        patch("app.auth_legacy.services.skip.get_ibm_id", new=AsyncMock(return_value="ibm1")),
+        patch(
+            "app.auth_legacy.services.skip.get_ibm_id",
+            new=AsyncMock(return_value="ibm1"),
+        ),
         patch(
             "app.auth_legacy.services.skip.get_user_custom_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch("app.auth_legacy.services.skip.patch_audit_data", new=AsyncMock()),
-        patch("app.auth_legacy.services.skip.get_config", new=AsyncMock(return_value=rp)),
+        patch(
+            "app.auth_legacy.services.skip.get_config", new=AsyncMock(return_value=rp)
+        ),
     ):
         response = await skip_account_linking(
             request, "user-at", "user-token", "rp-123"
@@ -99,7 +108,9 @@ async def test_legacy_callback_raises_on_patch_failure():
     client = MagicMock()
     client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
     client.parse_id_token = AsyncMock(return_value={"sub": "legacy-sub"})
-    client.server_metadata = {"server_metadata": {"end_session_endpoint": "https://idp/logout"}}
+    client.server_metadata = {
+        "server_metadata": {"end_session_endpoint": "https://idp/logout"}
+    }
 
     legacy_idp = SimpleNamespace(client_name="SIC")
     rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
@@ -112,9 +123,18 @@ async def test_legacy_callback_raises_on_patch_failure():
     failing_response.json = MagicMock(return_value={"detail": "bad"})
 
     with (
-        patch("app.auth_legacy.services.callback.get_config", new=AsyncMock(return_value=rp)),
-        patch("app.auth_legacy.services.callback.create_client", new=AsyncMock(return_value=client)),
-        patch("app.auth_legacy.services.callback.get_ibm_id", new=AsyncMock(return_value="ibm1")),
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.create_client",
+            new=AsyncMock(return_value=client),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_ibm_id",
+            new=AsyncMock(return_value="ibm1"),
+        ),
         patch(
             "app.auth_legacy.services.callback.get_user_custom_attributes",
             new=AsyncMock(return_value=[]),
