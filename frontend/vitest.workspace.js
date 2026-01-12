@@ -10,10 +10,10 @@ const dirname =
     ? __dirname
     : path.dirname(fileURLToPath(import.meta.url));
 
-// More info at: https://storybook.js.org/docs/writing-tests/test-addon
-export default defineWorkspace([
-  "vitest.config.js",
-  {
+const projects = ["vitest.config.js"];
+
+if (process.env.STORYBOOK_TESTS === "true") {
+  projects.push({
     extends: "vite.config.js",
     plugins: [
       // The plugin will run tests for the stories defined in your Storybook config
@@ -35,5 +35,8 @@ export default defineWorkspace([
       setupFiles: [".storybook/vitest.setup.js"],
       exclude: ["src/stories/Tests/Manage/**"],
     },
-  },
-]);
+  });
+}
+
+// More info at: https://storybook.js.org/docs/writing-tests/test-addon
+export default defineWorkspace(projects);
