@@ -71,8 +71,10 @@ async def redirect_user_to_idp_verify(
 
         callback_redirect_uri = get_callback_redirect_uri(request)
         callback_redirect_uri = f"{callback_redirect_uri}?lang={lang}"
-        
-        return await oauth.verify.authorize_redirect(request, callback_redirect_uri, ui_locales=lang)
+
+        return await oauth.verify.authorize_redirect(
+            request, callback_redirect_uri, ui_locales=lang
+        )
 
     except Exception as e:
         logger.exception("Unexpected error during redirect_to_verify", str(e))
@@ -111,10 +113,10 @@ async def callback_handler(request: Request, lang: str):
         handler.session_id = new_session_id
 
         update_session_tokens(request, oidc_response)
-        
+
         if lang:
             redirectValue = f"{redirectValue}/{lang}"
-            
+
         logger.info("OIDC Callback Handler")
         logger.info(f"Redirect to PROFILE_MANAGEMENT_DOMAIN: {redirectValue}")
         return RedirectResponse(url=redirectValue)

@@ -123,9 +123,7 @@ async def legacy_callback(
         raise HTTPException(status_code=422, detail="Request data validation error")
 
 
-async def legacy_post_logout_callback(
-        request: Request,
-    ):
+async def legacy_post_logout_callback(request: Request):
     # Logged out of legacy IDP Redierct to Profile Management
 
     settings = get_configuration()

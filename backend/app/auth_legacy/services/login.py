@@ -26,12 +26,10 @@ async def legacy_login(
     lang: str = "en",
 ):
     try:
-
-        
         # RP with SIC only has 1 IDP
         rp = await get_config(rp_client_id)
-        
-        # the [0] is the only value returned, just looks odd 
+
+        # the [0] is the only value returned, just looks odd
         legacy_idp = rp.IDP[0]
 
         # handle SIC legacy login
@@ -54,16 +52,13 @@ async def legacy_login(
         logger.error(f"Exception Error: {e}")
         raise
 
-
-
-
 async def SIC_legacy_login_auth(
     request: Request,
     user_access_token: str,
     session_user_token: str,
     rp_client_id: str,
     lang: str,
-) : 
+):
     try:
         global_http_client = request.app.state.request_client
 
@@ -136,7 +131,7 @@ async def SIC_legacy_login_auth(
                 status_code=patch_processing_data_response.status_code,
                 detail=error_detail,
             )
-        
+
         return await client.authorize_redirect(
             request,
             redirect_uri,
@@ -146,7 +141,7 @@ async def SIC_legacy_login_auth(
             code_challenge_method=code_challenge_method,
             ui_locales=ui_locales,
         )
-    
+
     except Exception as e:
         logger.error(f"Exception Error: {e}")
         raise
