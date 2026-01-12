@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { handleApiError, redirectToLogin } from "../../utils/apiErrorHandler.js";
+import {
+  handleApiError,
+  redirectToLogin,
+} from "../../utils/apiErrorHandler.js";
 
 vi.mock("../../utils/constants.jsx", () => ({
   OIDC_REDIRECT: {
