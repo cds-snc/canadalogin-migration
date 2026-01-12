@@ -16,5 +16,7 @@ class LegacyIdpSchema(BaseModel):
 class RPSchema(BaseModel):
     rp_client_id: str
     rp_client_name: str
+    rp_client_name_en: str
+    rp_client_name_fr: str
     rp_redirect_uri: str
     IDP: List[LegacyIdpSchema]

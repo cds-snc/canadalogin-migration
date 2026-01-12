@@ -16,7 +16,7 @@
     "fix": "npm run lint:fix && npm run format",
     "pre-push": "./.githooks/pre-push",
     "prepare": "husky",
-    "test": "npm run install-playwright && vitest --coverage",
+    "test": "npm run install-playwright && vitest --run --coverage",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "install-playwright": "npx playwright install-deps && npx playwright install"
@@ -54,8 +54,8 @@
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
-    "@vitest/browser": "^3.1.2",
-    "@vitest/coverage-istanbul": "^3.1.2",
+    "@vitest/browser": "3.1.2",
+    "@vitest/coverage-istanbul": "3.1.2",
     "axios": "^1.8.4",
     "eslint": "^9.25.1",
     "eslint-config-prettier": "^10.1.8",
@@ -74,7 +74,7 @@
     "storybook": "^8.6.12",
     "storybook-addon-remix-react-router": "^4.0.1",
     "vite": "^6.3.2",
-    "vitest": "^3.1.2"
+    "vitest": "3.1.2"
   },
   "vitest": {
     "jsx": "react-jsx"

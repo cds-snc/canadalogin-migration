@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from urllib.parse import quote
 
 from app.config import get_configuration
+from app.constants.session_keys import SessionKeys
 from app.constants.audit_status_keys import AuditStatusKeys
 from app.rp.services.config import get_config
 from app.users.services.custom_attributes import get_user_custom_attributes
@@ -101,7 +102,7 @@ async def legacy_callback(
         # Build the logout url for the Legacy IDP
         logout_url = (
             f"{end_session_endpoint}"
-            f"?id_token_hint={token["id_token"]}"
+            f"?id_token_hint={token['id_token']}"
             f"&post_logout_redirect_uri={encoded_post_logout_redirect_uri}"
             f"&state={state}"
             f"&client_id=e1a58c16-a649-45e1-b80c-3cd3daaeea0d"
@@ -122,15 +123,16 @@ async def legacy_callback(
         raise HTTPException(status_code=422, detail="Request data validation error")
 
 
-async def legacy_post_logout_callback():
+async def legacy_post_logout_callback(request: Request):
     # Logged out of legacy IDP Redierct to Profile Management
 
     settings = get_configuration()
 
+    lang = request.session[SessionKeys.CURRENT_LANGUAGE.value]
     # TODO: Retrieve Lang Parameter
-    lang = "/en"
-    page = "/link/success"
+    langPath = "/" + lang
+    pagePath = "/link/success"
 
-    redirect_url = f"{settings.PROFILE_MANAGEMENT_DOMAIN}{lang}{page}"
+    redirect_url = f"{settings.PROFILE_MANAGEMENT_DOMAIN}{langPath}{pagePath}"
 
     return RedirectResponse(url=redirect_url, status_code=302)

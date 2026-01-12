@@ -36,8 +36,9 @@ logger = logging.getLogger(__name__)
 async def redirect_url(
     request: Request,
     clientId: Optional[str] = None,
+    lang: Optional[str] = None,
 ):
-    return await redirect_user_to_idp_verify(request, clientId)
+    return await redirect_user_to_idp_verify(request, clientId, lang)
 
 
 @router.get(
@@ -46,8 +47,11 @@ async def redirect_url(
     name=SessionKeys.CALLBACK_ROUTE_NAME.value,
     description="",
 )
-async def callback(request: Request):
-    return await callback_handler(request)
+async def callback(
+    request: Request,
+    lang: Optional[str] = None,
+):
+    return await callback_handler(request, lang)
 
 
 @router.get(
@@ -60,8 +64,9 @@ async def reauth(
     request: Request,
     returnToPage: str = "/",
     user_access_token: None = Depends(get_users_current_session),
+    lang: Optional[str] = None,
 ):
-    return await reauthenticate_user(request, returnToPage)
+    return await reauthenticate_user(request, returnToPage, lang)
 
 
 @router.post(

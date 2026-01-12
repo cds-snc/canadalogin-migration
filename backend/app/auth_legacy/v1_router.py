@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi import Request, Depends
 
 from app.auth_legacy.services.callback import (
@@ -24,13 +24,19 @@ logger = logging.getLogger(__name__)
 )
 async def handle_legacy_login(
     request: Request,
+    lang: str = Query("en"),
     user_access_token: str = Depends(get_users_current_session),
 ):
+    lang = lang.lower()
+    if lang not in ("en", "fr"):
+        lang = "en"
+
     return await legacy_login(
         request,
         user_access_token,
         request.session[SessionKeys.SESSION_USER_TOKEN.value],
         rp_client_id=request.session[SessionKeys.RP_CLIENT_ID_KEY.value],
+        lang=lang,
     )
 
 
@@ -61,7 +67,7 @@ async def handle_legacy_post_logout_callback(
     request: Request,
     user_access_token: str = Depends(get_users_current_session),
 ):
-    return await legacy_post_logout_callback()
+    return await legacy_post_logout_callback(request)
 
 
 @router.get(

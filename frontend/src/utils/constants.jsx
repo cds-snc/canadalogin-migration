@@ -64,41 +64,19 @@ export const PAGES = {
   otpSelection: "OtpSelection",
   password: "Password",
   error: "Error",
-  manageDashboard: "ManageDashboard",
-  ProfileHome: "ProfileHome",
-  CheckYourEmail: "CheckYourEmail",
-  CompleteTwoStepVerification: "CompleteTwoStepVerification",
-  FirstVerifyItsYou: "FirstVerifyItsYou",
-  EnterNewEmail: "EnterNewEmail",
-  profileUpdateNameSuccess: "ProfileUpdateNameSuccess",
-  profileUpdateNameConfirmUpdate: "ProfileUpdateNameConfirmUpdate",
-  profileUpdateName: "ProfileUpdateName",
-  areYouSureUpdateContactNumber: "AreYouSureUpdateContactNumber",
-  enterNewPhoneNumber: "EnterNewPhoneNumber",
-  youMayUpdateEmailAtOtherPlaces: "YouMayUpdateEmailAtOtherPlaces",
-  areYouSureUpdateYourEmail: "AreYouSureUpdateYourEmail",
-  securitySettings: "SecuritySettings",
-  editLanguagePreferences: "EditLanguagePreferences",
-  confirmLanguageUpdate: "ConfirmLanguageUpdate",
-  successfullyUpdatedLanguage: "SuccessfullyUpdatedLanguage",
   passwordChangedConfirmation: "PasswordChangedConfirmation",
   ServicesWithAccessInfo: "ServicesWithAccessInfo",
-  confirmContactPhoneNumberUpdate: "ConfirmContactPhoneNumberUpdate",
-  successfullyUpdatedContactPhoneNumber:
-    "SuccessfullyUpdatedContactPhoneNumber",
-  manage2FAVerifications: "Manage2FAVerifications",
   addMFAPage: "AddMFAPage",
   addMFANumber: "AddMFANumber",
   addSecondMFA: "AddSecondMFA",
   addSecondMFAVoiceCall: "AddSecondMFAVoiceCall",
   addSecondMFATextMessage: "AddSecondMFATextMessage",
-  deleteMFAPage: "DeleteMFAPage",
-  deleteMFAPhoneNumberConfirm: "DeleteMFAPhoneNumberConfirm",
   transientOtpSelection: "TransientOtpSelection",
   successBanner: "SuccessBanner",
   LinkPrompt: "LinkPrompt",
   SkipLink: "SkipLink",
   LinkSuccess: "LinkSuccess",
+  MigrationStepper: "MigrationStepper",
 };
 
 export const FOOTERS = {
@@ -148,7 +126,7 @@ export const SUBMIT_END_POINTS = {
 export const MIGRATION_END_POINTS = {
   login: `${config.apiUrl}/v1/auth/legacy/login`,
   skip: `${config.apiUrl}/v1/auth/legacy/skip`,
-  rpcallback: `${config.apiUrl}/v1/rp/callback_url`,
+  rpcallback: `${config.apiUrl}/v1/rp/rpConfigDetails`,
 };
 export const RP_CLIENT_ID_KEY = "rp_client_id";
 

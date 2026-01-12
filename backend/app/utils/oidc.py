@@ -19,6 +19,7 @@ async def register_client(
     request: Request,
     client_name: str,
     idp: LegacyIdpSchema,
+    ui_locales: str = "en-CA",
 ):
     try:
 
@@ -41,7 +42,7 @@ async def register_client(
         )
 
         # TODO: get language
-        current_locale = "en-CA"
+        current_locale = ui_locales
 
         oauth.register(
             name=client_name,

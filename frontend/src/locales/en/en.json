@@ -473,14 +473,15 @@
   },
   "LinkPrompt": {
     "title": "Sign in with your old method",
-    "subtitle": "First time on Canada Dental Care Plan Account?",
+    "subtitle": "First time on {RP_Name} Account?",
     "text_1": "Completed: Use the new sign-in method",
-    "text_2": "To keep your Canada Dental Care Plan Account data, you’ll need to use your old sign-in method one last time on this service. This will update your sign-in method to GC Sign in for this account.",
+    "text_2": "To keep your {RP_Name} account data, you’ll need to use your old sign-in method one last time on this service. This will update your sign-in method to GC Sign in for this account.",
     "text_3": "Use the sign-in method you used the last time you signed in to this service.",
-    "text_4": "If you have not signed in to this portal with your bank or GCKey in the past, you can skip this step.",
+    "text_4": "If you have not signed in to this service with your GCKey or bank in the past, you can skip this step.",
     "link_1": "How to update your sign-in method",
     "link_2": "Skip and create a new account",
-    "btn_1": "Sign in with your bank or GCKey"
+    "btn_1": "Sign in with your GCKey or bank",
+    "notice_title": "For your information"
   },
   "SkipLink": {
     "title": "Are you sure you don’t have an existing account?",
@@ -491,8 +492,20 @@
   },
   "LinkSuccess": {
     "title": "Your sign-in method has been updated",
-    "text_1": "You can now use GC Sign in to access your Canada Dental Care Plan Account.",
-    "text_2": "If you use your bank or GCKey to access other accounts, you’ll need to update them on each service.",
-    "btn_1": "Finish"
+    "text_1": "You can now use GC Sign in to access your {RP_Name} Account.",
+    "text_2": "If you use your GCKey or Interac sign-in on other services:",
+    "list_text_1": "you should receive an email when the service starts using GC Sign in",
+    "list_text_2": "you will need to update GCKey or Interac sign-in to your GC Sign in on each service",
+    "btn_1": "Access your account"
+  },
+  "MigrationStepper": {
+    "aria_label": "Sign-in migration progress",
+    "sr_current_prefix": "Current step: ",
+    "sr_completed_prefix": "Completed step: ",
+    "sr_step_prefix": "Step ",
+    "step_title": "Step {n}",
+    "step_1": "Create a GC Sign in or sign in",
+    "step_2": "Link your old sign-in method",
+    "step_3": "Access your existing account"
   }
 }

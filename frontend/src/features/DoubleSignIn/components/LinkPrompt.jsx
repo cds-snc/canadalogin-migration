@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   GcdsContainer,
   GcdsText,
@@ -14,51 +14,48 @@ import {
   GcdsNotice,
 } from "@cdssnc/gcds-components-react";
 import { getPageContent } from "../../../utils/functions.jsx";
+
+import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
 import { MIGRATION_END_POINTS, PAGES } from "../../../utils/constants.jsx";
 import { useParams } from "react-router";
-import { useSearchParams } from "react-router-dom";
+import { MigrationStepper } from "./MigrationStepper.jsx";
 
 export default function LinkPrompt() {
   const { language } = useParams();
 
   const [serverErrorMessage] = useState("");
-  const [searchParams] = useSearchParams();
 
   const pageContentJson = getPageContent(language, PAGES.LinkPrompt);
   const errorPageJson = getPageContent(language, PAGES.error);
 
-  const configRef = useRef({}); // <-- never null
   const [links, setLinks] = useState({
     LinkingLink: "",
     SkipLink: "",
   });
 
+  const [rpData, setRpData] = useState(null);
+
   useEffect(() => {
-    (async () => {
+    async function getRPData() {
       try {
-        // 1) Fetch/build values
-        const LinkingLink = MIGRATION_END_POINTS.login;
-        const SkipLink = MIGRATION_END_POINTS.skip;
-
-        // 2) Write to ref (safe)
-        configRef.current = {
-          ...configRef.current,
-          LinkingLink,
-          SkipLink,
-        };
-
-        // 3) Mirror to state so UI updates
-        setLinks(configRef.current);
-
-        // Debug
-        console.log("linkSuccess:", LinkingLink);
-        console.log("skipLink   :", SkipLink);
+        const data = await updateLinkStateAPI.getRPAuthUrl();
+        setRpData(data);
       } catch (e) {
-        console.error("Failed building links", e);
+        console.error("Failed loading RP data", e);
       }
-    })();
-    // include deps that change this computation
-  }, [language, searchParams]);
+    }
+
+    try {
+      const LinkingLink = MIGRATION_END_POINTS.login + "?lang=" + language;
+      const SkipLink = MIGRATION_END_POINTS.skip;
+
+      setLinks({ LinkingLink, SkipLink });
+    } catch (e) {
+      console.error("Failed building links", e);
+    }
+
+    getRPData();
+  }, [language]);
 
   const skipHref = links.toSkipLinkPage?.startsWith("http")
     ? links.toSkipLinkPage
@@ -68,26 +65,46 @@ export default function LinkPrompt() {
 
   return (
     <GcdsContainer>
+      <MigrationStepper currentStep={2} />
       <GcdsHeading tag="h1" lang={language}>
         {pageContentJson["title"]}
       </GcdsHeading>
+
       <GcdsText>{errorMessage}</GcdsText>
-      <GcdsText class="mb-500">
-        <GcdsIcon name="checkmark-circle" size="inherit"></GcdsIcon>
-        <span>&nbsp;</span>
-        {pageContentJson["text_1"]}
+
+      <GcdsText>
+        {pageContentJson["text_2"].replace(
+          "{RP_Name}",
+          language != "en"
+            ? rpData?.rp_client_name_fr
+            : rpData?.rp_client_name_en,
+        )}
       </GcdsText>
-      <GcdsText>{pageContentJson["text_2"]}</GcdsText>
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
       <GcdsButton type="link" href={links.LinkingLink}>
         {pageContentJson["btn_1"]}
       </GcdsButton>
-      <GcdsText marginTop="500">
-        <GcdsLink href="#" external>
-          {pageContentJson["link_1"]}
-        </GcdsLink>
-      </GcdsText>
-      <GcdsHeading tag="h2">{pageContentJson["subtitle"]}</GcdsHeading>
+
+      <div className="mt-500 mb-700">
+        <GcdsNotice
+          type="info"
+          noticeTitle={pageContentJson["notice_title"]}
+          noticeTitleTag="h2"
+          lang={language}
+        >
+          <GcdsLink href="#" external>
+            {pageContentJson["link_1"]}
+          </GcdsLink>
+        </GcdsNotice>
+      </div>
+      <GcdsHeading tag="h2" lang={language}>
+        {pageContentJson["subtitle"].replace(
+          "{RP_Name}",
+          language != "en"
+            ? rpData?.rp_client_name_fr
+            : rpData?.rp_client_name_en,
+        )}
+      </GcdsHeading>
       <GcdsText>{pageContentJson["text_4"]}</GcdsText>
       <GcdsText>
         <GcdsLink key={skipHref} href={links.SkipLink}>

@@ -51,10 +51,7 @@ def get_callback_redirect_uri(request: Request):
     return redirect_uri
 
 
-async def redirect_user_to_idp_verify(
-    request: Request,
-    clientId: str,
-):
+async def redirect_user_to_idp_verify(request: Request, clientId: str, lang: str):
     """
     Get the redirect URL for the OAuth login flow.
     This function is used to initiate the login process with IBM Verify.
@@ -66,20 +63,27 @@ async def redirect_user_to_idp_verify(
 
         # TODO: Redirect if clientId = NULL
 
+        logger.info(f"Language selected: {lang}")
+
         callback_redirect_uri = get_callback_redirect_uri(request)
-        return await oauth.verify.authorize_redirect(request, callback_redirect_uri)
+        callback_redirect_uri = f"{callback_redirect_uri}?lang={lang}"
+
+        return await oauth.verify.authorize_redirect(
+            request, callback_redirect_uri, ui_locales=lang
+        )
 
     except Exception as e:
         logger.exception("Unexpected error during redirect_to_verify", str(e))
         RequestErrorHandler.handle(e, context="Unexpected error during idp redirect")
 
 
-async def callback_handler(request: Request):
+async def callback_handler(request: Request, lang: str):
     """
     Get the redirect URL for the OAuth login flow.
     This function is used to initiate the login process with IBM Verify.
     """
     try:
+        logger.info(f"lang in callback: {lang}")
         redirectValue = get_base_profile_management_url()
         returnToPageValue = request.session.get(SessionKeys.RETURN_TO_PAGE.value)
 
@@ -106,6 +110,9 @@ async def callback_handler(request: Request):
 
         update_session_tokens(request, oidc_response)
 
+        if lang:
+            redirectValue = f"{redirectValue}/{lang}"
+
         logger.info("OIDC Callback Handler")
         logger.info(f"Redirect to PROFILE_MANAGEMENT_DOMAIN: {redirectValue}")
         return RedirectResponse(url=redirectValue)
@@ -117,7 +124,9 @@ async def callback_handler(request: Request):
         RequestErrorHandler.handle(e, context="Unexpected error during idp redirect")
 
 
-async def reauthenticate_user(request: Request, returnToPage: str = "/"):
+async def reauthenticate_user(
+    request: Request, returnToPage: str = "/", lang: str = None
+):
     """
     Get the redirect URL for the OAuth login flow.
     This function is used to initiate a reauthentication flow with IBM Verify.

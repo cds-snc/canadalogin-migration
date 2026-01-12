@@ -35,3 +35,4 @@ frontend/test-results/
 # Build output
 frontend/dist
 backend/runlocal.sh
+

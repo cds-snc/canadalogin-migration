@@ -14,12 +14,12 @@ export const updateLinkStateAPI = {
 
       const response = await axios.get(`${MIGRATION_END_POINTS.rpcallback}`);
 
-      var rpAuthUrl = response.data;
+      var rpData = response.data;
 
-      console.log(`====== rpAuthUrl : ${rpAuthUrl} ======`);
+      console.log(`====== rpData : ${rpData} ======`);
       console.log("====== end getRPAuthUrl ======");
 
-      return rpAuthUrl;
+      return rpData;
     } catch (error) {
       handleApiError(error);
     }
