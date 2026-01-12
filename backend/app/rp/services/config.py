@@ -24,6 +24,7 @@ AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 # Simple in-process cache to avoid hitting disk / Secrets Manager repeatedly (per worker process)
 _CONFIG_JSON_CACHE: list | None = None
 
+
 async def get_config(
     rp_client_id: str,
 ):
@@ -50,6 +51,7 @@ async def get_config(
         logger.error(f"Exception Error: {e}")
         raise
 
+
 # load the legacy idp config, from wherever it is stored
 async def get_config_json() -> list:
     global _CONFIG_JSON_CACHE
@@ -60,12 +62,16 @@ async def get_config_json() -> list:
             return _CONFIG_JSON_CACHE
 
         if APP_ENV == "local":
-            logger.info("Loading migration RP config from local file: %s", CONFIG_FILE_PATH)
+            logger.info(
+                "Loading migration RP config from local file: %s", CONFIG_FILE_PATH
+            )
             with open(CONFIG_FILE_PATH) as f:
                 data = json.load(f)
 
             if not isinstance(data, list):
-                raise ValueError("Local migration RP config file must contain a JSON array (list) of RP objects")
+                raise ValueError(
+                    "Local migration RP config file must contain a JSON array (list) of RP objects"
+                )
 
             _CONFIG_JSON_CACHE = data
             return data
@@ -76,7 +82,7 @@ async def get_config_json() -> list:
                 "Non-local environment requires MIGRATION_RP_SECRET_NAME to be set (AWS Secrets Manager)."
             )
 
-        logger.info("Loading migration RP config from AWS Secrets Manager: %s", AWS_SECRET_NAME)
+        logger.info("Loading migration RP config from AWS Secrets Manager")
         secret_payload = await _get_secret_string(AWS_SECRET_NAME)
         data = _parse_config_json(secret_payload)
 
@@ -86,6 +92,7 @@ async def get_config_json() -> list:
     except Exception as e:
         logger.error(f"Exception Error: {e}")
         raise
+
 
 async def _get_secret_string(secret_name: str) -> str:
     """Fetch SecretString (or SecretBinary) from AWS Secrets Manager.
