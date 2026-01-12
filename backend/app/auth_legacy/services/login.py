@@ -52,6 +52,7 @@ async def legacy_login(
         logger.error(f"Exception Error: {e}")
         raise
 
+
 async def SIC_legacy_login_auth(
     request: Request,
     user_access_token: str,
