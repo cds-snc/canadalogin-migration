@@ -71,8 +71,6 @@ export const PAGES = {
   addSecondMFA: "AddSecondMFA",
   addSecondMFAVoiceCall: "AddSecondMFAVoiceCall",
   addSecondMFATextMessage: "AddSecondMFATextMessage",
-  deleteMFAPage: "DeleteMFAPage",
-  deleteMFAPhoneNumberConfirm: "DeleteMFAPhoneNumberConfirm",
   transientOtpSelection: "TransientOtpSelection",
   successBanner: "SuccessBanner",
   LinkPrompt: "LinkPrompt",
