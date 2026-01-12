@@ -78,10 +78,10 @@ class RequestErrorHandler:
             ) from exc
 
         elif isinstance(exc, HTTPException):
-            raise  # don’t swallow already-raised FastAPI errors
+            raise exc  # don’t swallow already-raised FastAPI errors
 
         elif isinstance(exc, OAuthError):
-            raise
+            raise exc
 
         else:
             logger.exception("Unexpected error during %s", context)

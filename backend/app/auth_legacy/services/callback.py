@@ -102,7 +102,7 @@ async def legacy_callback(
         # Build the logout url for the Legacy IDP
         logout_url = (
             f"{end_session_endpoint}"
-            f"?id_token_hint={token["id_token"]}"
+            f"?id_token_hint={token['id_token']}"
             f"&post_logout_redirect_uri={encoded_post_logout_redirect_uri}"
             f"&state={state}"
             f"&client_id=e1a58c16-a649-45e1-b80c-3cd3daaeea0d"
