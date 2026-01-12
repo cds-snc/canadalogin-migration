@@ -22,8 +22,9 @@ vi.mock("react-router", () => ({
   useParams: () => ({ language: "en" }),
 }));
 
+const mockSearchParams = new URLSearchParams();
 vi.mock("react-router-dom", () => ({
-  useSearchParams: () => [new URLSearchParams()],
+  useSearchParams: () => [mockSearchParams],
 }));
 
 vi.mock("../../../../utils/functions.jsx", () => ({
