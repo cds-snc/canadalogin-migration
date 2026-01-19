@@ -2,6 +2,6 @@ from enum import Enum
 
 
 class PatchKeys(str, Enum):
-    LEGACY_PAI_DATA_KEY = "legacypaidata"
-    AUDIT_DATA_KEY = "auditdata"
-    PROCESSING_DATA_KEY = "processingdata"
+    LEGACY_PAI_DATA_KEY = "gcsattributeslegacypaidata"
+    AUDIT_DATA_KEY = "gcsattributeslegacypaiauditdata"
+    PROCESSING_DATA_KEY = "gcsattributeslegacypaiprocessingdata"
