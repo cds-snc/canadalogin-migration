@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from authlib.integrations.starlette_client import OAuthError
-from starsessions import SessionMiddleware, SessionAutoloadMiddleware
+from starsessions import InMemoryStore, SessionMiddleware, SessionAutoloadMiddleware
 from redis.asyncio import Redis
 from starsessions.stores.redis import RedisStore
 
@@ -108,6 +108,7 @@ if configuration.ENVIRONMENT != "local":
     session_domain = f".{configuration.ROOT_DOMAIN}"
 logger.info(f"ROOT_DOMAIN: {session_domain}")
 
+session_store = InMemoryStore()
 # session_store = RedisStore(
 #     connection=redis_client,
 #     prefix=RedisKeys.REDIS_SESSION_KEY.value,
@@ -132,15 +133,15 @@ app.add_middleware(
 # Autoload session if cookie is present
 app.add_middleware(SessionAutoloadMiddleware)
 # # SessionMiddleware
-# app.add_middleware(
-#     SessionMiddleware,
-#     store=session_store,
-#     rolling=True,
-#     cookie_https_only=cookie_secure,
-#     lifetime=configuration.session_config.SESSION_LIFETIME,
-#     cookie_domain=configuration.ROOT_DOMAIN,
-#     cookie_name=configuration.session_config.SESSION_COOKIE_NAME,
-# )
+app.add_middleware(
+    SessionMiddleware,
+    store=session_store,
+    rolling=True,
+    cookie_https_only=cookie_secure,
+    lifetime=configuration.session_config.SESSION_LIFETIME,
+    cookie_domain=configuration.ROOT_DOMAIN,
+    cookie_name=configuration.session_config.SESSION_COOKIE_NAME,
+)
 
 
 app.include_router(health.router, prefix="/health")
