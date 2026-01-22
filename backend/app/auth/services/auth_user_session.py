@@ -22,6 +22,15 @@ from app.utils.redis import get_redis_client
 from app.constants.redis_keys import RedisKeys
 
 
+# Get the desired log level from configuration
+config = get_configuration()
+log_level_str = config.LOG_LEVEL.upper()
+
+# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
+log_level = getattr(logging, log_level_str, logging.INFO)
+
+# Apply the configuration
+logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -52,7 +61,7 @@ async def introspect_user_token(
 
         response.raise_for_status()
         response_json = response.json()
-        logger.info(
+        logger.debug(
             f"returned response from introspect_token_api_endpoint: {response_json}"
         )
         return response_json

@@ -9,8 +9,18 @@ from pydantic import ValidationError
 
 from app.rp.schemas import RPSchema
 from app.utils.redis import get_redis_client
+from app.config import get_configuration
 
 
+# Get the desired log level from configuration
+config = get_configuration()
+log_level_str = config.LOG_LEVEL.upper()
+
+# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
+log_level = getattr(logging, log_level_str, logging.INFO)
+
+# Apply the configuration
+logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 # Configuration source selection
@@ -43,7 +53,7 @@ async def get_config(
                 status_code=404, detail="Legacy IdP configuration not found"
             )
 
-        logger.info(f"RP Config {matching_rp_idp}")
+        logger.debug(f"RP Config {matching_rp_idp}")
 
         return matching_rp_idp
 
@@ -62,7 +72,7 @@ async def get_config_json() -> list:
             return _CONFIG_JSON_CACHE
 
         if APP_ENV == "local":
-            logger.info(
+            logger.debug(
                 "Loading migration RP config from local file: %s", CONFIG_FILE_PATH
             )
             with open(CONFIG_FILE_PATH) as f:
@@ -171,7 +181,7 @@ async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 864
     # Return cached metadata if available
     cached = await redis_client.get(idp_url)
     if cached:
-        logger.info("Cached value: %s", cached[:200])  # first 200 chars
+        logger.debug("Cached value: %s", cached[:200])  # first 200 chars
         return json.loads(cached.decode("utf-8"))
 
     # Fetch metadata from legacy IdP
