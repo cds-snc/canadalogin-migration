@@ -10,13 +10,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from authlib.integrations.starlette_client import OAuthError
 from starsessions import InMemoryStore, SessionMiddleware, SessionAutoloadMiddleware
-from redis.asyncio import Redis
-from starsessions.stores.redis import RedisStore
 
 from app.config import get_configuration
 from app.utils.helpers import generate_error_response
 from app.auth.services.auth import redirect_user_to_idp_verify
-from app.constants.redis_keys import RedisKeys
 
 from .routers import health
 from app.users import v1_router as v1_users_router
