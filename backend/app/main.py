@@ -144,7 +144,7 @@ app.add_middleware(
 )
 
 
-app.include_router(health.router, prefix="/health")
+app.include_router(health.router)
 
 app.include_router(
     v1_users_router.router,
