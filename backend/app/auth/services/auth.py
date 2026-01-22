@@ -103,12 +103,12 @@ async def callback_handler(request: Request, lang: str):
             # redirect back to IBM Verify to retry authentication
             raise OAuthError("Invalid or expired token") from error
 
-        # Get the handler and set your sid as session id. sid is uuid passed in id_token
-        handler = get_session_handler(request)
-        new_session_id = oidc_response.get("userinfo").get("sid")
-        handler.session_id = new_session_id
+        # # Get the handler and set your sid as session id. sid is uuid passed in id_token
+        # handler = get_session_handler(request)
+        # new_session_id = oidc_response.get("userinfo").get("sid")
+        # handler.session_id = new_session_id
 
-        update_session_tokens(request, oidc_response)
+        # update_session_tokens(request, oidc_response)
 
         if lang:
             redirectValue = f"{redirectValue}/{lang}"
