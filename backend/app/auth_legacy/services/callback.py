@@ -96,7 +96,7 @@ async def legacy_callback(
         )
 
         encoded_post_logout_redirect_uri = quote(
-            "http://localhost:8080/v1/auth/legacy/post_logout", safe=""
+            "http://localhost:8000/v1/auth/legacy/post_logout", safe=""
         )
 
         # Build the logout url for the Legacy IDP

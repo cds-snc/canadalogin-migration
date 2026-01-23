@@ -49,7 +49,7 @@ class Configuration(BaseSettings):
     )
 
     CORS_ORIGINS: str = Field(
-        default="localhost:3000,localhost:8080",
+        default="localhost:3000,localhost:8000",
         description="Comma-separated list of CORS origins, Terraform cant pass in a list[str].",
     )
 

@@ -14,9 +14,9 @@ COPY . .
 ENV PYTHONPATH=/app
 ENV PATH="/usr/local/bin:${PATH}"
 
-RUN echo '#!/bin/bash\n/usr/local/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8080' > /start.sh && \
+RUN echo '#!/bin/bash\n/usr/local/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000' > /start.sh && \
     chmod +x /start.sh
 
-EXPOSE 8080
+EXPOSE 8000
 
 CMD ["/start.sh"] 
