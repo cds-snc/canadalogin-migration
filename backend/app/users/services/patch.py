@@ -28,7 +28,15 @@ from app.utils.access_token import (
     get_auth_request_headers,
 )
 
+# Get the desired log level from configuration
+config = get_configuration()
+log_level_str = config.LOG_LEVEL.upper()
 
+# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
+log_level = getattr(logging, log_level_str, logging.INFO)
+
+# Apply the configuration
+logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +65,7 @@ async def patch_payload(
         )
 
         payload = patch_request.model_dump_json()
-        logger.info(f"Payload to Patch {custom_attribute_name}: {payload}")
+        logger.debug(f"Payload to Patch {custom_attribute_name}: {payload}")
 
         return payload
 
@@ -78,10 +86,10 @@ async def patch_custom_attribute(
         access_token = await get_admin_token(global_http_client)
 
         users_api_endpoint = f"{settings.users_api_endpoint}/{ibm_id}"
-        logger.info(f"API Endpoint: {users_api_endpoint}")
+        logger.debug(f"API Endpoint: {users_api_endpoint}")
 
         h = get_auth_request_headers(access_token, False)
-        logger.info(f"headers: {h}")
+        logger.debug(f"headers: {h}")
 
         response = await global_http_client.patch(
             users_api_endpoint,

@@ -14,6 +14,15 @@ from app.users.schemas import (
 
 from app.utils.access_token import get_auth_request_headers
 
+# Get the desired log level from configuration
+config = get_configuration()
+log_level_str = config.LOG_LEVEL.upper()
+
+# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
+log_level = getattr(logging, log_level_str, logging.INFO)
+
+# Apply the configuration
+logging.basicConfig(level=log_level)
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +50,7 @@ async def get_custom_attribute(
         custom_attribute_value = await get_attribute_value(
             custom_attribute_name, custom_attributes
         )
-        logger.info(
+        logger.debug(
             f"Custom Attribute {custom_attribute_name} value: {custom_attribute_value}"
         )
 
@@ -71,10 +80,10 @@ async def get_user_custom_attributes(
 
     if response.status_code == 200:
         json_data = response.json()
-        logger.info(f"json repsonse: {json_data}")
+        logger.debug(f"json response: {json_data}")
         response_data = MeResponse(**json_data)
         custom_attributes = response_data.ibm_extension.custom_attributes
-        logger.info(f"Custom Attributes List: {custom_attributes}")
+        logger.debug(f"Custom Attributes List: {custom_attributes}")
         return custom_attributes
 
     else:

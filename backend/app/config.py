@@ -40,6 +40,7 @@ class Configuration(BaseSettings):
     ibm_verify_config: IBMVerifyConfig = IBMVerifyConfig()
     session_config: SessionConfig = SessionConfig()
     ENVIRONMENT: str = Field(default="local")
+    LOG_LEVEL: str = Field(default="INFO")
     V1_API_VERSION: str = "/v1"
     ROOT_DOMAIN: Optional[str] = (
         None  # Not required for local development, value should be ".gc-signin.cdssandbox.xyz"

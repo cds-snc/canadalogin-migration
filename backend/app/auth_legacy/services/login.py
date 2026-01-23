@@ -14,7 +14,17 @@ from app.utils.oidc import (
     generate_secure_token,
     register_client,
 )
+from app.config import get_configuration
 
+# Get the desired log level from configuration
+config = get_configuration()
+log_level_str = config.LOG_LEVEL.upper()
+
+# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
+log_level = getattr(logging, log_level_str, logging.INFO)
+
+# Apply the configuration
+logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -88,7 +98,7 @@ async def SIC_legacy_login_auth(
 
         redirect_uri = redirect_uris[0]
         # redirect_uri = f"{redirect_uri}?lang={lang}"
-        logger.info("Redirect_uri: %s", redirect_uri)
+        logger.debug("Redirect_uri: %s", redirect_uri)
 
         state = generate_secure_token()
         nonce = generate_secure_token()

@@ -21,6 +21,16 @@ from app.users.services.custom_attributes import (
 )
 from app.users.schemas import AuditDataSchema
 
+# Get the desired log level from configuration
+config = get_configuration()
+log_level_str = config.LOG_LEVEL.upper()
+
+# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
+log_level = getattr(logging, log_level_str, logging.INFO)
+
+# Apply the configuration
+logging.basicConfig(level=log_level)
+
 logger = logging.getLogger(__name__)
 
 
@@ -160,15 +170,6 @@ async def verify_audit_status(
     Verify if the user's audit status allows access.
     """
     try:
-
-        http_client = await get_http_client(request)
-        user_access_token = await get_users_current_session(request)
-
-        custom_attributes = await get_user_custom_attributes(
-            http_client,
-            user_access_token,
-        )
-
         http_client = await get_http_client(request)
         user_access_token = await get_users_current_session(request)
 
@@ -190,7 +191,7 @@ async def verify_audit_status(
                 AuditDataSchema(**json.loads(item)) for item in audit_data_array
             ]
 
-        logger.info(f"Audit Object from Custom Attributes: {audit_data_array_parsed}")
+        logger.debug(f"Audit Object from Custom Attributes: {audit_data_array_parsed}")
 
     except Exception as e:
         logger.error(f"Error verifying audit status: {e}")

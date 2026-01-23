@@ -1,5 +1,3 @@
-import logging
-
 from fastapi import Request
 
 from fastapi.responses import RedirectResponse
@@ -9,9 +7,6 @@ from app.constants.audit_status_keys import AuditStatusKeys
 from app.users.services.custom_attributes import get_user_custom_attributes
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_audit_data
-
-
-logger = logging.getLogger(__name__)
 
 
 # Update User on IBM (Skipped) and redirect to RP

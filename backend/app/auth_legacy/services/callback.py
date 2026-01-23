@@ -16,6 +16,15 @@ from app.users.services.patch import patch_legacy_pai, patch_audit_data
 from app.utils.oidc import create_client
 
 
+# Get the desired log level from configuration
+config = get_configuration()
+log_level_str = config.LOG_LEVEL.upper()
+
+# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
+log_level = getattr(logging, log_level_str, logging.INFO)
+
+# Apply the configuration
+logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -33,7 +42,7 @@ async def legacy_callback(
 
         # Unique for RP / IDP combo
         client_name = f"{rp.rp_client_name}_{legacy_idp.client_name}"
-        logger.info(f"Callback Client Name: {client_name}")
+        logger.debug(f"Callback Client Name: {client_name}")
         client = await create_client(client_name)
 
         # Exchange authorization code for tokens
@@ -88,7 +97,7 @@ async def legacy_callback(
 
         # The discovery metadata is stored here:
         idp_metadata = client.server_metadata
-        logger.info(f"IDP Metadata: {idp_metadata}")
+        logger.debug(f"IDP Metadata: {idp_metadata}")
 
         # Grab the logout endpoint
         end_session_endpoint = idp_metadata["server_metadata"].get(
@@ -108,7 +117,7 @@ async def legacy_callback(
             f"&client_id=e1a58c16-a649-45e1-b80c-3cd3daaeea0d"
         )
 
-        logger.info(f"Logout URL: {logout_url}")
+        logger.debug(f"Logout URL: {logout_url}")
 
         return RedirectResponse(url=logout_url)
 
@@ -130,9 +139,9 @@ async def legacy_post_logout_callback(request: Request):
 
     lang = request.session[SessionKeys.CURRENT_LANGUAGE.value]
     # TODO: Retrieve Lang Parameter
-    langPath = "/" + lang
-    pagePath = "/link/success"
+    lang_path = "/" + lang
+    page_path = "/link/success"
 
-    redirect_url = f"{settings.PROFILE_MANAGEMENT_DOMAIN}{langPath}{pagePath}"
+    redirect_url = f"{settings.PROFILE_MANAGEMENT_DOMAIN}{lang_path}{page_path}"
 
     return RedirectResponse(url=redirect_url, status_code=302)
