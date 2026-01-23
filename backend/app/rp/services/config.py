@@ -1,13 +1,11 @@
-import asyncio
 import json
 import logging
-import os
 
 from fastapi import HTTPException, Request
 from httpx import AsyncClient
 from pydantic import ValidationError
 
-from app.rp.schemas import RPSchema
+from app.rp.schemas import RPSchema, LegacyIdpSchema
 from app.utils.redis import get_redis_client
 from app.config import get_configuration
 
@@ -23,152 +21,67 @@ log_level = getattr(logging, log_level_str, logging.INFO)
 logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
-# Configuration source selection
-# Local dev: file (mounted/bundled)
-# Deployed: AWS Secrets Manager
-APP_ENV = os.getenv("APP_ENV", "local").lower()
-CONFIG_FILE_PATH = os.getenv("MIGRATION_RP_CONFIG_PATH", "/app/migration_rp.json")
-AWS_SECRET_NAME = os.getenv("MIGRATION_RP_SECRET_NAME")
-AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
-
-# Simple in-process cache to avoid hitting disk / Secrets Manager repeatedly (per worker process)
-_CONFIG_JSON_CACHE: list | None = None
-
 
 async def get_config(
     rp_client_id: str,
-):
-    try:
-        data = await get_config_json()
-
-        rp_configs = [RPSchema(**item) for item in data]
-
-        matching_rp_idp = next(
-            (rp for rp in rp_configs if rp.rp_client_id == rp_client_id),
-            None,
-        )
-
-        if not matching_rp_idp:
-            raise HTTPException(
-                status_code=404, detail="Legacy IdP configuration not found"
-            )
-
-        logger.debug(f"RP Config {matching_rp_idp}")
-
-        return matching_rp_idp
-
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
-        raise
-
-
-# load the legacy idp config, from wherever it is stored
-async def get_config_json() -> list:
-    global _CONFIG_JSON_CACHE
-
-    try:
-        # In-process cache (per worker process)
-        if _CONFIG_JSON_CACHE is not None:
-            return _CONFIG_JSON_CACHE
-
-        if APP_ENV == "local":
-            logger.debug(
-                "Loading migration RP config from local file: %s", CONFIG_FILE_PATH
-            )
-            with open(CONFIG_FILE_PATH) as f:
-                data = json.load(f)
-
-            if not isinstance(data, list):
-                raise ValueError(
-                    "Local migration RP config file must contain a JSON array (list) of RP objects"
-                )
-
-            _CONFIG_JSON_CACHE = data
-            return data
-
-        # Non-local environments must use Secrets Manager
-        if not AWS_SECRET_NAME:
-            raise RuntimeError(
-                "Non-local environment requires MIGRATION_RP_SECRET_NAME to be set (AWS Secrets Manager)."
-            )
-
-        logger.info("Loading migration RP config from AWS Secrets Manager")
-        secret_payload = await _get_secret_string(AWS_SECRET_NAME)
-        data = _parse_config_json(secret_payload)
-
-        _CONFIG_JSON_CACHE = data
-        return data
-
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
-        raise
-
-
-async def _get_secret_string(secret_name: str) -> str:
-    """Fetch SecretString (or SecretBinary) from AWS Secrets Manager.
-
-    Uses boto3 under the hood and runs the blocking call in a thread.
+) -> RPSchema:
     """
+    Get RP configuration from environment variables.
+    This replaces the previous JSON file-based configuration.
+    Supports multiple Legacy IDPs via JSON array in LEGACY_IDP_CONFIGS.
+    """
+    try:
+        config = get_configuration()
 
-    def _sync_fetch() -> str:
-        try:
-            import boto3
-            from botocore.exceptions import BotoCoreError, ClientError
-        except Exception as e:
-            raise RuntimeError(
-                "boto3/botocore not available. Add boto3 to requirements.txt or ensure it exists in the runtime image."
-            ) from e
-
-        if not AWS_REGION:
-            raise RuntimeError(
-                "AWS region is not set. Set AWS_REGION or AWS_DEFAULT_REGION in the environment."
+        # Validate that the requested RP client ID matches the configured one
+        if config.rp_config.RP_CLIENT_ID != rp_client_id:
+            raise HTTPException(
+                status_code=404,
+                detail=f"RP configuration not found for client_id: {rp_client_id}",
             )
 
-        client = boto3.client("secretsmanager", region_name=AWS_REGION)
+        # Build the list of Legacy IDP configurations from the JSON array
+        idp_configs = config.legacy_idp_config.idp_configs_list
+        legacy_idps = [
+            LegacyIdpSchema(
+                client_id=idp["client_id"],
+                client_name=idp["client_name"],
+                client_secret=idp["client_secret"],
+                openid_configuration=idp["openid_configuration"],
+                redirect_uris=idp["redirect_uris"],
+                scope=idp.get("scope", "openid profile email"),
+                max_age=idp.get("max_age", 3600),
+                code_challenge_method=idp.get("code_challenge_method", "S256"),
+            )
+            for idp in idp_configs
+        ]
 
-        try:
-            resp = client.get_secret_value(SecretId=secret_name)
-        except (BotoCoreError, ClientError) as e:
-            raise RuntimeError(
-                f"Failed to read secret '{secret_name}' from Secrets Manager"
-            ) from e
+        # Validate that at least one IDP is configured
+        if not legacy_idps:
+            raise HTTPException(
+                status_code=500,
+                detail="No Legacy IDP configurations found. Please set LEGACY_IDP_0_CLIENT_ID and related environment variables.",
+            )
 
-        secret_string = resp.get("SecretString")
-        if secret_string:
-            return secret_string
-
-        secret_binary = resp.get("SecretBinary")
-        if secret_binary:
-            if isinstance(secret_binary, (bytes, bytearray)):
-                return secret_binary.decode("utf-8")
-            return bytes(secret_binary).decode("utf-8")
-
-        raise RuntimeError(
-            f"Secret '{secret_name}' had no SecretString or SecretBinary"
+        # Build the RP configuration
+        rp_config = RPSchema(
+            rp_client_id=config.rp_config.RP_CLIENT_ID,
+            rp_client_name=config.rp_config.RP_CLIENT_NAME,
+            rp_client_name_en=config.rp_config.RP_CLIENT_NAME_EN,
+            rp_client_name_fr=config.rp_config.RP_CLIENT_NAME_FR,
+            rp_redirect_uri=config.rp_config.RP_REDIRECT_URI,
+            IDP=legacy_idps,
         )
 
-    return await asyncio.to_thread(_sync_fetch)
+        logger.debug(f"RP Config {rp_config}")
 
+        return rp_config
 
-def _parse_config_json(payload: str) -> list:
-    """Parse secret/file JSON payload into the list expected by `[RPSchema(**item) for item in data]`."""
-    data = json.loads(payload)
-
-    # Expected: a JSON array of RP objects
-    if isinstance(data, list):
-        return data
-
-    # Tolerate wrapper objects (handy if you ever store metadata alongside the list)
-    if isinstance(data, dict):
-        for key in ("rp_configs", "data", "configs"):
-            maybe = data.get(key)
-            if isinstance(maybe, list):
-                return maybe
-
-    raise ValueError(
-        "Unexpected migration RP config format. Expected a JSON array (list) of RP objects "
-        "or an object containing a list under one of: rp_configs, data, configs"
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Exception Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load RP configuration")
 
 
 # Fetch and cache legacy IdP metadata in Redis.
@@ -198,19 +111,27 @@ async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 864
 async def get_rp_config_details(
     rp_client_id: str,
 ):
+    """
+    Get RP configuration details.
+    Returns a dictionary with RP redirect URL and client names.
+    """
     try:
-
         rp = await get_config(rp_client_id)
 
-        rpConfig = {
+        rp_config = {
             "rp_redirect_url": rp.rp_redirect_uri,
             "rp_client_name": rp.rp_client_name,
             "rp_client_name_en": rp.rp_client_name_en,
             "rp_client_name_fr": rp.rp_client_name_fr,
         }
 
-        return rpConfig
+        return rp_config
 
+    except HTTPException:
+        raise
     except ValidationError as e:
         logger.error(f"Validation Error: {e.json()}")
         raise HTTPException(status_code=422, detail="Request data validation error")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
