@@ -1,21 +1,8 @@
-import os
 from functools import lru_cache
 from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import AnyUrl, Field
-from dotenv import load_dotenv
-from pathlib import Path
 from app.constants.verify_endpoints import VerifyAPIEndpoint
-
-# Load .env file from backend directory (if it exists)
-# In production, environment variables are typically set directly in the system
-# load_dotenv() won't override existing environment variables
-env_path = Path(__file__).parent.parent / ".env"
-if env_path.exists():
-    load_dotenv(dotenv_path=env_path)
-else:
-    # In production/containers, env vars are set directly, no .env file needed
-    load_dotenv()  # Still call to allow .env in other locations if present
 
 
 class AppInfo(BaseSettings):
@@ -48,70 +35,10 @@ class SessionConfig(BaseSettings):
     )
 
 
-class LegacyIdpConfig(BaseSettings):
-    # Indexed environment variables for multiple IDPs
-    # LEGACY_IDP_0_CLIENT_ID, LEGACY_IDP_1_CLIENT_ID, etc.
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=True
-    )
-
-    @property
-    def idp_configs_list(self) -> List[dict]:
-        """Parse indexed environment variables into a list of IDP configs."""
-        idps = []
-        index = 0
-
-        # Keep reading IDPs until we don't find one at the current index
-        while True:
-            client_id = os.getenv(f"LEGACY_IDP_{index}_CLIENT_ID")
-            if not client_id:
-                break
-
-            redirect_uris_str = os.getenv(f"LEGACY_IDP_{index}_REDIRECT_URIS", "")
-            redirect_uris = [
-                uri.strip() for uri in redirect_uris_str.split(",") if uri.strip()
-            ]
-
-            idp = {
-                "client_id": client_id,
-                "client_name": os.getenv(f"LEGACY_IDP_{index}_CLIENT_NAME", ""),
-                "client_secret": os.getenv(f"LEGACY_IDP_{index}_CLIENT_SECRET", ""),
-                "openid_configuration": os.getenv(
-                    f"LEGACY_IDP_{index}_OPENID_CONFIGURATION", ""
-                ),
-                "redirect_uris": redirect_uris,
-                "scope": os.getenv(f"LEGACY_IDP_{index}_SCOPE", "openid profile email"),
-                "max_age": int(os.getenv(f"LEGACY_IDP_{index}_MAX_AGE", "3600")),
-                "code_challenge_method": os.getenv(
-                    f"LEGACY_IDP_{index}_CODE_CHALLENGE_METHOD", "S256"
-                ),
-            }
-            idps.append(idp)
-            index += 1
-
-        return idps
-
-
-class RPConfig(BaseSettings):
-    RP_CLIENT_ID: str
-    RP_CLIENT_NAME: str
-    RP_CLIENT_NAME_EN: str
-    RP_CLIENT_NAME_FR: str
-    RP_REDIRECT_URI: str
-    RP_REDIRECT_URI_EN: str
-    RP_REDIRECT_URI_FR: str
-
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=True
-    )
-
-
 class Configuration(BaseSettings):
     app_info: AppInfo = AppInfo()
     ibm_verify_config: IBMVerifyConfig = IBMVerifyConfig()
     session_config: SessionConfig = SessionConfig()
-    legacy_idp_config: LegacyIdpConfig = LegacyIdpConfig()
-    rp_config: RPConfig = RPConfig()
     ENVIRONMENT: str = Field(default="local")
     LOG_LEVEL: str = Field(default="INFO")
     V1_API_VERSION: str = "/v1"
