@@ -24,7 +24,7 @@ class IBMVerifyConfig(BaseSettings):
 
 
 class SessionConfig(BaseSettings):
-    SESSION_REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = "redis://localhost:6379/0"
     SESSION_COOKIE_NAME: str = "gc-manage-app"
     SESSION_LIFETIME: int = 60 * 30  # default to 30 minutes in seconds
     REDIS_AUTH_SECRET: str = "test-secret"

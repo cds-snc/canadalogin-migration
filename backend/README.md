@@ -38,7 +38,7 @@ For other operating systems:
 Since the application runs in a Docker container and Redis runs on your host machine, we need to configure Docker networking to allow the container to access the host's Redis instance:
 
 - `--add-host host.docker.internal:host-gateway`: Creates a network route from the container to the host
-- `SESSION_REDIS_URL=redis://host.docker.internal:6379/0`: Overrides the default Redis URL to use the Docker host gateway
+- `REDIS_URL=redis://host.docker.internal:6379/0`: Overrides the default Redis URL to use the Docker host gateway
 
 This approach works across different Docker platforms (Docker Desktop, Colima, etc.) and is more reliable than using `--network host`.
 
@@ -76,7 +76,7 @@ docker build -t gc-signin-backend .
 docker run -p 8000:8000 \
   --add-host host.docker.internal:host-gateway \
   --env-file ./.env \
-  -e SESSION_REDIS_URL=redis://host.docker.internal:6379/0 \
+  -e REDIS_URL=redis://host.docker.internal:6379/0 \
   gc-signin-backend
 ```
 
@@ -119,13 +119,13 @@ For development with hot-reload:
 docker run -p 8000:8000 \
   --add-host host.docker.internal:host-gateway \
   --env-file .env \
-  -e SESSION_REDIS_URL=redis://host.docker.internal:6379/0 \
+  -e REDIS_URL=redis://host.docker.internal:6379/0 \
   -v $(pwd):/app \
   gc-signin-backend \
   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**Note**: The `--add-host host.docker.internal:host-gateway` flag allows the Docker container to access Redis running on your host machine. The environment variable `SESSION_REDIS_URL` overrides the default localhost Redis URL to use `host.docker.internal`.
+**Note**: The `--add-host host.docker.internal:host-gateway` flag allows the Docker container to access Redis running on your host machine. The environment variable `REDIS_URL` overrides the default localhost Redis URL to use `host.docker.internal`.
 
 **Background Mode**: To run the container in the background (detached mode), add the `-d` flag:
 
@@ -133,7 +133,7 @@ docker run -p 8000:8000 \
 docker run -d -p 8000:8000 \
   --add-host host.docker.internal:host-gateway \
   --env-file .env \
-  -e SESSION_REDIS_URL=redis://host.docker.internal:6379/0 \
+  -e REDIS_URL=redis://host.docker.internal:6379/0 \
   -v $(pwd):/app \
   gc-signin-backend \
   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -151,7 +151,7 @@ docker run -d -p 8000:8000 \
    docker run -p 8000:8000 \
      --add-host host.docker.internal:host-gateway \
      --env-file .env \
-     -e SESSION_REDIS_URL=redis://host.docker.internal:6379/0 \
+     -e REDIS_URL=redis://host.docker.internal:6379/0 \
      -v $(pwd):/app \
      gc-signin-backend \
      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
