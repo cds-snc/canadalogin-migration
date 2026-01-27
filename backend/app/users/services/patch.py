@@ -40,7 +40,7 @@ logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
-async def patch_payload(
+async def patching_payload(
     custom_attribute_name: str,
     custom_attribute_value: str,
 ):
@@ -157,7 +157,7 @@ async def patch_processing_data(
         ]
 
         # Build Payload for patch
-        processing_data_payload = await patch_payload(
+        processing_data_payload = await patching_payload(
             PatchKeys.PROCESSING_DATA_KEY.value, processing_data_array_stringified
         )
 
@@ -210,7 +210,7 @@ async def patch_legacy_pai(
         ]
 
         # Build Payload for patch
-        legacy_pai_payload = await patch_payload(
+        legacy_pai_payload = await patching_payload(
             PatchKeys.LEGACY_PAI_DATA_KEY.value, legacy_pai_array_stringified
         )
 
@@ -270,7 +270,7 @@ async def patch_audit_data(
         ]
 
         # Build Payload for patch
-        audit_data_payload = await patch_payload(
+        audit_data_payload = await patching_payload(
             PatchKeys.AUDIT_DATA_KEY.value, audit_data_array_stringified
         )
 
