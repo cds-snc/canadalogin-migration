@@ -86,9 +86,7 @@ async def SIC_legacy_login_auth(
         request.session["legacy_client_name"] = client_name
         # Register
         await register_client(request, client_name, legacy_idp, ui_locales)
-        
         client = await create_client(client_name)
-
         redirect_uris = getattr(legacy_idp, "redirect_uris", None) or []
 
         if not redirect_uris:
@@ -114,8 +112,7 @@ async def SIC_legacy_login_auth(
         request.session[f"{client_name}_nonce"] = nonce
 
         # Add/Update Processing Data in IBM
-
-
+        
         # Return IBM Id
         ibm_id = await get_ibm_id(session_user_token)
      
