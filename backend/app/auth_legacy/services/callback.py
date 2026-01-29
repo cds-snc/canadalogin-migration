@@ -44,7 +44,6 @@ async def legacy_callback(
         client_name = f"{rp.rp_client_name}_{legacy_idp.client_name}"
         logger.debug(f"Callback Client Name: {client_name}")
         client = await create_client(client_name)
-
         # Exchange authorization code for tokens
         verifier = request.session.get(f"{client_name}_code_verifier")
         token = await client.authorize_access_token(request, code_verifier=verifier)

@@ -84,7 +84,6 @@ async def get_my_profile(
         global_http_client, user_access_token
     )
     logger.info("User profile retrieved successfully.")
-
     profile_data = profile_response.model_dump()
 
     try:

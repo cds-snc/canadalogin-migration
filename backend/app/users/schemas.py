@@ -183,7 +183,6 @@ class UserAuthFactorsIbmResponse(BaseModel):
 
 class UserInfo(BaseModel):
     sub: str
-    uid: str
     uniqueSecurityName: str
 
 
