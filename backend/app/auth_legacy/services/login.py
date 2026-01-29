@@ -94,7 +94,7 @@ async def SIC_legacy_login_auth(
                 status_code=500,
                 detail=f"Legacy IDP '{legacy_idp.client_name}' has no redirect_uris configured",
             )
-         
+
         redirect_uri = redirect_uris[0]
         # redirect_uri = f"{redirect_uri}?lang={lang}"
         logger.debug("Redirect_uri: %s", redirect_uri)
@@ -104,23 +104,18 @@ async def SIC_legacy_login_auth(
         code_verifier = generate_code_verifier()
         code_challenge = generate_code_challenge(code_verifier)
         code_challenge_method = legacy_idp.code_challenge_method
-
-
         # Store values needed for callback in the session.
         request.session[f"{client_name}_code_verifier"] = code_verifier
         request.session[f"{client_name}_state"] = state
         request.session[f"{client_name}_nonce"] = nonce
 
         # Add/Update Processing Data in IBM
-        
         # Return IBM Id
         ibm_id = await get_ibm_id(session_user_token)
-     
         # Get Users Custom Attributes
         custom_attributes = await get_user_custom_attributes(
             global_http_client, user_access_token
         )
-
         # AUDIT DATA LOGIC + PATCH
         patch_processing_data_response = await patch_processing_data(
             global_http_client, ibm_id, rp_client_id, custom_attributes
