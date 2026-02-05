@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # Deployed: AWS Secrets Manager
 APP_ENV = os.getenv("APP_ENV", "local").lower()
 CONFIG_FILE_PATH = os.getenv("MIGRATION_RP_CONFIG_PATH", "/app/migration_rp.json")
+CONFIG_ENV_VAR = "RP_MIGRATION_CONFIG"
 AWS_SECRET_NAME = os.getenv("MIGRATION_RP_SECRET_NAME")
 AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 
@@ -72,6 +73,24 @@ async def get_config_json() -> list:
             return _CONFIG_JSON_CACHE
 
         if APP_ENV == "local":
+            # Prefer env var (from .env) for local development
+            env_payload = os.getenv(CONFIG_ENV_VAR)
+            if env_payload:
+                logger.debug(
+                    "Loading migration RP config from env var %s (local)", CONFIG_ENV_VAR
+                )
+                try:
+                    data = _parse_config_json(env_payload)
+                except Exception as e:
+                    raise ValueError(
+                        f"Invalid JSON in {CONFIG_ENV_VAR}. Expected a JSON array (list) of RP objects "
+                        "or an object containing a list under one of: rp_configs, data, configs"
+                    ) from e
+
+                _CONFIG_JSON_CACHE = data
+                return data
+
+            # Backward-compatible fallback: local file (mounted/bundled)
             logger.debug(
                 "Loading migration RP config from local file: %s", CONFIG_FILE_PATH
             )
