@@ -40,10 +40,10 @@ async def get_http_client(request: Request) -> AsyncClient:
 
 def get_base_profile_management_url():
     config = get_configuration()
-    redirectValue = config.PROFILE_MANAGEMENT_DOMAIN
+    redirectValue = config.MIGRATON_SOLUTION_DOMAIN
 
     if config.ENVIRONMENT != "local":
-        redirectValue = f"https://{config.PROFILE_MANAGEMENT_DOMAIN}"
+        redirectValue = f"https://{config.MIGRATON_SOLUTION_DOMAIN}"
     return redirectValue
 
 
@@ -124,7 +124,7 @@ async def callback_handler(request: Request, lang: str):
             redirectValue = f"{redirectValue}/{lang}"
 
         logger.info("OIDC Callback Handler")
-        logger.info(f"Redirect to PROFILE_MANAGEMENT_DOMAIN: {redirectValue}")
+        logger.info(f"Redirect to MIGRATON_SOLUTION_DOMAIN: {redirectValue}")
         return RedirectResponse(url=redirectValue)
     except OAuthError as error:
         logger.error(f"OAuth error: {error}")

@@ -141,6 +141,6 @@ async def legacy_post_logout_callback(request: Request):
     lang_path = "/" + lang
     page_path = "/link/success"
 
-    redirect_url = f"{settings.PROFILE_MANAGEMENT_DOMAIN}{lang_path}{page_path}"
+    redirect_url = f"{settings.MIGRATON_SOLUTION_DOMAIN}{lang_path}{page_path}"
 
     return RedirectResponse(url=redirect_url, status_code=302)
