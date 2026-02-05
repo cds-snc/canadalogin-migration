@@ -77,7 +77,8 @@ async def get_config_json() -> list:
             env_payload = os.getenv(CONFIG_ENV_VAR)
             if env_payload:
                 logger.debug(
-                    "Loading migration RP config from env var %s (local)", CONFIG_ENV_VAR
+                    "Loading migration RP config from env var %s (local)",
+                    CONFIG_ENV_VAR,
                 )
                 try:
                     data = _parse_config_json(env_payload)
