@@ -90,7 +90,6 @@ async def get_config_json() -> list:
                 _CONFIG_JSON_CACHE = data
                 return data
 
-
         # Non-local environments must use Secrets Manager
         if not AWS_SECRET_NAME:
             raise RuntimeError(
