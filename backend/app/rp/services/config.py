@@ -72,24 +72,24 @@ async def get_config_json() -> list:
         if _CONFIG_JSON_CACHE is not None:
             return _CONFIG_JSON_CACHE
 
-        if APP_ENV == "local":
-            # Prefer env var (from .env) for local development
-            env_payload = os.getenv(CONFIG_ENV_VAR)
-            if env_payload:
-                logger.debug(
-                    "Loading migration RP config from env var %s (local)",
-                    CONFIG_ENV_VAR,
-                )
-                try:
-                    data = _parse_config_json(env_payload)
-                except Exception as e:
-                    raise ValueError(
-                        f"Invalid JSON in {CONFIG_ENV_VAR}. Expected a JSON array (list) of RP objects "
-                        "or an object containing a list under one of: rp_configs, data, configs"
-                    ) from e
+        # if APP_ENV == "local":
+        # Prefer env var (from .env) for local development
+        env_payload = os.getenv(CONFIG_ENV_VAR)
+        if env_payload:
+            logger.debug(
+                "Loading migration RP config from env var %s (local)",
+                CONFIG_ENV_VAR,
+            )
+            try:
+                data = _parse_config_json(env_payload)
+            except Exception as e:
+                raise ValueError(
+                    f"Invalid JSON in {CONFIG_ENV_VAR}. Expected a JSON array (list) of RP objects "
+                    "or an object containing a list under one of: rp_configs, data, configs"
+                ) from e
 
-                _CONFIG_JSON_CACHE = data
-                return data
+            _CONFIG_JSON_CACHE = data
+            return data
 
         # Non-local environments must use Secrets Manager
         if not AWS_SECRET_NAME:
