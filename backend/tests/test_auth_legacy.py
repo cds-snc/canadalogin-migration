@@ -154,7 +154,7 @@ async def test_legacy_post_logout_callback_builds_redirect():
     request = build_request()
     request.session[SessionKeys.CURRENT_LANGUAGE.value] = "en"
 
-    config = SimpleNamespace(PROFILE_MANAGEMENT_DOMAIN="https://profile.example.test")
+    config = SimpleNamespace(MIGRATON_SOLUTION_DOMAIN="https://profile.example.test")
     with patch(
         "app.auth_legacy.services.callback.get_configuration",
         return_value=config,
