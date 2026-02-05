@@ -36,3 +36,4 @@ frontend/test-results/
 frontend/dist
 backend/runlocal.sh
 
+backend/tempFile.json
