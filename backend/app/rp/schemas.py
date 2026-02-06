@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 
 class LegacyIdpSchema(BaseModel):
@@ -11,6 +11,7 @@ class LegacyIdpSchema(BaseModel):
     scope: str
     max_age: int
     code_challenge_method: str
+    token_endpoint_auth_method: Optional[str] = "client_secret_post"
 
 
 class RPSchema(BaseModel):
