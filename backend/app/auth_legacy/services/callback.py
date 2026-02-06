@@ -47,10 +47,22 @@ async def legacy_callback(
         # Exchange authorization code for tokens
         verifier = request.session.get(f"{client_name}_code_verifier")
         token = await client.authorize_access_token(request, code_verifier=verifier)
+        logger.debug("Token response keys: %s", list(token.keys()))
 
         # Parse ID token & extract legacy PAI
         nonce = request.session.get(f"{client_name}_nonce")
         state = request.session.get(f"{client_name}_state")
+        if "id_token" not in token:
+            logger.error(
+                "Token response missing id_token. Check requested scope includes 'openid'. "
+                "Token keys: %s",
+                list(token.keys()),
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Token response missing id_token (scope likely missing 'openid')",
+            )
+
         user = await client.parse_id_token(token, nonce)
         legacy_pai = user["sub"]
 
