@@ -23,11 +23,6 @@ log_level = getattr(logging, log_level_str, logging.INFO)
 logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
-# Configuration source selection
-# Local dev: file (mounted/bundled)
-# Deployed: AWS Secrets Manager
-APP_ENV = os.getenv("APP_ENV", "local").lower()
-
 CONFIG_ENV_VAR = "RP_MIGRATION_CONFIG"
 
 # Simple in-process cache to avoid hitting disk / Secrets Manager repeatedly (per worker process)
@@ -70,8 +65,6 @@ async def get_config_json() -> list:
         if _CONFIG_JSON_CACHE is not None:
             return _CONFIG_JSON_CACHE
 
-        # if APP_ENV == "local":
-        # Prefer env var (from .env) for local development
         env_payload = os.getenv(CONFIG_ENV_VAR)
         if env_payload:
             logger.debug(
