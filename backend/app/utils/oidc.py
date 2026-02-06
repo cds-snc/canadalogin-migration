@@ -65,7 +65,8 @@ async def register_client(
             http_client=request.app.state.request_client,
             client_kwargs={
                 "scope": idp.scope,
-                "token_endpoint_auth_method": "client_secret_basic",
+                "token_endpoint_auth_method": idp.token_endpoint_auth_method
+                or "client_secret_post",
                 "max_age": 0,
             },
             authorize_params={

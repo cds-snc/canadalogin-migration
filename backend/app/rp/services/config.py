@@ -65,21 +65,25 @@ async def get_config_json() -> list:
             return _CONFIG_JSON_CACHE
 
         env_payload = os.getenv(CONFIG_ENV_VAR)
-        if env_payload:
-            logger.debug(
-                "Loading migration RP config from env var %s (local)",
-                CONFIG_ENV_VAR,
+        if not env_payload:
+            raise ValueError(
+                f"Missing required configuration: {CONFIG_ENV_VAR} is not set or empty"
             )
-            try:
-                data = _parse_config_json(env_payload)
-            except Exception as e:
-                raise ValueError(
-                    f"Invalid JSON in {CONFIG_ENV_VAR}. Expected a JSON array (list) of RP objects "
-                    "or an object containing a list under one of: rp_configs, data, configs"
-                ) from e
 
-            _CONFIG_JSON_CACHE = data
-            return data
+        logger.debug(
+            "Loading migration RP config from env var %s (local)",
+            CONFIG_ENV_VAR,
+        )
+        try:
+            data = _parse_config_json(env_payload)
+        except Exception as e:
+            raise ValueError(
+                f"Invalid JSON in {CONFIG_ENV_VAR}. Expected a JSON array (list) of RP objects "
+                "or an object containing a list under one of: rp_configs, data, configs"
+            ) from e
+
+        _CONFIG_JSON_CACHE = data
+        return data
     except Exception as e:
         logger.error(f"Exception Error: {e}")
         raise
