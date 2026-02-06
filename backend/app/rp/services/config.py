@@ -29,8 +29,6 @@ logger = logging.getLogger(__name__)
 APP_ENV = os.getenv("APP_ENV", "local").lower()
 
 CONFIG_ENV_VAR = "RP_MIGRATION_CONFIG"
-AWS_SECRET_NAME = os.getenv("MIGRATION_RP_SECRET_NAME")
-AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 
 # Simple in-process cache to avoid hitting disk / Secrets Manager repeatedly (per worker process)
 _CONFIG_JSON_CACHE: list | None = None
@@ -90,69 +88,9 @@ async def get_config_json() -> list:
 
             _CONFIG_JSON_CACHE = data
             return data
-
-        # Non-local environments must use Secrets Manager
-        if not AWS_SECRET_NAME:
-            raise RuntimeError(
-                "Non-local environment requires MIGRATION_RP_SECRET_NAME to be set (AWS Secrets Manager)."
-            )
-
-        logger.info("Loading migration RP config from AWS Secrets Manager")
-        secret_payload = await _get_secret_string(AWS_SECRET_NAME)
-        data = _parse_config_json(secret_payload)
-
-        _CONFIG_JSON_CACHE = data
-        return data
-
     except Exception as e:
         logger.error(f"Exception Error: {e}")
         raise
-
-
-async def _get_secret_string(secret_name: str) -> str:
-    """Fetch SecretString (or SecretBinary) from AWS Secrets Manager.
-
-    Uses boto3 under the hood and runs the blocking call in a thread.
-    """
-
-    def _sync_fetch() -> str:
-        try:
-            import boto3
-            from botocore.exceptions import BotoCoreError, ClientError
-        except Exception as e:
-            raise RuntimeError(
-                "boto3/botocore not available. Add boto3 to requirements.txt or ensure it exists in the runtime image."
-            ) from e
-
-        if not AWS_REGION:
-            raise RuntimeError(
-                "AWS region is not set. Set AWS_REGION or AWS_DEFAULT_REGION in the environment."
-            )
-
-        client = boto3.client("secretsmanager", region_name=AWS_REGION)
-
-        try:
-            resp = client.get_secret_value(SecretId=secret_name)
-        except (BotoCoreError, ClientError) as e:
-            raise RuntimeError(
-                f"Failed to read secret '{secret_name}' from Secrets Manager"
-            ) from e
-
-        secret_string = resp.get("SecretString")
-        if secret_string:
-            return secret_string
-
-        secret_binary = resp.get("SecretBinary")
-        if secret_binary:
-            if isinstance(secret_binary, (bytes, bytearray)):
-                return secret_binary.decode("utf-8")
-            return bytes(secret_binary).decode("utf-8")
-
-        raise RuntimeError(
-            f"Secret '{secret_name}' had no SecretString or SecretBinary"
-        )
-
-    return await asyncio.to_thread(_sync_fetch)
 
 
 def _parse_config_json(payload: str) -> list:
