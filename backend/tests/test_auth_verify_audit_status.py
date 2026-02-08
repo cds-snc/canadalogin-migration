@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.auth.services.auth import verify_audit_status
+from app.users.schemas import AuditDataSchema
 
 
 def build_request():
@@ -18,6 +19,10 @@ async def test_verify_audit_status_returns_false_on_session_error():
     request = build_request()
 
     with (
+        patch(
+            "app.auth.services.auth.get_http_client",
+            new=AsyncMock(side_effect=Exception("boom")),
+        ),
         patch(
             "app.auth.services.auth.get_users_current_session",
             new=AsyncMock(side_effect=Exception("boom")),
@@ -40,6 +45,25 @@ async def test_verify_audit_status_returns_false_on_custom_attributes_error():
         patch(
             "app.auth.services.auth.get_user_custom_attributes",
             new=AsyncMock(side_effect=Exception("boom")),
+        ),
+    ):
+        result = await verify_audit_status(request)
+
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_verify_audit_status_returns_false_on_missing_custom_attributes():
+    request = build_request()
+
+    with (
+        patch(
+            "app.auth.services.auth.get_users_current_session",
+            new=AsyncMock(return_value="token"),
+        ),
+        patch(
+            "app.auth.services.auth.get_user_custom_attributes",
+            new=AsyncMock(return_value=None),
         ),
     ):
         result = await verify_audit_status(request)
@@ -71,7 +95,7 @@ async def test_verify_audit_status_returns_false_on_malformed_audit_json():
 
 
 @pytest.mark.asyncio
-async def test_verify_audit_status_returns_none_on_empty_audit_data():
+async def test_verify_audit_status_returns_empty_list_on_empty_audit_data():
     request = build_request()
 
     with (
@@ -81,7 +105,7 @@ async def test_verify_audit_status_returns_none_on_empty_audit_data():
         ),
         patch(
             "app.auth.services.auth.get_user_custom_attributes",
-            new=AsyncMock(return_value=[]),
+            new=AsyncMock(return_value=[MagicMock()]),
         ),
         patch(
             "app.auth.services.auth.get_custom_attribute",
@@ -90,4 +114,32 @@ async def test_verify_audit_status_returns_none_on_empty_audit_data():
     ):
         result = await verify_audit_status(request)
 
-    assert result is None
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_verify_audit_status_returns_parsed_audit_list():
+    request = build_request()
+    audit_json = (
+        '{"client_id":"rp-123","legacy_idp":"","timestamp":"2024-01-01 00:00:00","status":"LINKED"}'
+    )
+
+    with (
+        patch(
+            "app.auth.services.auth.get_users_current_session",
+            new=AsyncMock(return_value="token"),
+        ),
+        patch(
+            "app.auth.services.auth.get_user_custom_attributes",
+            new=AsyncMock(return_value=[MagicMock()]),
+        ),
+        patch(
+            "app.auth.services.auth.get_custom_attribute",
+            new=AsyncMock(return_value=[audit_json]),
+        ),
+    ):
+        result = await verify_audit_status(request)
+
+    assert isinstance(result, list)
+    assert isinstance(result[0], AuditDataSchema)
+    assert result[0].client_id == "rp-123"

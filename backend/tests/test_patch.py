@@ -69,6 +69,36 @@ async def test_patch_custom_attribute_returns_response():
 
 
 @pytest.mark.asyncio
+async def test_patch_custom_attribute_returns_unauthorized_error():
+    http_client = AsyncMock()
+    response = MagicMock(status_code=401)
+    http_client.patch = AsyncMock(return_value=response)
+
+    with patch(
+        "app.users.services.patch.get_admin_token",
+        new=AsyncMock(return_value="admin-token"),
+    ):
+        result = await patch_custom_attribute(http_client, "ibm1", '{"x":"y"}')
+
+    assert result == {"error": "Unauthorized: Invalid credentials or token"}
+
+
+@pytest.mark.asyncio
+async def test_patch_custom_attribute_returns_http_error():
+    http_client = AsyncMock()
+    response = MagicMock(status_code=500)
+    http_client.patch = AsyncMock(return_value=response)
+
+    with patch(
+        "app.users.services.patch.get_admin_token",
+        new=AsyncMock(return_value="admin-token"),
+    ):
+        result = await patch_custom_attribute(http_client, "ibm1", '{"x":"y"}')
+
+    assert result == {"error": "HTTP error: 500"}
+
+
+@pytest.mark.asyncio
 async def test_patch_processing_data_creates_new_record_on_empty_attributes():
     http_client = AsyncMock()
 
@@ -79,6 +109,7 @@ async def test_patch_processing_data_creates_new_record_on_empty_attributes():
         await patch_processing_data(http_client, "ibm1", "rp-123", [])
 
     mock_patch.assert_awaited_once()
+    assert mock_patch.await_args.args[0] is http_client
     patch_payload = mock_patch.await_args.kwargs["patch_payload"]
     values = _extract_custom_attribute_values(patch_payload)
     parsed = json.loads(values[0])
@@ -104,6 +135,7 @@ async def test_patch_processing_data_updates_existing_record():
         await patch_processing_data(http_client, "ibm1", "rp-123", [])
 
     patch_payload = mock_patch.await_args.kwargs["patch_payload"]
+    assert mock_patch.await_args.args[0] is http_client
     values = _extract_custom_attribute_values(patch_payload)
     parsed = json.loads(values[0])
     assert parsed["client_id"] == "rp-123"
@@ -123,6 +155,21 @@ async def test_patch_processing_data_raises_on_malformed_json():
 
 
 @pytest.mark.asyncio
+async def test_patch_processing_data_raises_on_json_serialization_error():
+    http_client = AsyncMock()
+
+    with (
+        patch(
+            "app.users.services.patch.get_custom_attribute",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch("app.users.services.patch.json.dumps", side_effect=TypeError("boom")),
+    ):
+        with pytest.raises(TypeError):
+            await patch_processing_data(http_client, "ibm1", "rp-123", [])
+
+
+@pytest.mark.asyncio
 async def test_patch_legacy_pai_creates_new_entry_on_empty_attributes():
     http_client = AsyncMock()
 
@@ -133,6 +180,7 @@ async def test_patch_legacy_pai_creates_new_entry_on_empty_attributes():
         await patch_legacy_pai(http_client, "ibm1", "rp-123", [], "legacy-pai")
 
     mock_patch.assert_awaited_once()
+    assert mock_patch.await_args.args[0] is http_client
     patch_payload = mock_patch.await_args.kwargs["patch_payload"]
     values = _extract_custom_attribute_values(patch_payload)
     parsed = json.loads(values[0])
@@ -158,11 +206,27 @@ async def test_patch_legacy_pai_appends_duplicate_client_id():
         await patch_legacy_pai(http_client, "ibm1", "rp-123", [], "legacy-pai")
 
     patch_payload = mock_patch.await_args.kwargs["patch_payload"]
+    assert mock_patch.await_args.args[0] is http_client
     values = _extract_custom_attribute_values(patch_payload)
     parsed = [json.loads(item) for item in values]
     assert len(parsed) == 2
     assert parsed[0]["client_id"] == "rp-123"
     assert parsed[1]["client_id"] == "rp-123"
+
+
+@pytest.mark.asyncio
+async def test_patch_legacy_pai_raises_on_json_serialization_error():
+    http_client = AsyncMock()
+
+    with (
+        patch(
+            "app.users.services.patch.get_custom_attribute",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch("app.users.services.patch.json.dumps", side_effect=TypeError("boom")),
+    ):
+        with pytest.raises(TypeError):
+            await patch_legacy_pai(http_client, "ibm1", "rp-123", [], "legacy-pai")
 
 
 @pytest.mark.asyncio
@@ -178,9 +242,25 @@ async def test_patch_audit_data_creates_new_entry_with_timestamp():
         )
 
     mock_patch.assert_awaited_once()
+    assert mock_patch.await_args.args[0] is http_client
     patch_payload = mock_patch.await_args.kwargs["patch_payload"]
     values = _extract_custom_attribute_values(patch_payload)
     parsed = json.loads(values[0])
     assert parsed["client_id"] == "rp-123"
     assert parsed["status"] == "LINKED"
     datetime.strptime(parsed["timestamp"], "%Y-%m-%d %H:%M:%S")
+
+
+@pytest.mark.asyncio
+async def test_patch_audit_data_raises_on_json_serialization_error():
+    http_client = AsyncMock()
+
+    with (
+        patch(
+            "app.users.services.patch.get_custom_attribute",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch("app.users.services.patch.json.dumps", side_effect=TypeError("boom")),
+    ):
+        with pytest.raises(TypeError):
+            await patch_audit_data(http_client, "ibm1", "rp-123", [], status="LINKED")

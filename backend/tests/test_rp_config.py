@@ -72,3 +72,12 @@ async def test_get_config_raises_on_invalid_schema(monkeypatch):
     with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
         with pytest.raises(ValidationError):
             await get_config("rp-123")
+
+
+@pytest.mark.asyncio
+async def test_get_config_json_raises_on_unexpected_structure(monkeypatch):
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps({"foo": "bar"}))
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        with pytest.raises(ValueError):
+            await get_config_json()

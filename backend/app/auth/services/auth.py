@@ -178,20 +178,24 @@ async def verify_audit_status(
             user_access_token,
         )
 
+        if not custom_attributes:
+            logger.error("Missing custom attributes for user.")
+            return False
+
         audit_data_array = await get_custom_attribute(
             PatchKeys.AUDIT_DATA_KEY.value, custom_attributes
         )
 
         # Parse into Pydantic model
         if not audit_data_array:
-            audit_data_array_parsed = []
+            return []
 
-        else:
-            audit_data_array_parsed = [
-                AuditDataSchema(**json.loads(item)) for item in audit_data_array
-            ]
+        audit_data_array_parsed = [
+            AuditDataSchema(**json.loads(item)) for item in audit_data_array
+        ]
 
         logger.debug(f"Audit Object from Custom Attributes: {audit_data_array_parsed}")
+        return audit_data_array_parsed
 
     except Exception as e:
         logger.error(f"Error verifying audit status: {e}")
