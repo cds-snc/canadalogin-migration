@@ -120,17 +120,13 @@ async def legacy_callback(
             "end_session_endpoint"
         )
 
-        post_logout_redirect_uri = request.url_for(
-            "handle_legacy_post_logout_callback"
-        )
+        post_logout_redirect_uri = request.url_for("handle_legacy_post_logout_callback")
         if config.ENVIRONMENT != "local":
             post_logout_redirect_uri = str(post_logout_redirect_uri).replace(
                 "http://", "https://"
             )
 
-        encoded_post_logout_redirect_uri = quote(
-            str(post_logout_redirect_uri), safe=""
-        )
+        encoded_post_logout_redirect_uri = quote(str(post_logout_redirect_uri), safe="")
 
         # Build the logout url for the Legacy IDP
         logout_url = (
