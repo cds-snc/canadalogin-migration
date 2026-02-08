@@ -12,6 +12,7 @@ from app.auth_legacy.services.callback import (
     legacy_post_logout_callback,
 )
 from app.constants.session_keys import SessionKeys
+from app.constants.audit_status_keys import AuditStatusKeys
 
 
 def build_request():
@@ -147,6 +148,137 @@ async def test_legacy_callback_raises_on_patch_failure():
         with pytest.raises(HTTPException) as raised:
             await legacy_callback(request, "user-at", "user-token", "rp-123")
         assert raised.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_legacy_callback_patches_audit_with_linked_status():
+    request = build_request()
+    client = MagicMock()
+    client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
+    client.parse_id_token = AsyncMock(return_value={"sub": "legacy-sub"})
+    client.server_metadata = {
+        "server_metadata": {"end_session_endpoint": "https://idp/logout"}
+    }
+
+    legacy_idp = SimpleNamespace(client_name="SIC")
+    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+
+    request.session["rpname_SIC_code_verifier"] = "verifier"
+    request.session["rpname_SIC_nonce"] = "nonce"
+    request.session["rpname_SIC_state"] = "state"
+
+    ok_response = MagicMock(status_code=204)
+
+    with (
+        patch(
+            "app.auth_legacy.services.callback.config",
+            new=SimpleNamespace(LEGACY_IDP_LOGOUT_ENABLED=True, ENVIRONMENT="local"),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.create_client",
+            new=AsyncMock(return_value=client),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_ibm_id",
+            new=AsyncMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_legacy_pai",
+            new=AsyncMock(return_value=ok_response),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_audit_data",
+            new=AsyncMock(return_value=ok_response),
+        ) as mock_patch_audit,
+    ):
+        result = await legacy_callback(request, "user-at", "user-token", "rp-123")
+
+    assert isinstance(result, RedirectResponse)
+    mock_patch_audit.assert_awaited_once()
+    args = mock_patch_audit.await_args.args
+    assert args[1] == "ibm1"
+    assert args[2] == "rp-123"
+    assert args[4] == AuditStatusKeys.LINKED_KEY.value
+
+
+@pytest.mark.asyncio
+async def test_sic_legacy_login_auth_sets_session_and_state():
+    request = build_request()
+    legacy_idp = SimpleNamespace(
+        client_name="SIC",
+        redirect_uris=["https://idp.example.test/callback"],
+        code_challenge_method="S256",
+        client_id="cid",
+        client_secret="secret",
+        scope="openid",
+    )
+    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+
+    client = MagicMock()
+    client.authorize_redirect = AsyncMock(return_value="ok")
+
+    with (
+        patch(
+            "app.auth_legacy.services.login.get_config", new=AsyncMock(return_value=rp)
+        ),
+        patch("app.auth_legacy.services.login.register_client", new=AsyncMock()),
+        patch(
+            "app.auth_legacy.services.login.create_client", new=AsyncMock(return_value=client)
+        ),
+        patch(
+            "app.auth_legacy.services.login.generate_secure_token",
+            side_effect=["state-token", "nonce-token"],
+        ),
+        patch(
+            "app.auth_legacy.services.login.generate_code_verifier",
+            return_value="verifier-token",
+        ),
+        patch(
+            "app.auth_legacy.services.login.generate_code_challenge",
+            return_value="challenge-token",
+        ),
+        patch(
+            "app.auth_legacy.services.login.get_ibm_id",
+            new=AsyncMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.login.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.login.patch_processing_data",
+            new=AsyncMock(return_value=MagicMock(status_code=204)),
+        ),
+    ):
+        result = await SIC_legacy_login_auth(
+            request, "user-at", "user-token", "rp-123", "en"
+        )
+
+    assert result == "ok"
+    assert request.session[SessionKeys.CURRENT_LANGUAGE.value] == "en"
+    assert request.session["legacy_provider"] == "SIC"
+    assert request.session["legacy_client_name"] == "rpname_SIC"
+    assert request.session["rpname_SIC_code_verifier"] == "verifier-token"
+    assert request.session["rpname_SIC_state"] == "state-token"
+    assert request.session["rpname_SIC_nonce"] == "nonce-token"
+
+    client.authorize_redirect.assert_awaited_once()
+    args = client.authorize_redirect.await_args.args
+    kwargs = client.authorize_redirect.await_args.kwargs
+    assert args[1] == "https://idp.example.test/callback"
+    assert kwargs["state"] == "state-token"
+    assert kwargs["nonce"] == "nonce-token"
+    assert kwargs["code_challenge"] == "challenge-token"
+    assert kwargs["code_challenge_method"] == "S256"
+    assert kwargs["ui_locales"] == "en-CA"
 
 
 @pytest.mark.asyncio
