@@ -48,6 +48,10 @@ class Configuration(BaseSettings):
     MIGRATON_SOLUTION_DOMAIN: str = (
         "http://localhost:3000"  # Frontend Management App domain to app.gc-signin.cdssandbox.xyz
     )
+    LEGACY_IDP_LOGOUT_ENABLED: bool = Field(
+        default=False,
+        description="Toggle legacy IdP logout redirect (e.g., SIC).",
+    )
 
     CORS_ORIGINS: str = Field(
         default="localhost:3000,localhost:8000",
