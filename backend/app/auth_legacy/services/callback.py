@@ -110,6 +110,10 @@ async def legacy_callback(
         idp_metadata = client.server_metadata
         logger.debug(f"IDP Metadata: {idp_metadata}")
 
+        if not config.LEGACY_IDP_LOGOUT_ENABLED:
+            logger.info("Legacy IdP logout disabled; skipping end-session redirect.")
+            return await legacy_post_logout_callback(request)
+
         # Grab the logout endpoint
         end_session_endpoint = idp_metadata["server_metadata"].get(
             "end_session_endpoint"
