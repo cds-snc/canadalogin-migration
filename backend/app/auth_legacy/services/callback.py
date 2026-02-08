@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from urllib.parse import quote
 
 from app.config import get_configuration
+from app.auth.services.auth import get_base_profile_management_url
 from app.constants.session_keys import SessionKeys
 from app.constants.audit_status_keys import AuditStatusKeys
 from app.rp.services.config import get_config
@@ -119,8 +120,16 @@ async def legacy_callback(
             "end_session_endpoint"
         )
 
+        post_logout_redirect_uri = request.url_for(
+            "handle_legacy_post_logout_callback"
+        )
+        if config.ENVIRONMENT != "local":
+            post_logout_redirect_uri = str(post_logout_redirect_uri).replace(
+                "http://", "https://"
+            )
+
         encoded_post_logout_redirect_uri = quote(
-            "http://localhost:8000/v1/auth/legacy/post_logout", safe=""
+            str(post_logout_redirect_uri), safe=""
         )
 
         # Build the logout url for the Legacy IDP
@@ -150,13 +159,12 @@ async def legacy_callback(
 async def legacy_post_logout_callback(request: Request):
     # Logged out of legacy IDP Redierct to Profile Management
 
-    settings = get_configuration()
-
     lang = request.session[SessionKeys.CURRENT_LANGUAGE.value]
     # TODO: Retrieve Lang Parameter
     lang_path = "/" + lang
     page_path = "/link/success"
 
-    redirect_url = f"{settings.MIGRATON_SOLUTION_DOMAIN}{lang_path}{page_path}"
+    base_profile_url = get_base_profile_management_url()
+    redirect_url = f"{base_profile_url}{lang_path}{page_path}"
 
     return RedirectResponse(url=redirect_url, status_code=302)
