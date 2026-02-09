@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.7.0...v1.7.1) (2026-02-09)
+
+
+### Bug Fixes
+
+* Update deploy codeowners with correct teams ([#86](https://github.com/cds-snc/gc-sign-in-migration/issues/86)) ([7d29b7e](https://github.com/cds-snc/gc-sign-in-migration/commit/7d29b7ed04b70a1dd43245c75e15d006a1dcd5f5))
+
 ## [1.7.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.6.0...v1.7.0) (2026-01-28)
 
 
