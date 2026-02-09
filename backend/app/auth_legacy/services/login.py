@@ -111,7 +111,7 @@ async def SIC_legacy_login_auth(
 
         # Add/Update Processing Data in IBM
         # Return IBM Id
-        ibm_id = await get_ibm_id(session_user_token)
+        ibm_id = get_ibm_id(session_user_token)
         # Get Users Custom Attributes
         custom_attributes = await get_user_custom_attributes(
             global_http_client, user_access_token

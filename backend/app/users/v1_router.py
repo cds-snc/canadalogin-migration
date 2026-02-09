@@ -58,7 +58,7 @@ async def handle_get_ibmid(
     request: Request,
     user_access_token: str = Depends(get_users_current_session),
 ):
-    return await get_ibm_id(request.session[SessionKeys.SESSION_USER_TOKEN.value])
+    return get_ibm_id(request.session[SessionKeys.SESSION_USER_TOKEN.value])
 
 
 @router.get(
@@ -79,7 +79,7 @@ async def handle_get_custom_attribute(
         user_access_token,
     )
 
-    return await get_custom_attribute(attribute, custom_attributes)
+    return get_custom_attribute(attribute, custom_attributes)
 
 
 @router.get(

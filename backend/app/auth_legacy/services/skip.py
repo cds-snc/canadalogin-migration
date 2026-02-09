@@ -17,7 +17,7 @@ async def skip_account_linking(
     rp_client_id: str,
 ):
 
-    ibm_id = await get_ibm_id(session_user_token)
+    ibm_id = get_ibm_id(session_user_token)
 
     global_http_client = request.app.state.request_client
     custom_attributes = await get_user_custom_attributes(

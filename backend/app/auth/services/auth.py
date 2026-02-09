@@ -178,7 +178,7 @@ async def verify_audit_status(
             user_access_token,
         )
 
-        audit_data_array = await get_custom_attribute(
+        audit_data_array = get_custom_attribute(
             PatchKeys.AUDIT_DATA_KEY.value, custom_attributes
         )
 

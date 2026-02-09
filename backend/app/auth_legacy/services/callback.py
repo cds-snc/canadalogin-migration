@@ -70,7 +70,7 @@ async def legacy_callback(
         global_http_client = request.app.state.request_client
 
         # Return IBM Id
-        ibm_id = await get_ibm_id(session_user_token)
+        ibm_id = get_ibm_id(session_user_token)
 
         # Get Users Custom Attributes
         custom_attributes = await get_user_custom_attributes(
