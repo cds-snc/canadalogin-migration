@@ -45,7 +45,7 @@ class Configuration(BaseSettings):
     ROOT_DOMAIN: Optional[str] = (
         None  # Not required for local development, value should be ".gc-signin.cdssandbox.xyz"
     )
-    MIGRATON_SOLUTION_DOMAIN: str = (
+    MIGRATION_SOLUTION_DOMAIN: str = (
         "http://localhost:3000"  # Frontend Management App domain to app.gc-signin.cdssandbox.xyz
     )
     LEGACY_IDP_LOGOUT_ENABLED: bool = Field(
