@@ -47,7 +47,9 @@ def get_custom_attribute(
         if not custom_attributes:
             return ""
 
-        custom_attribute_value = get_attribute_value(custom_attribute_name, custom_attributes)
+        custom_attribute_value = get_attribute_value(
+            custom_attribute_name, custom_attributes
+        )
         logger.debug(
             f"Custom Attribute {custom_attribute_name} value: {custom_attribute_value}"
         )
