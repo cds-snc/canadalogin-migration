@@ -27,7 +27,7 @@ logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
-async def get_attribute_value(
+def get_attribute_value(
     key: str,
     attributes: List[CustomAttribute],
 ) -> List[str] | None:
@@ -37,7 +37,7 @@ async def get_attribute_value(
     return None
 
 
-async def get_custom_attribute(
+def get_custom_attribute(
     custom_attribute_name: str,
     custom_attributes: List[CustomAttribute],
 ):
@@ -47,9 +47,7 @@ async def get_custom_attribute(
         if not custom_attributes:
             return ""
 
-        custom_attribute_value = await get_attribute_value(
-            custom_attribute_name, custom_attributes
-        )
+        custom_attribute_value = get_attribute_value(custom_attribute_name, custom_attributes)
         logger.debug(
             f"Custom Attribute {custom_attribute_name} value: {custom_attribute_value}"
         )

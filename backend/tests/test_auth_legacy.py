@@ -112,7 +112,7 @@ async def test_skip_account_linking_redirects_to_rp():
     with (
         patch(
             "app.auth_legacy.services.skip.get_ibm_id",
-            new=AsyncMock(return_value="ibm1"),
+            new=MagicMock(return_value="ibm1"),
         ),
         patch(
             "app.auth_legacy.services.skip.get_user_custom_attributes",
@@ -161,7 +161,7 @@ async def test_legacy_callback_raises_on_patch_failure():
         ),
         patch(
             "app.auth_legacy.services.callback.get_ibm_id",
-            new=AsyncMock(return_value="ibm1"),
+            new=MagicMock(return_value="ibm1"),
         ),
         patch(
             "app.auth_legacy.services.callback.get_user_custom_attributes",

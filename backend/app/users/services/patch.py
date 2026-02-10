@@ -40,7 +40,7 @@ logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
-async def patching_payload(
+def patching_payload(
     custom_attribute_name: str,
     custom_attribute_value: str,
 ):
@@ -122,7 +122,7 @@ async def patch_processing_data(
     try:
 
         # Get raw value from IBM
-        processing_data_array = await get_custom_attribute(
+        processing_data_array = get_custom_attribute(
             PatchKeys.PROCESSING_DATA_KEY.value, custom_attributes
         )
 
@@ -162,7 +162,7 @@ async def patch_processing_data(
         ]
 
         # Build Payload for patch
-        processing_data_payload = await patching_payload(
+        processing_data_payload = patching_payload(
             PatchKeys.PROCESSING_DATA_KEY.value, processing_data_array_stringified
         )
 
@@ -194,7 +194,7 @@ async def patch_legacy_pai(
     try:
 
         # Get raw value from IBM
-        legacy_pai_array = await get_custom_attribute(
+        legacy_pai_array = get_custom_attribute(
             PatchKeys.LEGACY_PAI_DATA_KEY.value, custom_attributes
         )
 
@@ -218,7 +218,7 @@ async def patch_legacy_pai(
         ]
 
         # Build Payload for patch
-        legacy_pai_payload = await patching_payload(
+        legacy_pai_payload = patching_payload(
             PatchKeys.LEGACY_PAI_DATA_KEY.value, legacy_pai_array_stringified
         )
 
@@ -249,7 +249,7 @@ async def patch_audit_data(
     try:
 
         # Get raw value from IBM
-        audit_data_array = await get_custom_attribute(
+        audit_data_array = get_custom_attribute(
             PatchKeys.AUDIT_DATA_KEY.value, custom_attributes
         )
 
@@ -281,7 +281,7 @@ async def patch_audit_data(
         ]
 
         # Build Payload for patch
-        audit_data_payload = await patching_payload(
+        audit_data_payload = patching_payload(
             PatchKeys.AUDIT_DATA_KEY.value, audit_data_array_stringified
         )
 

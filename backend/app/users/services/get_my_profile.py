@@ -99,7 +99,7 @@ async def get_my_profile(
 
 
 # Retrieve user's IBM ID from User Token
-async def get_ibm_id(
+def get_ibm_id(
     user_token: str,
 ):
     try:
