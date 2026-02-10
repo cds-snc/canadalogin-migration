@@ -86,7 +86,7 @@ async def test_verify_audit_status_returns_false_on_malformed_audit_json():
         ),
         patch(
             "app.auth.services.auth.get_custom_attribute",
-            new=AsyncMock(return_value=["{bad json"]),
+            new=MagicMock(return_value=["{bad json"]),
         ),
     ):
         result = await verify_audit_status(request)
@@ -109,7 +109,7 @@ async def test_verify_audit_status_returns_empty_list_on_empty_audit_data():
         ),
         patch(
             "app.auth.services.auth.get_custom_attribute",
-            new=AsyncMock(return_value=[]),
+            new=MagicMock(return_value=[]),
         ),
     ):
         result = await verify_audit_status(request)
@@ -135,7 +135,7 @@ async def test_verify_audit_status_returns_parsed_audit_list():
         ),
         patch(
             "app.auth.services.auth.get_custom_attribute",
-            new=AsyncMock(return_value=[audit_json]),
+            new=MagicMock(return_value=[audit_json]),
         ),
     ):
         result = await verify_audit_status(request)

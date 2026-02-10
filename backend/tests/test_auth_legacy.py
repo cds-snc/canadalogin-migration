@@ -211,7 +211,7 @@ async def test_legacy_callback_patches_audit_with_linked_status():
         ),
         patch(
             "app.auth_legacy.services.callback.get_ibm_id",
-            new=AsyncMock(return_value="ibm1"),
+            new=MagicMock(return_value="ibm1"),
         ),
         patch(
             "app.auth_legacy.services.callback.get_user_custom_attributes",
@@ -272,7 +272,7 @@ async def test_legacy_callback_uses_session_rp_client_id():
         ),
         patch(
             "app.auth_legacy.services.callback.get_ibm_id",
-            new=AsyncMock(return_value="ibm1"),
+            new=MagicMock(return_value="ibm1"),
         ),
         patch(
             "app.auth_legacy.services.callback.get_user_custom_attributes",
@@ -392,7 +392,7 @@ async def test_sic_legacy_login_auth_sets_session_and_state():
         ),
         patch(
             "app.auth_legacy.services.login.get_ibm_id",
-            new=AsyncMock(return_value="ibm1"),
+            new=MagicMock(return_value="ibm1"),
         ),
         patch(
             "app.auth_legacy.services.login.get_user_custom_attributes",

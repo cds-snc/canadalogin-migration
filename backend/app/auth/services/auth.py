@@ -182,7 +182,7 @@ async def verify_audit_status(
             logger.error("Missing custom attributes for user.")
             return False
 
-        audit_data_array = await get_custom_attribute(
+        audit_data_array = get_custom_attribute(
             PatchKeys.AUDIT_DATA_KEY.value, custom_attributes
         )
 

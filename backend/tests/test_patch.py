@@ -11,7 +11,6 @@ from app.users.services.patch import (
     patch_legacy_pai,
     patch_audit_data,
 )
-from app.constants.patch_keys import PatchKeys
 
 
 def _extract_custom_attribute_values(payload: str) -> list:
@@ -27,7 +26,7 @@ def _extract_custom_attribute_values(payload: str) -> list:
 
 @pytest.mark.asyncio
 async def test_patching_payload_builds_scim_patch():
-    payload = await patching_payload("customKey", ["value1"])
+    payload = patching_payload("customKey", ["value1"])
     payload_dict = json.loads(payload)
 
     assert payload_dict["schemas"] == ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
@@ -47,7 +46,7 @@ async def test_patching_payload_builds_scim_patch():
 @pytest.mark.asyncio
 async def test_patching_payload_raises_on_invalid_values():
     with pytest.raises(HTTPException) as raised:
-        await patching_payload("customKey", None)
+        patching_payload("customKey", None)
 
     assert raised.value.status_code == 422
 
@@ -125,7 +124,7 @@ async def test_patch_processing_data_updates_existing_record():
     with (
         patch(
             "app.users.services.patch.get_custom_attribute",
-            new=AsyncMock(return_value=[json.dumps(existing)]),
+            new=MagicMock(return_value=[json.dumps(existing)]),
         ),
         patch(
             "app.users.services.patch.patch_custom_attribute",
@@ -148,7 +147,7 @@ async def test_patch_processing_data_raises_on_malformed_json():
 
     with patch(
         "app.users.services.patch.get_custom_attribute",
-        new=AsyncMock(return_value=["{bad json"]),
+        new=MagicMock(return_value=["{bad json"]),
     ):
         with pytest.raises(Exception):
             await patch_processing_data(http_client, "ibm1", "rp-123", [])
@@ -161,7 +160,7 @@ async def test_patch_processing_data_raises_on_json_serialization_error():
     with (
         patch(
             "app.users.services.patch.get_custom_attribute",
-            new=AsyncMock(return_value=[]),
+            new=MagicMock(return_value=[]),
         ),
         patch("app.users.services.patch.json.dumps", side_effect=TypeError("boom")),
     ):
@@ -196,7 +195,7 @@ async def test_patch_legacy_pai_appends_duplicate_client_id():
     with (
         patch(
             "app.users.services.patch.get_custom_attribute",
-            new=AsyncMock(return_value=[json.dumps(existing)]),
+            new=MagicMock(return_value=[json.dumps(existing)]),
         ),
         patch(
             "app.users.services.patch.patch_custom_attribute",
@@ -221,7 +220,7 @@ async def test_patch_legacy_pai_raises_on_json_serialization_error():
     with (
         patch(
             "app.users.services.patch.get_custom_attribute",
-            new=AsyncMock(return_value=[]),
+            new=MagicMock(return_value=[]),
         ),
         patch("app.users.services.patch.json.dumps", side_effect=TypeError("boom")),
     ):
@@ -258,7 +257,7 @@ async def test_patch_audit_data_raises_on_json_serialization_error():
     with (
         patch(
             "app.users.services.patch.get_custom_attribute",
-            new=AsyncMock(return_value=[]),
+            new=MagicMock(return_value=[]),
         ),
         patch("app.users.services.patch.json.dumps", side_effect=TypeError("boom")),
     ):
