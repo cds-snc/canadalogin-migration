@@ -120,9 +120,7 @@ async def test_verify_audit_status_returns_empty_list_on_empty_audit_data():
 @pytest.mark.asyncio
 async def test_verify_audit_status_returns_parsed_audit_list():
     request = build_request()
-    audit_json = (
-        '{"client_id":"rp-123","legacy_idp":"","timestamp":"2024-01-01 00:00:00","status":"LINKED"}'
-    )
+    audit_json = '{"client_id":"rp-123","legacy_idp":"","timestamp":"2024-01-01 00:00:00","status":"LINKED"}'
 
     with (
         patch(

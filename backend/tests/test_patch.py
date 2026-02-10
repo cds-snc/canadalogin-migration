@@ -119,7 +119,11 @@ async def test_patch_processing_data_creates_new_record_on_empty_attributes():
 @pytest.mark.asyncio
 async def test_patch_processing_data_updates_existing_record():
     http_client = AsyncMock()
-    existing = {"client_id": "rp-123", "retry_count": 1, "timestamp": "2020-01-01 00:00:00"}
+    existing = {
+        "client_id": "rp-123",
+        "retry_count": 1,
+        "timestamp": "2020-01-01 00:00:00",
+    }
 
     with (
         patch(
@@ -236,9 +240,7 @@ async def test_patch_audit_data_creates_new_entry_with_timestamp():
         "app.users.services.patch.patch_custom_attribute",
         new=AsyncMock(return_value=MagicMock(status_code=204)),
     ) as mock_patch:
-        await patch_audit_data(
-            http_client, "ibm1", "rp-123", [], status="LINKED"
-        )
+        await patch_audit_data(http_client, "ibm1", "rp-123", [], status="LINKED")
 
     mock_patch.assert_awaited_once()
     assert mock_patch.await_args.args[0] is http_client

@@ -58,9 +58,7 @@ async def legacy_callback(
             token = await client.authorize_access_token(request, code_verifier=verifier)
         except OAuthError as e:
             logger.error(f"OAuth error during legacy callback token retrieval: {e}")
-            RequestErrorHandler.handle(
-                e, context="OAuth error during legacy callback"
-            )
+            RequestErrorHandler.handle(e, context="OAuth error during legacy callback")
         logger.debug("Token response keys: %s", list(token.keys()))
 
         # Parse ID token & extract legacy PAI

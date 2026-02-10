@@ -47,7 +47,9 @@ async def test_dispatch_get_my_profile_raises_oauth_error_on_401():
     response = httpx.Response(401, request=request)
     error = httpx.HTTPStatusError("unauthorized", request=request, response=response)
 
-    http_client.get = AsyncMock(return_value=MagicMock(raise_for_status=MagicMock(side_effect=error)))
+    http_client.get = AsyncMock(
+        return_value=MagicMock(raise_for_status=MagicMock(side_effect=error))
+    )
 
     with pytest.raises(OAuthError):
         await dispatch_get_my_profile_from_ibm(http_client, "user-token")
@@ -60,7 +62,9 @@ async def test_dispatch_get_my_profile_raises_http_exception_on_500():
     response = httpx.Response(500, request=request)
     error = httpx.HTTPStatusError("server error", request=request, response=response)
 
-    http_client.get = AsyncMock(return_value=MagicMock(raise_for_status=MagicMock(side_effect=error)))
+    http_client.get = AsyncMock(
+        return_value=MagicMock(raise_for_status=MagicMock(side_effect=error))
+    )
 
     with pytest.raises(HTTPException) as raised:
         await dispatch_get_my_profile_from_ibm(http_client, "user-token")

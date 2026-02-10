@@ -376,7 +376,8 @@ async def test_sic_legacy_login_auth_sets_session_and_state():
         ),
         patch("app.auth_legacy.services.login.register_client", new=AsyncMock()),
         patch(
-            "app.auth_legacy.services.login.create_client", new=AsyncMock(return_value=client)
+            "app.auth_legacy.services.login.create_client",
+            new=AsyncMock(return_value=client),
         ),
         patch(
             "app.auth_legacy.services.login.generate_secure_token",
