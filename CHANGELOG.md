@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.7.1...v1.7.2) (2026-02-10)
+
+
+### Bug Fixes
+
+* refixed variable name to MIGRATION_SOLUTION_DOMAIN ([#97](https://github.com/cds-snc/gc-sign-in-migration/issues/97)) ([dbba771](https://github.com/cds-snc/gc-sign-in-migration/commit/dbba771c6ea36db8425a4437b111cebfca503e6f))
+
 ## [1.7.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.7.0...v1.7.1) (2026-02-09)
 
 
