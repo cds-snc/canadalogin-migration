@@ -329,6 +329,14 @@ jobs:
           wait-for-service-stability: true
           propagate-tags: SERVICE
 
+      - name: Update SSM parameter for deployed image
+        run: |
+          aws ssm put-parameter \
+            --name "/ecs/${{ vars.ECS_CLUSTER }}/${{ vars.ECS_SERVICE }}/container-image" \
+            --value "${{ vars.ARTIFACT_ECR_REPOSITORY }}:${{ env.DEPLOYMENT_SHA }}" \
+            --type "String" \
+            --overwrite
+
   notify-slack-about-deploy-success:
     runs-on: ubuntu-latest
     needs: [notify-slack-about-deploy, deploy-frontends, deploy-backends]
