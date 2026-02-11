@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.7.2...v1.8.0) (2026-02-11)
+
+
+### Features
+
+* **ci/cd:** Update SSM container image param from CI pipeline ([2244378](https://github.com/cds-snc/gc-sign-in-migration/commit/2244378d47a495e5a41c34a24f0b559707ecdca5))
+* **ci/cd:** Update SSM container image param from CI pipeline ([6d45b89](https://github.com/cds-snc/gc-sign-in-migration/commit/6d45b890b47d159c109b06d7646a1df147c18ac8))
+
 ## [1.7.2](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.7.1...v1.7.2) (2026-02-10)
 
 
