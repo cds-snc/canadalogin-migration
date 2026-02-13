@@ -27,12 +27,24 @@ from app.rp import v1_router as v1_rp_router
 
 configuration = get_configuration()
 
+
+class HealthCheckFilter(logging.Filter):
+    """Filter to suppress healthcheck logs from Uvicorn access logs."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Suppress logs for /health/health endpoint
+        return record.getMessage().find("/health/health") == -1
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+# Add filter to suppress healthcheck logs from Uvicorn access logs
+logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
 
 
 API_DESCRIPTION = """
