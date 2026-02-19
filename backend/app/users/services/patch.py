@@ -99,6 +99,11 @@ async def patch_custom_attribute(
             cookies={},
         )
 
+        if response.status_code == 401:
+            return {"error": "Unauthorized: Invalid credentials or token"}
+        if response.status_code >= 400:
+            return {"error": f"HTTP error: {response.status_code}"}
+
         return response
 
     except HTTPStatusError as e:
@@ -167,6 +172,9 @@ async def patch_processing_data(
         )
 
         # Return Status from IBM
+        if isinstance(response, dict):
+            logger.error(f"patch_processing_data_error: {response}")
+            return response
         logger.info(f"patch_processing_data_status: {response.status_code}")
 
         return response
@@ -219,6 +227,9 @@ async def patch_legacy_pai(
         )
 
         # Return Status from IBM
+        if isinstance(response, dict):
+            logger.error(f"patch_legacy_pai_error: {response}")
+            return response
         logger.info(f"patch_legacy_pai status_code: {response.status_code}")
 
         return response
@@ -280,6 +291,9 @@ async def patch_audit_data(
             global_http_client, ibm_id=ibm_id, patch_payload=audit_data_payload
         )
 
+        if isinstance(response, dict):
+            logger.error(f"patch_audit_data_error: {response}")
+            return response
         logger.info(f"patch_audit_data_status: {response.status_code}")
 
         # Return Status from IBM
