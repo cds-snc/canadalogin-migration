@@ -124,6 +124,10 @@
   margin-bottom: 0.25rem;
 }
 
+.gc-stepper__title-mobile {
+  display: none;
+}
+
 .gc-stepper__desc {
   color: #6b6b6b;
   font-size: 1rem;
@@ -143,6 +147,23 @@
     text-align: left;
     padding-left: 3.25rem;
     padding-top: 0;
+  }
+
+  .gc-stepper__title {
+    display: inline;
+    margin-right: 0.3rem;
+    margin-bottom: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+    font-weight: 400;
+  }
+
+  .gc-stepper__title-desktop {
+    display: none;
+  }
+
+  .gc-stepper__title-mobile {
+    display: inline;
   }
 
   .gc-stepper__dot {
@@ -167,6 +188,7 @@
   }
 
   .gc-stepper__desc {
+    display: inline;
     max-width: none;
   }
 }

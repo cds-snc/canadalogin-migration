@@ -51,10 +51,13 @@ export function MigrationStepper({ steps, currentStep }) {
               </span>
 
               <div className="gc-stepper__title">
-                {pageContentJson["step_title"].replace(
-                  "{n}",
-                  String(stepNumber),
-                )}
+                <span className="gc-stepper__title-desktop">
+                  {pageContentJson["step_title"].replace(
+                    "{n}",
+                    String(stepNumber),
+                  )}
+                </span>
+                <span className="gc-stepper__title-mobile">{stepNumber}.</span>
               </div>
               <div className="gc-stepper__desc">{step.description}</div>
             </li>
