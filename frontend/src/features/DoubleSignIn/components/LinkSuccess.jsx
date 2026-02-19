@@ -62,18 +62,20 @@ export default function LinkSuccess() {
         )}
       </GcdsText>
       <GcdsText>{pageContentJson["text_2"]}</GcdsText>
-      <ul className="list-disc">
+      <ul className="list-disc mt-0">
         <li>{pageContentJson["list_text_1"]}</li>
         <li>{pageContentJson["list_text_2"]}</li>
       </ul>
-      <GcdsButton
-        onGcdsClick={(ev) => {
-          ev.preventDefault();
-          continueToRP();
-        }}
-      >
-        {pageContentJson["btn_1"]}
-      </GcdsButton>
+      <div className="mt-500">
+        <GcdsButton
+          onGcdsClick={(ev) => {
+            ev.preventDefault();
+            continueToRP();
+          }}
+        >
+          {pageContentJson["btn_1"]}
+        </GcdsButton>
+      </div>
     </GcdsContainer>
   );
 }
