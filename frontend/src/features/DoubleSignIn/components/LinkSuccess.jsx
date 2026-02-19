@@ -2,12 +2,6 @@ import { useEffect, useState } from "react";
 import {
   GcdsContainer,
   GcdsText,
-  GcdsDetails,
-  GcdsInput,
-  GcdsStepper,
-  GcdsLink,
-  GcdsCheckboxes,
-  GcdsGrid,
   GcdsButton,
   GcdsHeading,
 } from "@cdssnc/gcds-components-react";
@@ -32,7 +26,6 @@ export default function LinkSuccess() {
   useEffect(() => {
     async function getRPData() {
       const data = await updateLinkStateAPI.getRPAuthUrl();
-      console.log("data", data);
       setRpData(data);
     }
 
@@ -41,15 +34,12 @@ export default function LinkSuccess() {
 
   const continueToRP = async () => {
     try {
-      console.log("info", "clicked start linking and continue back to rp");
-      const redirectUrl =
-        language != "en" ? rpData?.rp_redirect_url : rpData?.rp_redirect_url;
+      const redirectUrl = rpData?.rp_redirect_url;
       window.location.replace(redirectUrl);
     } catch (err) {
       if (err && err.data && err.data.message) {
         setServerErrorMessage(err.data.message);
       }
-      console.log("err", err);
     }
   };
 
@@ -62,22 +52,20 @@ export default function LinkSuccess() {
         {pageContentJson["title"]}
       </GcdsHeading>
 
-      <GcdsText>{errorMessage}</GcdsText>
-      <gcds-text>
+      {errorMessage ? <GcdsText>{errorMessage}</GcdsText> : null}
+      <GcdsText>
         {pageContentJson["text_1"].replace(
           "{RP_Name}",
           language != "en"
             ? rpData?.rp_client_name_fr
             : rpData?.rp_client_name_en,
         )}
-      </gcds-text>
-      <gcds-text>
-        {pageContentJson["text_2"]}
-        <ul class="list-disc">
-          <li>{pageContentJson["list_text_1"]}</li>
-          <li>{pageContentJson["list_text_2"]}</li>
-        </ul>
-      </gcds-text>
+      </GcdsText>
+      <GcdsText>{pageContentJson["text_2"]}</GcdsText>
+      <ul className="list-disc">
+        <li>{pageContentJson["list_text_1"]}</li>
+        <li>{pageContentJson["list_text_2"]}</li>
+      </ul>
       <GcdsButton
         onGcdsClick={(ev) => {
           ev.preventDefault();
