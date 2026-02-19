@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional
 
 
@@ -20,4 +20,8 @@ class RPSchema(BaseModel):
     rp_client_name_en: str
     rp_client_name_fr: str
     rp_redirect_uri: str
+    dependent_client_ids: List[str] = Field(
+        default_factory=list, alias="dependentClientIds"
+    )
     IDP: List[LegacyIdpSchema]
+    model_config = ConfigDict(populate_by_name=True)
