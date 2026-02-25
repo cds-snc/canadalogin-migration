@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.9.1...v1.9.2) (2026-02-25)
+
+
+### Bug Fixes
+
+* **deps:** make the acr values part of the config options. ([#134](https://github.com/cds-snc/gc-sign-in-migration/issues/134)) ([7eb12a9](https://github.com/cds-snc/gc-sign-in-migration/commit/7eb12a98bf5776e03b7c11d1f3f9f816078660d9))
+
 ## [1.9.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.9.0...v1.9.1) (2026-02-25)
 
 
