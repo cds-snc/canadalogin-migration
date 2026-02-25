@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.9.0...v1.9.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* **deps:** removed menu since not required ([#131](https://github.com/cds-snc/gc-sign-in-migration/issues/131)) ([a3ead22](https://github.com/cds-snc/gc-sign-in-migration/commit/a3ead22b9af663dc114a41ae26c3292d02066958))
+
 ## [1.9.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.8.0...v1.9.0) (2026-02-20)
 
 
