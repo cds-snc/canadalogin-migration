@@ -20,4 +20,5 @@ class RPSchema(BaseModel):
     rp_client_name_en: str
     rp_client_name_fr: str
     rp_redirect_uri: str
+    acr_values: Optional[str] = ""
     IDP: List[LegacyIdpSchema]
