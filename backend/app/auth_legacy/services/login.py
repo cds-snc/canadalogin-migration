@@ -92,8 +92,9 @@ async def SIC_legacy_login_auth(
         request.session[SessionKeys.CURRENT_LANGUAGE.value] = lang
         request.session["legacy_provider"] = legacy_idp.client_name
         request.session["legacy_client_name"] = client_name
+        acr_values = getattr(rp, "acr_values", "")
         # Register
-        await register_client(request, client_name, legacy_idp, ui_locales)
+        await register_client(request, client_name, legacy_idp, ui_locales, acr_values)
         client = await create_client(client_name)
         redirect_uris = getattr(legacy_idp, "redirect_uris", None) or []
 

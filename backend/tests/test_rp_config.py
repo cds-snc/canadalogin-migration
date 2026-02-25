@@ -16,6 +16,7 @@ def _sample_rp_config():
             "rp_client_name_en": "rp en",
             "rp_client_name_fr": "rp fr",
             "rp_redirect_uri": "https://rp.example.test/landing",
+            "acr_values": "",
             "IDP": [
                 {
                     "client_id": "cid",
