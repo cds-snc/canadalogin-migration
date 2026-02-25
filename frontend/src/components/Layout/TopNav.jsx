@@ -1,7 +1,4 @@
-import {
-  GcdsNavLink,
-  GcdsTopNav,
-} from "@cdssnc/gcds-components-react";
+import { GcdsNavLink, GcdsTopNav } from "@cdssnc/gcds-components-react";
 import { getPageContent } from "../../utils/functions.jsx";
 
 export default function TopNav({ currentLang }) {
