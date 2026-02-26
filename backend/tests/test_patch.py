@@ -192,7 +192,7 @@ async def test_patch_legacy_pai_creates_new_entry_on_empty_attributes():
 
 
 @pytest.mark.asyncio
-async def test_patch_legacy_pai_appends_duplicate_client_id():
+async def test_patch_legacy_pai_noops_on_conflicting_existing_client_id():
     http_client = AsyncMock()
     existing = {"client_id": "rp-123", "pai": "old-pai"}
 
@@ -206,15 +206,12 @@ async def test_patch_legacy_pai_appends_duplicate_client_id():
             new=AsyncMock(return_value=MagicMock(status_code=204)),
         ) as mock_patch,
     ):
-        await patch_legacy_pai(http_client, "ibm1", "rp-123", [], "legacy-pai")
+        response = await patch_legacy_pai(
+            http_client, "ibm1", "rp-123", [], "legacy-pai"
+        )
 
-    patch_payload = mock_patch.await_args.kwargs["patch_payload"]
-    assert mock_patch.await_args.args[0] is http_client
-    values = _extract_custom_attribute_values(patch_payload)
-    parsed = [json.loads(item) for item in values]
-    assert len(parsed) == 2
-    assert parsed[0]["client_id"] == "rp-123"
-    assert parsed[1]["client_id"] == "rp-123"
+    assert response.status_code == 204
+    mock_patch.assert_not_awaited()
 
 
 @pytest.mark.asyncio

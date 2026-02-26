@@ -3,7 +3,11 @@ import { PAGES } from "../../../utils/constants.jsx";
 import { useParams } from "react-router";
 import { getPageContent } from "../../../utils/functions.jsx";
 
-export function MigrationStepper({ steps, currentStep, showDescriptions = false }) {
+export function MigrationStepper({
+  steps,
+  currentStep,
+  showDescriptions = false,
+}) {
   const { language } = useParams();
 
   const pageContentJson = getPageContent(language, PAGES.MigrationStepper);

@@ -68,7 +68,9 @@ async def test_sic_legacy_login_auth_missing_redirect_uris_raises():
         client_secret="secret",
         scope="openid",
     )
-    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
 
     with (
         patch(
@@ -205,7 +207,9 @@ async def test_legacy_callback_patches_audit_with_linked_status():
     }
 
     legacy_idp = SimpleNamespace(client_name="SIC")
-    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
 
     request.session["rpname_SIC_code_verifier"] = "verifier"
     request.session["rpname_SIC_nonce"] = "nonce"
@@ -266,7 +270,9 @@ async def test_legacy_callback_uses_session_rp_client_id():
     }
 
     legacy_idp = SimpleNamespace(client_name="SIC")
-    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
 
     request.session["rpname_SIC_code_verifier"] = "verifier"
     request.session["rpname_SIC_nonce"] = "nonce"
@@ -327,7 +333,9 @@ async def test_legacy_callback_handles_oauth_error():
     client.authorize_access_token = AsyncMock(side_effect=OAuthError("bad"))
 
     legacy_idp = SimpleNamespace(client_name="SIC")
-    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
 
     request.session["rpname_SIC_code_verifier"] = "verifier"
 
