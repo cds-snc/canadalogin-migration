@@ -3,10 +3,7 @@ import { Navigate } from "react-router";
 import RootLayout from "./components/Layout/RootLayout.jsx";
 import { AppLanguageSetup } from "./components/Providers/AppLanguageSetup";
 import { LanguageProvider } from "./components/Providers/LanguageProvider";
-import {
-  PrivateRoute,
-  StepupPrivateRoute,
-} from "./components/Providers/PrivateRoute.jsx";
+import { PrivateRoute } from "./components/Providers/PrivateRoute.jsx";
 import { UserProvider } from "./components/Providers/UserProvider";
 
 import SkipLink from "./features/DoubleSignIn/components/SkipLink.jsx";

@@ -19,6 +19,9 @@ jobs:
       - name: Install dev dependencies
         run: make install-dev-python
 
+      - name: Check OpenAPI spec
+        run: make check-openapi
+
       - name: Test with pytest
         env:
           ROOT_DOMAIN: test.com

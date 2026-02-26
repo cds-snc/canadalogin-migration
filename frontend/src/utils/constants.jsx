@@ -114,7 +114,7 @@ export const SUBMIT_END_POINTS = {
   mfaSend: "/v1/otp/mfa/send",
   mfaVerify: "/v1/otp/mfa/verify",
   mfaDelete: "/v1/otp/mfa/delete",
-  profile: "/v1/users/profile",
+  profile: "/v1/auth/me",
   rp_info: "/v1/users/rp_info",
   users: "/v1/users",
   passwordUpdate: "/v1/password/update",

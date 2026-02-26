@@ -121,6 +121,14 @@ Once running, you can access:
 - ReDoc: `http://localhost:8000/redoc`
 - OpenAPI Spec: `http://localhost:8000/openapi.json`
 
+Generate and store the OpenAPI spec in the repository:
+
+```bash
+make generate-openapi
+```
+
+The checked-in file is written to `backend/openapi/openapi.json`.
+
 ### Development Mode
 
 For development with hot-reload:

@@ -23,6 +23,8 @@ from app.auth.services.auth_user_session import (
 )
 
 from app.constants.session_keys import SessionKeys
+from app.users.schemas import ProfileResponse
+from app.users.services.get_my_profile import get_my_profile
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -103,3 +105,18 @@ async def session_status(request: Request):
 )
 async def keep_alive(request: Request):
     return await session_extend(request)
+
+
+@router.get(
+    path="/me",
+    response_model=ProfileResponse,
+    summary="Get authenticated user profile",
+    description="Returns the authenticated user's profile from IBM Verify.",
+)
+async def get_current_user_profile(
+    request: Request, user_access_token: str = Depends(get_users_current_session)
+):
+    return await get_my_profile(
+        request.app.state.request_client,
+        user_access_token,
+    )
