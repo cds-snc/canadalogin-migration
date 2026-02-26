@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.9.3...v1.10.0) (2026-02-26)
+
+
+### Features
+
+* Deploy migration app to staging ([a232099](https://github.com/cds-snc/gc-sign-in-migration/commit/a232099b42ef845a5059a2a5f93d5f193e0c6322))
+
 ## [1.9.3](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.9.2...v1.9.3) (2026-02-26)
 
 
