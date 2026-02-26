@@ -1,7 +1,6 @@
 import {
   GcdsContainer,
   GcdsNavLink,
-  GcdsText,
   GcdsTopNav,
 } from "@cdssnc/gcds-components-react";
 import { getPageContent } from "../../utils/functions.jsx";
@@ -15,9 +14,7 @@ export default function TopNav({ currentLang }) {
   if (mobile || tablet) {
     return (
       <GcdsContainer slot="menu" mainContainer padding="100 0">
-        <GcdsText size="small" marginBottom="0">
-          {pageContentJson["1"]}
-        </GcdsText>
+        <GcdsNavLink href={homeLink}>{pageContentJson["1"]}</GcdsNavLink>
       </GcdsContainer>
     );
   }
