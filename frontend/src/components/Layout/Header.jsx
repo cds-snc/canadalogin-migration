@@ -1,16 +1,6 @@
-import {
-  GcdsBreadcrumbs,
-  GcdsBreadcrumbsItem,
-  GcdsContainer,
-  GcdsHeader,
-  GcdsNavGroup,
-  GcdsNavLink,
-  GcdsText,
-  GcdsTopNav,
-} from "@cdssnc/gcds-components-react";
-
-import TopNav from "./TopNav";
+import { GcdsContainer, GcdsHeader } from "@cdssnc/gcds-components-react";
 import Breadcrumbs from "./Breadcrumbs";
+import TopNav from "./TopNav";
 
 export default function Header({ langHref, currentLang }) {
   return (

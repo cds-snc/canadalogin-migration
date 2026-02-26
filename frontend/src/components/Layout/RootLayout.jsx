@@ -20,7 +20,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     trackPage(pathname);
-  }, [pathname]);
+
+    document.title = currentLang === "fr" ? "CanadaConnexion" : "CanadaLogin";
+  }, [pathname, currentLang]);
 
   return (
     <div className="mainBody">

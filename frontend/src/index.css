@@ -127,6 +127,11 @@ body,
   color: var(--gcds-color-red-flag);
 }
 
+.gcds-header {
+  --gcds-signature-color-text: var(--gcds-color-grayscale-1000);
+  --gcds-signature-white-default: var(--gcds-color-grayscale-1000);
+}
+
 @media screen and (max-width: 767px) {
   .gcds-header {
     padding: var(--gcds-spacing-100) var(--gcds-spacing-0)
