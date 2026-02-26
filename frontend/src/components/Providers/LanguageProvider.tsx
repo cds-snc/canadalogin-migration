@@ -50,9 +50,15 @@ export const LanguageProvider = ({
 }: LanguageProviderProps) => {
   const [state, dispatch] = useReducer(languageReducer, initial);
 
-  const setAppLanguage = useCallback((selectedLanguage: string) => {
-    dispatch({ type: CONTEXT_ACTIONS.set_language, payload: selectedLanguage });
-  }, [dispatch]);
+  const setAppLanguage = useCallback(
+    (selectedLanguage: string) => {
+      dispatch({
+        type: CONTEXT_ACTIONS.set_language,
+        payload: selectedLanguage,
+      });
+    },
+    [dispatch],
+  );
 
   return (
     <LanguageContext.Provider value={{ state, dispatch, setAppLanguage }}>
