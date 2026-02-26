@@ -469,15 +469,16 @@
     "6": "message texte"
   },
   "LinkPrompt": {
-    "title": "Utilisez votre ancienne méthode de connexion",
-    "subtitle": "Pas de compte du Régime canadien de soins dentaires?",
+    "title": "Connectez-vous avec votre ancienne méthode",
+    "subtitle": "Première visite sur le compte {RP_Name}?",
     "text_1": "Complété : Utiliser la nouvelle méthode de connexion",
-    "text_2": "Pour conserver les données de votre compte du Régime canadien de soins dentaires, vous devrez utiliser votre ancienne méthode de connexion une dernière fois sur ce service. Cela mettra à jour votre méthode de connexion à Connexion GC pour ce compte.",
+    "text_2": "Pour conserver les données de votre compte {RP_Name}, vous devrez utiliser votre ancienne méthode de connexion une dernière fois sur ce service. Cela mettra à jour votre méthode de connexion vers CanadaLogin pour ce compte.",
     "text_3": "Utilisez la méthode de connexion que vous avez utilisée la dernière fois que vous vous êtes connecté à ce service.",
-    "text_4": "Si vous ne vous êtes jamais connecté à ce service avec votre banque ou CléGC, vous pouvez ignorer cette étape.",
+    "text_4": "Si vous ne vous êtes pas connecté à ce service avec Interac ou CléGC auparavant, vous pouvez ignorer cette étape.",
     "link_1": "Comment mettre à jour sa méthode de connexion",
-    "link_2": "Skip and create a new account",
-    "btn_1": "Ignorer et créer un nouveau compte"
+    "link_2": "Ignorer et créer un nouveau compte",
+    "btn_1": "Se connecter avec CléGC ou partenaire de connexion Interac",
+    "notice_title": "Pour plus d'information"
   },
   "SkipLink": {
     "title": "Are you sure you don’t have an existing account?",
@@ -488,8 +489,20 @@
   },
   "LinkSuccess": {
     "title": "Votre méthode de connexion a été mise à jour",
-    "text_1": "Vous pouvez désormais utiliser Connexion GC pour accéder à votre compte du Régime canadien de soins dentaires.",
-    "text_2": "Si vous utilisez votre banque ou CléGC pour accéder à d'autres comptes, vous devrez les mettre à jour sur chaque service.",
-    "btn_1": "Terminer"
+    "text_1": "Vous pouvez maintenant utiliser CanadaLogin pour accéder à votre compte {RP_Name}.",
+    "text_2": "Si vous utilisez CléGC ou Interac sur d'autres services :",
+    "list_text_1": "vous devriez recevoir un courriel lorsque le service commencera à utiliser CanadaLogin",
+    "list_text_2": "vous devrez mettre à jour votre méthode de connexion de CléGC ou Interac vers CanadaLogin sur chaque service",
+    "btn_1": "Accéder à votre compte"
+  },
+  "MigrationStepper": {
+    "aria_label": "Progression de la migration de connexion",
+    "sr_current_prefix": "Étape actuelle : ",
+    "sr_completed_prefix": "Étape complétée : ",
+    "sr_step_prefix": "Étape ",
+    "step_title": "Étape {n}",
+    "step_1": "Créer un CanadaLogin ou se connecter",
+    "step_2": "Lier votre ancienne méthode de connexion",
+    "step_3": "Accéder à votre compte existant"
   }
 }

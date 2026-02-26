@@ -30,6 +30,7 @@ async def register_client(
     client_name: str,
     idp: LegacyIdpSchema,
     ui_locales: str = "en-CA",
+    acr_values: str | None = "",
 ):
     try:
 
@@ -54,6 +55,15 @@ async def register_client(
         # TODO: get language
         current_locale = ui_locales
 
+        authorize_params = {"ui_locales": current_locale}
+        normalized_acr_values = ""
+        if acr_values:
+            normalized_acr_values = ",".join(
+                value.strip() for value in acr_values.split(",") if value.strip()
+            )
+        if normalized_acr_values:
+            authorize_params["acr_values"] = normalized_acr_values
+
         oauth.register(
             name=client_name,
             client_id=idp.client_id,
@@ -69,10 +79,7 @@ async def register_client(
                 or "client_secret_post",
                 "max_age": 0,
             },
-            authorize_params={
-                "acr_values": "mfa",
-                "ui_locales": current_locale,
-            },
+            authorize_params=authorize_params,
         )
 
     except OAuthError as e:

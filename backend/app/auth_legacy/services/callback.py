@@ -3,6 +3,7 @@ import httpx
 
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
+from authlib.integrations.starlette_client import OAuthError
 from pydantic import ValidationError
 from urllib.parse import quote
 
@@ -15,6 +16,7 @@ from app.users.services.custom_attributes import get_user_custom_attributes
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_legacy_pai, patch_audit_data
 from app.utils.oidc import create_client
+from app.utils.request_error_handler import RequestErrorHandler
 
 
 # Get the desired log level from configuration
@@ -42,6 +44,11 @@ async def legacy_callback(
     rp_client_id: str,
 ):
     try:
+        session_rp_client_id = request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+        if session_rp_client_id:
+            rp_client_id = session_rp_client_id
+        elif not rp_client_id:
+            raise HTTPException(status_code=400, detail="Missing RP client id")
 
         # RP with SIC only has 1 IDP
         rp = await get_config(rp_client_id)
@@ -53,7 +60,11 @@ async def legacy_callback(
         client = await create_client(client_name)
         # Exchange authorization code for tokens
         verifier = request.session.get(f"{client_name}_code_verifier")
-        token = await client.authorize_access_token(request, code_verifier=verifier)
+        try:
+            token = await client.authorize_access_token(request, code_verifier=verifier)
+        except OAuthError as e:
+            logger.error(f"OAuth error during legacy callback token retrieval: {e}")
+            RequestErrorHandler.handle(e, context="OAuth error during legacy callback")
         logger.debug("Token response keys: %s", list(token.keys()))
 
         # Parse ID token & extract legacy PAI
@@ -165,6 +176,11 @@ async def legacy_callback(
     except ValidationError as e:
         logger.error(f"Validation Error: {e.json()}")
         raise HTTPException(status_code=422, detail="Request data validation error")
+    except OAuthError as e:
+        raise e
+    except Exception as e:
+        logger.exception("Unexpected error during legacy callback")
+        RequestErrorHandler.handle(e, context="Unexpected error during legacy callback")
 
 
 async def legacy_post_logout_callback(request: Request):

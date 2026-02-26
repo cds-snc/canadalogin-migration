@@ -71,10 +71,18 @@ async def SIC_legacy_login_auth(
     lang: str,
 ):
     try:
+        if not rp_client_id:
+            raise HTTPException(status_code=400, detail="Missing RP client id")
+
         global_http_client = request.app.state.request_client
 
         # RP with SIC only has 1 IDP
         rp = await get_config(rp_client_id)
+        if not getattr(rp, "IDP", None):
+            raise HTTPException(
+                status_code=400, detail="Legacy IDP configuration not found"
+            )
+
         legacy_idp = rp.IDP[0]
 
         # Unique for RP / IDP combo
@@ -84,8 +92,9 @@ async def SIC_legacy_login_auth(
         request.session[SessionKeys.CURRENT_LANGUAGE.value] = lang
         request.session["legacy_provider"] = legacy_idp.client_name
         request.session["legacy_client_name"] = client_name
+        acr_values = getattr(rp, "acr_values", "")
         # Register
-        await register_client(request, client_name, legacy_idp, ui_locales)
+        await register_client(request, client_name, legacy_idp, ui_locales, acr_values)
         client = await create_client(client_name)
         redirect_uris = getattr(legacy_idp, "redirect_uris", None) or []
 

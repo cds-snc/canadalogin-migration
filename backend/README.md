@@ -44,7 +44,7 @@ This approach works across different Docker platforms (Docker Desktop, Colima, e
 
 ### Environment Variables
 
-Create a `.env` file with the following variables:
+Create a `.env` file with the following variables (or copy from `.env.example`):
 
 ```env
 IBM_VERIFY_TENANT_URL=https://cds-gcsignin-dev.verify.ibm.com/
@@ -53,9 +53,16 @@ IBM_VERIFY_MIGRATION_CLIENT_ID=
 IBM_VERIFY_MIGRATION_SECRET=
 IBM_VERIFY_MIGRATION_API_SECRET=
 LEGACY_IDP_LOGOUT_ENABLED=true
+RP_MIGRATION_CONFIG=[{"rp_client_id":"your-rp-client-id","rp_client_name":"Example RP","rp_client_name_en":"Example RP","rp_client_name_fr":"Exemple RP","rp_redirect_uri":"http://localhost:8080/auth/callback/client1","acr_values":"","IDP":[{"client_id":"your-legacy-idp-client-id","client_name":"SIC","client_secret":"your-legacy-idp-client-secret","openid_configuration":"https://te-auth.id.tbs-sct.gc.ca/oxauth/.well-known/openid-configuration","redirect_uris":["http://localhost:8000/v1/auth/legacy/callback"],"scope":"openid profile email","max_age":3600,"code_challenge_method":"S256","token_endpoint_auth_method":"client_secret_basic"}]}]
 ```
 
 `LEGACY_IDP_LOGOUT_ENABLED` defaults to `false`. Set to `true` to enable legacy IdP (SIC) logout redirect.
+
+`RP_MIGRATION_CONFIG` supports per-RP `acr_values`:
+- `""` (blank): no forced MFA; legacy provider choice unchanged (e.g., GCKey + Interac)
+- `"gckey"`: GCKey only
+- `"MFA"`: force MFA prompt
+- `"gckey,MFA"`: GCKey only + force MFA prompt
 
 #### IBM_VERIFY_MIGRATION_CLIENT_ID and IBM_VERIFY_MIGRATION_SECRET
 

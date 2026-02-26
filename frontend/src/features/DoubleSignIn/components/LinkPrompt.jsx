@@ -2,15 +2,9 @@ import { useState, useEffect } from "react";
 import {
   GcdsContainer,
   GcdsText,
-  GcdsDetails,
-  GcdsInput,
-  GcdsStepper,
   GcdsLink,
-  GcdsCheckboxes,
-  GcdsGrid,
   GcdsButton,
   GcdsHeading,
-  GcdsIcon,
   GcdsNotice,
 } from "@cdssnc/gcds-components-react";
 import { getPageContent } from "../../../utils/functions.jsx";
@@ -57,10 +51,6 @@ export default function LinkPrompt() {
     getRPData();
   }, [language]);
 
-  const skipHref = links.toSkipLinkPage?.startsWith("http")
-    ? links.toSkipLinkPage
-    : `${window.location.origin}${links.toSkipLinkPage || ""}`;
-
   const errorMessage = errorPageJson[serverErrorMessage] || "";
 
   return (
@@ -70,7 +60,7 @@ export default function LinkPrompt() {
         {pageContentJson["title"]}
       </GcdsHeading>
 
-      <GcdsText>{errorMessage}</GcdsText>
+      {errorMessage ? <GcdsText>{errorMessage}</GcdsText> : null}
 
       <GcdsText>
         {pageContentJson["text_2"].replace(
@@ -107,9 +97,7 @@ export default function LinkPrompt() {
       </GcdsHeading>
       <GcdsText>{pageContentJson["text_4"]}</GcdsText>
       <GcdsText>
-        <GcdsLink key={skipHref} href={links.SkipLink}>
-          {pageContentJson["link_2"]}
-        </GcdsLink>
+        <GcdsLink href={links.SkipLink}>{pageContentJson["link_2"]}</GcdsLink>
       </GcdsText>
     </GcdsContainer>
   );

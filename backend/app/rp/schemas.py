@@ -23,5 +23,6 @@ class RPSchema(BaseModel):
     dependent_client_ids: List[str] = Field(
         default_factory=list, alias="dependentClientIds"
     )
+    acr_values: Optional[str] = ""
     IDP: List[LegacyIdpSchema]
     model_config = ConfigDict(populate_by_name=True)
