@@ -30,7 +30,7 @@ jobs:
           app-id: ${{ secrets.CDS_RELEASE_BOT_APP_ID }}
           private-key: ${{ secrets.CDS_RELEASE_BOT_PRIVATE_KEY }}
 
-      - uses: googleapis/release-please-action@c2a5a2bd6a758a0937f1ddb1e8950609867ed15c # v4.3.0
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
         id: release
         with:
           token: ${{ steps.sre_app_token.outputs.token }}
@@ -40,7 +40,7 @@ jobs:
     outputs:
       envs: ${{ steps.check-envs.outputs.envs }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
         with:
           fetch-depth: 0
 
@@ -80,7 +80,7 @@ jobs:
     needs: notify-slack-about-deploy
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -134,7 +134,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
 
       - name: Checkout
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Build Docker image
         working-directory: ./backend/
@@ -148,7 +148,7 @@ jobs:
           docker push ${{ vars.ARTIFACT_ECR_REPOSITORY }}:$GITHUB_SHA
 
       - name: Docker generate SBOM
-        uses: cds-snc/security-tools/.github/actions/generate-sbom@34794baf2af592913bb5b51d8df4f8d0acc49b6f # v3.2.0
+        uses: cds-snc/security-tools/.github/actions/generate-sbom@5a93d1deec72d4cb2737cb8418364fedba1c695c # v3.2.1
         env:
           TRIVY_DB_REPOSITORY: ${{ vars.TRIVY_DB_REPOSITORY }}
         with:
@@ -170,7 +170,7 @@ jobs:
       - run: echo "Deploying frontend to ${{ matrix.environment }} environment..."
 
       - name: Checkout repository
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Fetch tags
         run: git fetch --prune --unshallow --tags
@@ -235,7 +235,7 @@ jobs:
       - run: echo "Deploying backend to ${{ matrix.environment }} environment..."
 
       - name: Checkout repository
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Fetch tags
         run: git fetch --prune --unshallow --tags
@@ -313,7 +313,7 @@ jobs:
       - name: Update ECS task image
         if: steps.check-deployment-needed.outputs.deployment_needed == 'true'
         id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@5cb8c74c1b1ecaec4c8ea82eff82c009333509ce # v1.8.0
+        uses: aws-actions/amazon-ecs-render-task-definition@6b89923a897d41e9ad789181d8865b532ecf973c # v1.8.3
         with:
           task-definition: task-definition.json
           container-name: ${{ vars.ECS_SERVICE }}
@@ -321,7 +321,7 @@ jobs:
 
       - name: Deploy updated ECS task
         if: steps.check-deployment-needed.outputs.deployment_needed == 'true'
-        uses: aws-actions/amazon-ecs-deploy-task-definition@1beffbdddb3eb5f83c7a746c3e9bafeccdccbbaa # v2.4.0
+        uses: aws-actions/amazon-ecs-deploy-task-definition@cbf54ec46642b86ff78c2f5793da6746954cf8ff # v2.6.0
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: ${{ vars.ECS_SERVICE }}
