@@ -1,5 +1,5 @@
 import React from "react";
-import { render, waitFor, screen } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 
 import { vi, describe, beforeEach, it, expect } from "vitest";
@@ -77,7 +77,7 @@ describe("RelyingPartyComponent", () => {
       expect(authService.get_my_user_profile).toHaveBeenCalled();
     });
 
-    // Header renders navigation shell
-    expect(screen.getByText("GC Sign in")).toBeTruthy();
+    // Header shell renders even when top-nav menu is disabled
+    expect(document.querySelector("gcds-header")).toBeTruthy();
   });
 });
