@@ -3,7 +3,7 @@ import json
 
 from datetime import datetime
 from fastapi import HTTPException
-from httpx import AsyncClient, HTTPStatusError
+from httpx import AsyncClient, HTTPStatusError, Response
 from pydantic import ValidationError
 from typing import List
 
@@ -190,6 +190,7 @@ async def patch_legacy_pai(
     rp_client_id: str,
     custom_attributes: List[CustomAttribute],
     legacy_pai: str,
+    target_rp_client_ids: List[str] | None = None,
 ):
     try:
 
@@ -207,10 +208,40 @@ async def patch_legacy_pai(
                 LegacyPaiDataSchema(**json.loads(item)) for item in legacy_pai_array
             ]
 
-        data_to_append = LegacyPaiDataSchema(client_id=rp_client_id, pai=legacy_pai)
+        if target_rp_client_ids:
+            # Preserve order while removing duplicates from config.
+            candidate_client_ids = list(dict.fromkeys(target_rp_client_ids))
+        else:
+            candidate_client_ids = [rp_client_id]
 
-        # Append Data
-        legacy_pai_array_parsed.append(data_to_append)
+        existing_by_client_id = {
+            item.client_id: item for item in legacy_pai_array_parsed
+        }
+        did_change = False
+
+        for client_id in candidate_client_ids:
+            existing_value = existing_by_client_id.get(client_id)
+            if existing_value:
+                if existing_value.pai != legacy_pai:
+                    # Defensive fallback for unexpected data inconsistencies.
+                    logger.warning(
+                        "Skipping legacy PAI update for client_id=%s due to conflicting existing PAI",
+                        client_id,
+                    )
+                continue
+
+            data_to_append = LegacyPaiDataSchema(client_id=client_id, pai=legacy_pai)
+            legacy_pai_array_parsed.append(data_to_append)
+            existing_by_client_id[client_id] = data_to_append
+            did_change = True
+
+        # No-op success when all target client_ids already had values or were skipped due to conflicts.
+        if not did_change:
+            logger.info(
+                "patch_legacy_pai no-op: no new client_id values to append for ibm_id=%s",
+                ibm_id,
+            )
+            return Response(status_code=204)
 
         # Stringify
         legacy_pai_array_stringified = [

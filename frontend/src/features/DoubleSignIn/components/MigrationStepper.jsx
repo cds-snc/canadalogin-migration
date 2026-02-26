@@ -3,7 +3,11 @@ import { PAGES } from "../../../utils/constants.jsx";
 import { useParams } from "react-router";
 import { getPageContent } from "../../../utils/functions.jsx";
 
-export function MigrationStepper({ steps, currentStep }) {
+export function MigrationStepper({
+  steps,
+  currentStep,
+  showDescriptions = false,
+}) {
   const { language } = useParams();
 
   const pageContentJson = getPageContent(language, PAGES.MigrationStepper);
@@ -59,7 +63,9 @@ export function MigrationStepper({ steps, currentStep }) {
                 </span>
                 <span className="gc-stepper__title-mobile">{stepNumber}.</span>
               </div>
-              <div className="gc-stepper__desc">{step.description}</div>
+              {showDescriptions && (
+                <div className="gc-stepper__desc">{step.description}</div>
+              )}
             </li>
           );
         })}

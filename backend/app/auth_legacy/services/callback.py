@@ -31,6 +31,14 @@ logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
+def get_target_rp_client_ids(
+    rp_client_id: str, dependent_client_ids: list[str]
+) -> list[str]:
+    """Return ordered unique RP client IDs for linking writes."""
+    # Keep the primary RP first, then configured direct dependents.
+    return list(dict.fromkeys([rp_client_id, *dependent_client_ids]))
+
+
 async def legacy_callback(
     request: Request,
     user_access_token: str,
@@ -89,8 +97,17 @@ async def legacy_callback(
         )
 
         # LEGACY_PAI LOGIC + PATCH
+        target_rp_client_ids = get_target_rp_client_ids(
+            rp_client_id,
+            rp.dependent_client_ids,
+        )
         patch_legacy_pai_response = await patch_legacy_pai(
-            global_http_client, ibm_id, rp_client_id, custom_attributes, legacy_pai
+            global_http_client,
+            ibm_id,
+            rp_client_id,
+            custom_attributes,
+            legacy_pai,
+            target_rp_client_ids=target_rp_client_ids,
         )
 
         if patch_legacy_pai_response.status_code != 204:

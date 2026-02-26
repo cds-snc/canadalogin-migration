@@ -9,6 +9,7 @@ from authlib.integrations.starlette_client import OAuthError
 from app.auth_legacy.services.login import legacy_login, SIC_legacy_login_auth
 from app.auth_legacy.services.skip import skip_account_linking
 from app.auth_legacy.services.callback import (
+    get_target_rp_client_ids,
     legacy_callback,
     legacy_post_logout_callback,
 )
@@ -23,6 +24,11 @@ def build_request():
     request.app.state = MagicMock()
     request.app.state.request_client = AsyncMock()
     return request
+
+
+def test_get_target_rp_client_ids_dedupes_and_preserves_order():
+    result = get_target_rp_client_ids("rp-a", ["rp-b", "rp-c", "rp-a", "rp-b"])
+    assert result == ["rp-a", "rp-b", "rp-c"]
 
 
 @pytest.mark.asyncio
@@ -62,7 +68,9 @@ async def test_sic_legacy_login_auth_missing_redirect_uris_raises():
         client_secret="secret",
         scope="openid",
     )
-    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
 
     with (
         patch(
@@ -141,7 +149,11 @@ async def test_legacy_callback_raises_on_patch_failure():
     }
 
     legacy_idp = SimpleNamespace(client_name="SIC")
-    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp],
+        rp_client_name="rpname",
+        dependent_client_ids=["rp-456", "rp-456", "rp-789"],
+    )
 
     request.session["rpname_SIC_code_verifier"] = "verifier"
     request.session["rpname_SIC_nonce"] = "nonce"
@@ -170,11 +182,18 @@ async def test_legacy_callback_raises_on_patch_failure():
         patch(
             "app.auth_legacy.services.callback.patch_legacy_pai",
             new=AsyncMock(return_value=failing_response),
-        ),
+        ) as mock_patch_legacy_pai,
     ):
         with pytest.raises(HTTPException) as raised:
             await legacy_callback(request, "user-at", "user-token", "rp-123")
         assert raised.value.status_code == 400
+        mock_patch_legacy_pai.assert_awaited_once()
+        called_kwargs = mock_patch_legacy_pai.await_args.kwargs
+        assert called_kwargs["target_rp_client_ids"] == [
+            "rp-123",
+            "rp-456",
+            "rp-789",
+        ]
 
 
 @pytest.mark.asyncio
@@ -188,7 +207,9 @@ async def test_legacy_callback_patches_audit_with_linked_status():
     }
 
     legacy_idp = SimpleNamespace(client_name="SIC")
-    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
 
     request.session["rpname_SIC_code_verifier"] = "verifier"
     request.session["rpname_SIC_nonce"] = "nonce"
@@ -249,7 +270,9 @@ async def test_legacy_callback_uses_session_rp_client_id():
     }
 
     legacy_idp = SimpleNamespace(client_name="SIC")
-    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
 
     request.session["rpname_SIC_code_verifier"] = "verifier"
     request.session["rpname_SIC_nonce"] = "nonce"
@@ -310,7 +333,9 @@ async def test_legacy_callback_handles_oauth_error():
     client.authorize_access_token = AsyncMock(side_effect=OAuthError("bad"))
 
     legacy_idp = SimpleNamespace(client_name="SIC")
-    rp = SimpleNamespace(IDP=[legacy_idp], rp_client_name="rpname")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
 
     request.session["rpname_SIC_code_verifier"] = "verifier"
 
