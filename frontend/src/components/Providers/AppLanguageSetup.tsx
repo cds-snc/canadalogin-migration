@@ -33,7 +33,11 @@ export const AppLanguageSetup = () => {
 
     const urlPath = pathname.split("/").filter(Boolean);
     const urlLanguage = urlPath[0]?.toLowerCase();
-    const normalizedUrlLanguage = validateSelectedLanguage(urlLanguage);
+    const normalizedUrlLanguage = Object.values(AVAILABLE_LANGUAGES).includes(
+      urlLanguage,
+    )
+      ? urlLanguage
+      : undefined;
 
     const profilePreferredLanguage =
       userProfile?.preferredLanguage?.toLowerCase();
