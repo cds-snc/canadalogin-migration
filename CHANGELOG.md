@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.3](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.9.2...v1.9.3) (2026-02-26)
+
+
+### Bug Fixes
+
+* **frontend:** Fix None in the path for Link Prompt Page ([#136](https://github.com/cds-snc/gc-sign-in-migration/issues/136)) ([bdbb251](https://github.com/cds-snc/gc-sign-in-migration/commit/bdbb2514aaaee982b3cd0134379f5238164f0207))
+* **language:** Feature/possible language toggle fix ([#138](https://github.com/cds-snc/gc-sign-in-migration/issues/138)) ([453ce61](https://github.com/cds-snc/gc-sign-in-migration/commit/453ce61cecc53d4be61f34af0a32507e2c49d7e2))
+
 ## [1.9.2](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.9.1...v1.9.2) (2026-02-25)
 
 
