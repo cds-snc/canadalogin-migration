@@ -248,15 +248,6 @@ body,
   gap: 9px;
 }
 
-.gcds-top-nav-mobile-label {
-  display: block;
-  width: 90%;
-  margin: 0 auto;
-  padding: var(--gcds-spacing-100) 0;
-  font: var(--gcds-nav-link-top-nav-home-font);
-  color: var(--gcds-color-grayscale-1000);
-}
-
 @media screen and (max-width: 767px) {
   .gcds-email-fieldset {
     font-size: 18px;

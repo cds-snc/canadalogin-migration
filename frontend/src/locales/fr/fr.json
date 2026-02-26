@@ -306,7 +306,7 @@
     "8": "Sign out"
   },
   "TopNavBar": {
-    "1": "CanadaLogin",
+    "1": "CanadaConnexion",
     "2": "Menu",
     "3": "Compte Connexion GC",
     "4": "Renseignements personnels",
@@ -472,7 +472,7 @@
     "title": "Connectez-vous avec votre ancienne méthode",
     "subtitle": "Première visite sur le compte {RP_Name}?",
     "text_1": "Complété : Utiliser la nouvelle méthode de connexion",
-    "text_2": "Pour conserver les données de votre compte {RP_Name}, vous devrez utiliser votre ancienne méthode de connexion une dernière fois sur ce service. Cela mettra à jour votre méthode de connexion vers CanadaLogin pour ce compte.",
+    "text_2": "Pour conserver les données de votre compte {RP_Name}, vous devrez utiliser votre ancienne méthode de connexion une dernière fois sur ce service. Cela mettra à jour votre méthode de connexion vers CanadaConnexion pour ce compte.",
     "text_3": "Utilisez la méthode de connexion que vous avez utilisée la dernière fois que vous vous êtes connecté à ce service.",
     "text_4": "Si vous ne vous êtes pas connecté à ce service avec Interac ou CléGC auparavant, vous pouvez ignorer cette étape.",
     "link_1": "Comment mettre à jour sa méthode de connexion",
@@ -489,10 +489,10 @@
   },
   "LinkSuccess": {
     "title": "Votre méthode de connexion a été mise à jour",
-    "text_1": "Vous pouvez maintenant utiliser CanadaLogin pour accéder à votre compte {RP_Name}.",
+    "text_1": "Vous pouvez maintenant utiliser CanadaConnexion pour accéder à votre compte {RP_Name}.",
     "text_2": "Si vous utilisez CléGC ou Interac sur d'autres services :",
-    "list_text_1": "vous devriez recevoir un courriel lorsque le service commencera à utiliser CanadaLogin",
-    "list_text_2": "vous devrez mettre à jour votre méthode de connexion de CléGC ou Interac vers CanadaLogin sur chaque service",
+    "list_text_1": "vous devriez recevoir un courriel lorsque le service commencera à utiliser CanadaConnexion",
+    "list_text_2": "vous devrez mettre à jour votre méthode de connexion de CléGC ou Interac vers CanadaConnexion sur chaque service",
     "btn_1": "Accéder à votre compte"
   },
   "MigrationStepper": {
@@ -501,7 +501,7 @@
     "sr_completed_prefix": "Étape complétée : ",
     "sr_step_prefix": "Étape ",
     "step_title": "Étape {n}",
-    "step_1": "Créer un CanadaLogin ou se connecter",
+    "step_1": "Créer un CanadaConnexion ou se connecter",
     "step_2": "Lier votre ancienne méthode de connexion",
     "step_3": "Accéder à votre compte existant"
   }

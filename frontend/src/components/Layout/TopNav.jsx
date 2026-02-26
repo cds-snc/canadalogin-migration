@@ -1,4 +1,9 @@
-import { GcdsNavLink, GcdsTopNav } from "@cdssnc/gcds-components-react";
+import {
+  GcdsContainer,
+  GcdsNavLink,
+  GcdsText,
+  GcdsTopNav,
+} from "@cdssnc/gcds-components-react";
 import { getPageContent } from "../../utils/functions.jsx";
 import { useBreakpoints } from "../../hooks/useBreakpoints.ts";
 
@@ -9,9 +14,11 @@ export default function TopNav({ currentLang }) {
 
   if (mobile || tablet) {
     return (
-      <div slot="menu" className="gcds-top-nav-mobile-label">
-        {pageContentJson["1"]}
-      </div>
+      <GcdsContainer slot="menu" mainContainer padding="100 0">
+        <GcdsText size="small" marginBottom="0">
+          {pageContentJson["1"]}
+        </GcdsText>
+      </GcdsContainer>
     );
   }
 
