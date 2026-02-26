@@ -54,9 +54,7 @@ def build_openapi_document() -> dict:
 
 
 def parse_args() -> argparse.Namespace:
-    default_output = (
-        Path(__file__).resolve().parents[1] / "openapi" / "openapi.json"
-    )
+    default_output = Path(__file__).resolve().parents[1] / "openapi" / "openapi.json"
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
