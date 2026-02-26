@@ -31,7 +31,9 @@ logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
-def get_target_rp_client_ids(rp_client_id: str, dependent_client_ids: list[str]) -> list[str]:
+def get_target_rp_client_ids(
+    rp_client_id: str, dependent_client_ids: list[str]
+) -> list[str]:
     """Return ordered unique RP client IDs for linking writes."""
     # Keep the primary RP first, then configured direct dependents.
     return list(dict.fromkeys([rp_client_id, *dependent_client_ids]))
