@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.10.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.0...v1.10.1) (2026-02-26)
+
+
+### Bug Fixes
+
+* **deps:** added support for multiple RP legacy PAIs ([#130](https://github.com/cds-snc/gc-sign-in-migration/issues/130)) ([2481197](https://github.com/cds-snc/gc-sign-in-migration/commit/2481197fb39e7db88f31fa87ed705ee10aa7023a))
+* **lang:** removed some old code from manage profile and language and… ([#145](https://github.com/cds-snc/gc-sign-in-migration/issues/145)) ([71b2b64](https://github.com/cds-snc/gc-sign-in-migration/commit/71b2b6483cc3cdcac524c9a73aa509a4df9172b2))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all minor dependencies ([#126](https://github.com/cds-snc/gc-sign-in-migration/issues/126)) ([a7476a6](https://github.com/cds-snc/gc-sign-in-migration/commit/a7476a6c3bacd44194081c03ed8f5ce9b59d319d))
+* **deps:** update all patch dependencies ([#125](https://github.com/cds-snc/gc-sign-in-migration/issues/125)) ([37db118](https://github.com/cds-snc/gc-sign-in-migration/commit/37db118ff6a3523f921b35b65503e16581350fed))
+
 ## [1.10.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.9.3...v1.10.0) (2026-02-26)
 
 
