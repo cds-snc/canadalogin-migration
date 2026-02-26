@@ -4,6 +4,7 @@ import {
   useReducer,
   ReactNode,
   Dispatch,
+  useCallback,
 } from "react";
 import { CONTEXT_ACTIONS } from "../../utils/constants.jsx";
 
@@ -49,9 +50,9 @@ export const LanguageProvider = ({
 }: LanguageProviderProps) => {
   const [state, dispatch] = useReducer(languageReducer, initial);
 
-  const setAppLanguage = (selectedLanguage) => {
+  const setAppLanguage = useCallback((selectedLanguage: string) => {
     dispatch({ type: CONTEXT_ACTIONS.set_language, payload: selectedLanguage });
-  };
+  }, [dispatch]);
 
   return (
     <LanguageContext.Provider value={{ state, dispatch, setAppLanguage }}>

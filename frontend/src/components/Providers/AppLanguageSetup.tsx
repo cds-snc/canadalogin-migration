@@ -29,6 +29,17 @@ export const AppLanguageSetup = () => {
   const browserLanguage = navigator.language;
 
   useEffect(() => {
+    const urlPath = pathname.split("/").filter(Boolean);
+    const urlLanguage = urlPath[0]?.toLowerCase();
+    const normalizedUrlLanguage = validateSelectedLanguage(urlLanguage);
+
+    // Keep app language in sync with URL immediately, even while profile is loading.
+    if (normalizedUrlLanguage && normalizedUrlLanguage !== language) {
+      setAppLanguage(normalizedUrlLanguage);
+    }
+  }, [pathname, language, setAppLanguage]);
+
+  useEffect(() => {
     if (isLoading) return;
 
     const urlPath = pathname.split("/").filter(Boolean);
@@ -60,7 +71,15 @@ export const AppLanguageSetup = () => {
         navigateHelper(languageToDisplay, true);
       }
     }
-  }, [pathname, isLoading, userProfile?.preferredLanguage, language]);
+  }, [
+    pathname,
+    isLoading,
+    userProfile?.preferredLanguage,
+    language,
+    browserLanguage,
+    navigateHelper,
+    setAppLanguage,
+  ]);
 
   return null;
 };

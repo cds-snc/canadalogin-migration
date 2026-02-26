@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Outlet, useLocation } from "react-router";
+import { Outlet, useLocation, useParams } from "react-router";
 import { useLanguage } from "../Providers/LanguageProvider";
 import { getLangValues } from "../../utils/functions";
 import { trackPage } from "../../utils/gatag.jsx";
@@ -10,9 +10,13 @@ import { GcdsContainer } from "@cdssnc/gcds-components-react";
 
 export default function RootLayout() {
   const { pathname } = useLocation();
+  const { language: urlLanguage } = useParams();
   const { state: languageState } = useLanguage();
   const { language } = languageState;
-  const { langHref } = getLangValues(language, pathname);
+  const normalizedUrlLanguage =
+    urlLanguage === "en" || urlLanguage === "fr" ? urlLanguage : undefined;
+  const effectiveLanguage = normalizedUrlLanguage || language;
+  const { langHref, currentLang } = getLangValues(effectiveLanguage, pathname);
 
   useEffect(() => {
     trackPage(pathname);
@@ -20,14 +24,14 @@ export default function RootLayout() {
 
   return (
     <div className="mainBody">
-      <Header langHref={langHref} currentLang={language} />
+      <Header langHref={langHref} currentLang={currentLang} />
       <GcdsContainer className="gcds-page">
         <GcdsContainer size="sm" className="gcds-content">
           <Outlet />
         </GcdsContainer>
       </GcdsContainer>
 
-      <Footer currentLang={language} />
+      <Footer currentLang={currentLang} />
     </div>
   );
 }
