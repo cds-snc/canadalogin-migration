@@ -20,6 +20,26 @@ REQUIRED_ENV_DEFAULTS = {
 }
 
 
+def normalize_openapi(document: dict) -> dict:
+    """Normalize known FastAPI/Pydantic schema drift across environments."""
+    schemas = document.get("components", {}).get("schemas", {})
+    validation_error = schemas.get("ValidationError")
+    if not isinstance(validation_error, dict):
+        return document
+
+    properties = validation_error.get("properties")
+    if isinstance(properties, dict):
+        properties.pop("ctx", None)
+        properties.pop("input", None)
+
+    required = validation_error.get("required")
+    if isinstance(required, list):
+        validation_error["required"] = [
+            field for field in required if field not in {"ctx", "input"}
+        ]
+    return document
+
+
 def build_openapi_document() -> dict:
     backend_dir = Path(__file__).resolve().parents[1]
     if str(backend_dir) not in sys.path:
@@ -30,7 +50,7 @@ def build_openapi_document() -> dict:
 
     from app.main import app  # pylint: disable=import-outside-toplevel
 
-    return app.openapi()
+    return normalize_openapi(app.openapi())
 
 
 def parse_args() -> argparse.Namespace:
