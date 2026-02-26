@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import os
 import sys
@@ -63,6 +64,18 @@ def main() -> int:
         existing = output_path.read_text(encoding="utf-8")
         if existing != content:
             print("OpenAPI spec is out of date. Run `make generate-openapi`.")
+            diff_lines = difflib.unified_diff(
+                existing.splitlines(),
+                content.splitlines(),
+                fromfile=str(output_path),
+                tofile="generated-openapi.json",
+                lineterm="",
+            )
+            for idx, line in enumerate(diff_lines):
+                if idx >= 200:
+                    print("... diff truncated ...")
+                    break
+                print(line)
             return 1
         print(f"OpenAPI spec is up to date: {output_path}")
         return 0
