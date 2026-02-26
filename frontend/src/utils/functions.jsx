@@ -2,37 +2,54 @@ import engJson from "../locales/en/en.json";
 import frJson from "../locales/fr/fr.json";
 import { AVAILABLE_LANGUAGES, FOOTERS, PROFILE_LANGUAGES } from "./constants";
 
-function getLangHref(currentLang, pathname) {
-  let newPathname = pathname.slice(1 + currentLang.length);
+function normalizeLanguage(language) {
+  if (!language || typeof language !== "string") return undefined;
 
-  if (newPathname.length > 0) newPathname = "/" + newPathname;
+  const normalizedLanguage = language.includes("-")
+    ? language.split("-")[0].toLowerCase()
+    : language.toLowerCase();
 
-  if (currentLang === AVAILABLE_LANGUAGES.fr)
-    return "/" + AVAILABLE_LANGUAGES.en + newPathname.replaceAll("//", "/");
+  if (
+    normalizedLanguage === AVAILABLE_LANGUAGES.en ||
+    normalizedLanguage === AVAILABLE_LANGUAGES.fr
+  ) {
+    return normalizedLanguage;
+  }
 
-  return "/" + AVAILABLE_LANGUAGES.fr + newPathname.replaceAll("//", "/");
+  return undefined;
 }
 
 export function getLanguage(language) {
-  const browserLanguage = navigator.languages[1];
+  const normalizedInputLanguage = normalizeLanguage(language);
+  if (normalizedInputLanguage) return normalizedInputLanguage;
 
-  if (
-    language === AVAILABLE_LANGUAGES.fr ||
-    language === AVAILABLE_LANGUAGES.en
-  )
-    return language;
-  else if (
-    browserLanguage === AVAILABLE_LANGUAGES.fr ||
-    language === AVAILABLE_LANGUAGES.en
-  )
-    return browserLanguage;
+  const browserLanguage =
+    navigator.languages && navigator.languages.length > 0
+      ? navigator.languages[0]
+      : navigator.language;
 
-  return AVAILABLE_LANGUAGES.en;
+  return normalizeLanguage(browserLanguage) || AVAILABLE_LANGUAGES.en;
 }
 
 export function getLangValues(language, pathname) {
-  const currentLang = getLanguage(language);
-  const langHref = getLangHref(currentLang, pathname);
+  const pathnameParts = (pathname || "").split("/").filter(Boolean);
+  const pathLanguage = normalizeLanguage(pathnameParts[0]);
+  const stateLanguage = normalizeLanguage(language);
+  const currentLang =
+    pathLanguage ||
+    stateLanguage ||
+    (pathnameParts.length === 0
+      ? getLanguage(undefined)
+      : AVAILABLE_LANGUAGES.en);
+  const toggleLanguage =
+    currentLang === AVAILABLE_LANGUAGES.fr
+      ? AVAILABLE_LANGUAGES.en
+      : AVAILABLE_LANGUAGES.fr;
+
+  if (pathLanguage) pathnameParts[0] = toggleLanguage;
+  else pathnameParts.unshift(toggleLanguage);
+
+  const langHref = `/${pathnameParts.join("/")}`;
 
   return { langHref, currentLang };
 }

@@ -21,7 +21,7 @@ export const AppLanguageSetup = () => {
   const { pathname } = useLocation();
   const { state } = useUser();
   const { state: languageState, setAppLanguage } = useLanguage();
-  const { userProfile, isLoading } = state;
+  const { isLoading } = state;
   const { language } = languageState;
 
   const navigateHelper = useNavigateHelper();
@@ -44,20 +44,14 @@ export const AppLanguageSetup = () => {
 
     const urlPath = pathname.split("/").filter(Boolean);
     const urlLanguage = urlPath[0]?.toLowerCase();
-    const normalizedUrlLanguage = Object.values(AVAILABLE_LANGUAGES).includes(
-      urlLanguage,
-    )
-      ? urlLanguage
-      : undefined;
-
-    const profilePreferredLanguage =
-      userProfile?.preferredLanguage?.toLowerCase();
+    const normalizedUrlLanguage = validateSelectedLanguage(urlLanguage);
+    const shouldUseBrowserLanguage =
+      !normalizedUrlLanguage && !language && urlPath.length === 0;
 
     const possibleLanguages =
       normalizedUrlLanguage ||
       language ||
-      profilePreferredLanguage ||
-      browserLanguage ||
+      (shouldUseBrowserLanguage ? browserLanguage : undefined) ||
       AVAILABLE_LANGUAGES.en;
 
     const languageToDisplay = validateSelectedLanguage(possibleLanguages);
@@ -67,18 +61,21 @@ export const AppLanguageSetup = () => {
     }
 
     if (languageToDisplay !== normalizedUrlLanguage) {
-      if (urlPath.length > 1) {
-        urlPath[0] = languageToDisplay;
-        const newPath = urlPath.join("/");
-        navigateHelper(newPath, true);
-      } else {
-        navigateHelper(languageToDisplay, true);
-      }
+      const nextPathParts = [...urlPath];
+
+      if (normalizedUrlLanguage) nextPathParts[0] = languageToDisplay;
+      else if (nextPathParts.length > 0)
+        nextPathParts.unshift(languageToDisplay);
+
+      const newPath =
+        nextPathParts.length > 0
+          ? `/${nextPathParts.join("/")}`
+          : `/${languageToDisplay}`;
+      navigateHelper(newPath, true);
     }
   }, [
     pathname,
     isLoading,
-    userProfile?.preferredLanguage,
     language,
     browserLanguage,
     navigateHelper,

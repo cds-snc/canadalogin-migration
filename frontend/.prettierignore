@@ -1,5 +1,6 @@
 # Ignore artifacts:
 node_modules
+dist/
 old_custom_implementation
 public/mockServiceWorker.js
 coverage/
