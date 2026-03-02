@@ -72,7 +72,10 @@ export default function LegacyLanguageSync() {
           resolvedLanguage = detectedLanguage;
         }
       } catch (error) {
-        console.warn("Legacy language sync failed; using fallback language.", error);
+        console.warn(
+          "Legacy language sync failed; using fallback language.",
+          error,
+        );
       } finally {
         window.clearTimeout(timeoutId);
         if (isActive) {

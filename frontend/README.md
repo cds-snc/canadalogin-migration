@@ -35,6 +35,7 @@ VITE_LEGACY_LANGUAGE_TIMEOUT_MS=1500
 ```
 
 Notes:
+
 - The language sync call is browser-side and uses `credentials: include`.
 - If the external language API fails, the app falls back to the language in the callback URL (`/en` or `/fr`).
 
