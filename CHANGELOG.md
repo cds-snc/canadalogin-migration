@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.10.2](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.1...v1.10.2) (2026-03-02)
+
+
+### Bug Fixes
+
+* **lang:** make the language selector happen sooner in pipeline ([#149](https://github.com/cds-snc/gc-sign-in-migration/issues/149)) ([b79da28](https://github.com/cds-snc/gc-sign-in-migration/commit/b79da28ef230538e4c6992c863fef0ecd77b363f))
+* **security:** removed old files not needed includes fornt and backen… ([#150](https://github.com/cds-snc/gc-sign-in-migration/issues/150)) ([aa91da6](https://github.com/cds-snc/gc-sign-in-migration/commit/aa91da662bf43a358b79a8e002b14b880dc4378e))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major github action dependencies ([adac68b](https://github.com/cds-snc/gc-sign-in-migration/commit/adac68b6ad8560063e758df7d65c9d27ad46c138))
+* **deps:** update all non-major github action dependencies ([b97c5b4](https://github.com/cds-snc/gc-sign-in-migration/commit/b97c5b4ad4707ca4dc61d8326bddd2f07c9d4d74))
+* **deps:** update dependency fastapi to v0.129.2 ([#155](https://github.com/cds-snc/gc-sign-in-migration/issues/155)) ([4d11c7a](https://github.com/cds-snc/gc-sign-in-migration/commit/4d11c7a1fbba56e2d608574383585e9e96f29fdc))
+* **deps:** update dependency fastapi to v0.131.0 ([#156](https://github.com/cds-snc/gc-sign-in-migration/issues/156)) ([555dd8e](https://github.com/cds-snc/gc-sign-in-migration/commit/555dd8e1d0dac3e6b9b64eaf8111c98f6e0a57c5))
+* **deps:** update github/codeql-action action to v3.32.4 ([#154](https://github.com/cds-snc/gc-sign-in-migration/issues/154)) ([1c515b3](https://github.com/cds-snc/gc-sign-in-migration/commit/1c515b3164bddb91665dc4cd085934bb9e93c3a3))
+
 ## [1.10.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.0...v1.10.1) (2026-02-26)
 
 
