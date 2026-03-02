@@ -1,0 +1,26 @@
+[
+  {
+    "rp_client_id": "your-rp-client-id",
+    "rp_client_name": "Example RP",
+    "rp_client_name_en": "Example RP",
+    "rp_client_name_fr": "Exemple RP",
+    "rp_redirect_uri": "http://localhost:8080/auth/callback/client1",
+    "dependentClientIds": [],
+    "acr_values": "",
+    "IDP": [
+      {
+        "client_id": "your-legacy-idp-client-id",
+        "client_name": "SIC",
+        "client_secret": "your-legacy-idp-client-secret",
+        "openid_configuration": "https://te-auth.id.tbs-sct.gc.ca/oxauth/.well-known/openid-configuration",
+        "redirect_uris": [
+          "http://localhost:8000/v1/auth/legacy/callback"
+        ],
+        "scope": "openid profile email",
+        "max_age": 3600,
+        "code_challenge_method": "S256",
+        "token_endpoint_auth_method": "client_secret_basic"
+      }
+    ]
+  }
+]

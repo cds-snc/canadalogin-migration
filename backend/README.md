@@ -64,6 +64,32 @@ RP_MIGRATION_CONFIG=[{"rp_client_id":"your-rp-client-id","rp_client_name":"Examp
 - `"MFA"`: force MFA prompt
 - `"gckey,MFA"`: GCKey only + force MFA prompt
 
+A formatted sample file is available at `backend/docs/rp_migration_config.sample.json`.
+
+To convert a formatted JSON file into a one-line env var value:
+
+```bash
+python3 backend/scripts/rp_migration_config_to_env.py
+```
+
+This prints:
+
+```bash
+RP_MIGRATION_CONFIG='[...]'
+```
+
+Useful options:
+
+```bash
+# Output raw compact JSON only (no RP_MIGRATION_CONFIG= prefix)
+python3 backend/scripts/rp_migration_config_to_env.py --format value
+
+# Use a custom input file and write to output file
+python3 backend/scripts/rp_migration_config_to_env.py \
+  --input /path/to/rp_migration_config.json \
+  --output /tmp/rp_migration_config.env
+```
+
 #### IBM_VERIFY_MIGRATION_CLIENT_ID and IBM_VERIFY_MIGRATION_SECRET
 
 Head to https://cds-gcsignin-dev.verify.ibm.com/ui/admin/application/9053160440215070489?tab=sso, open the "Sign-on" tab, and copy the Client ID and Client secret.
