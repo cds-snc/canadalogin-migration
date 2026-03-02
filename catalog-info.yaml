@@ -39,5 +39,5 @@ spec:
   lifecycle: experimental
   owner: group:cds-snc/digital-credentials-gc-sign-in
   definition:
-    $text: https://api.gc-signin.cdssandbox.xyz/openapi.json
+    $text: ./backend/openapi/openapi.json
   system: gc-signin-solution

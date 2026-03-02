@@ -92,6 +92,21 @@ async def test_auth_keep_alive_calls_service():
 
 
 @pytest.mark.asyncio
+async def test_auth_me_calls_service():
+    request = MagicMock()
+    request.app.state.request_client = MagicMock()
+    with patch(
+        "app.auth.v1_router.get_my_profile",
+        new=AsyncMock(return_value={"ok": True}),
+    ) as mocked:
+        result = await auth_router.get_current_user_profile(
+            request, user_access_token="token"
+        )
+        assert result == {"ok": True}
+        mocked.assert_awaited_once_with(request.app.state.request_client, "token")
+
+
+@pytest.mark.asyncio
 async def test_legacy_login_normalizes_lang_and_calls_service():
     request = MagicMock()
     request.session = {

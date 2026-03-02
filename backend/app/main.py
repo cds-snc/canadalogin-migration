@@ -19,7 +19,6 @@ from app.auth.services.auth import redirect_user_to_idp_verify
 from app.constants.redis_keys import RedisKeys
 
 from .routers import health
-from app.users import v1_router as v1_users_router
 from app.auth import v1_router as v1_auth_router
 from app.auth.services import oidc_config
 from app.auth_legacy import v1_router as v1_auth_legacy_router
@@ -156,12 +155,6 @@ app.add_middleware(
 
 
 app.include_router(health.router)
-
-app.include_router(
-    v1_users_router.router,
-    prefix=f"{configuration.V1_API_VERSION}/users",
-    tags=["Users"],
-)
 
 app.include_router(
     v1_auth_router.router,

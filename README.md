@@ -22,6 +22,16 @@ git clone https://github.com/cds-snc/gc-sign-in-migration.git
 #### 2. Run frontend
 - See the [frontend README](frontend/README.md)
 
+### OpenAPI Spec
+
+Generate and update the checked-in backend OpenAPI spec:
+
+```bash
+make generate-openapi
+```
+
+This writes `backend/openapi/openapi.json`.
+
 ### Additional Documentation
 - [IBM Verify Documentation](https://docs.verify.ibm.com/verify/reference/overview)
 
@@ -32,4 +42,3 @@ git clone https://github.com/cds-snc/gc-sign-in-migration.git
 
 ### AWS Deployment
 See [AWS Architecture](docs/architecture/gc-signin-pilot-architecture.png) for infrastructure details and visit the [gc-signin-terraform repo](https://github.com/cds-snc/gc-signin-terraform).
-

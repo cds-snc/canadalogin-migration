@@ -266,7 +266,7 @@ function buildMswMapping(mswArray: Array<MSW>) {
     }),
 
     // Mock the user profile endpoint that UserProvider calls
-    http.get(`${config.apiUrl}/v1/users/profile`, async () => {
+    http.get(`${config.apiUrl}/v1/auth/me`, async () => {
       return HttpResponse.json({
         id: "test-user-123",
         active: true,
