@@ -147,6 +147,18 @@ jobs:
         run: |
           docker push ${{ vars.ARTIFACT_ECR_REPOSITORY }}:$GITHUB_SHA
 
+      # Workaround for Trivy March 2026 release disruption:
+      # pre-install a published Trivy binary so generate-sbom
+      # can use it instead of failing on an unavailable older version.
+      - name: Install Trivy
+        run: |
+          TRIVY_VERSION="0.69.2"
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL -o trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          tar -xzf trivy.tar.gz trivy
+          install -m 0755 trivy "$HOME/.local/bin/trivy"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Docker generate SBOM
         uses: cds-snc/security-tools/.github/actions/generate-sbom@5a93d1deec72d4cb2737cb8418364fedba1c695c # v3.2.1
         env:
