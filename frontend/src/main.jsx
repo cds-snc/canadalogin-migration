@@ -17,7 +17,7 @@ ReactGA.initialize(config.gatag, {
 try {
   createRoot(document.getElementById("root")).render(
     <StrictMode>
-      <Suspense fallback="Loading...">
+      <Suspense fallback={null}>
         <RouterProvider router={router} />
       </Suspense>
     </StrictMode>,

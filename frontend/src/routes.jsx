@@ -9,6 +9,7 @@ import { UserProvider } from "./components/Providers/UserProvider";
 import SkipLink from "./features/DoubleSignIn/components/SkipLink.jsx";
 import LinkPrompt from "./features/DoubleSignIn/components/LinkPrompt.jsx";
 import LinkSuccess from "./features/DoubleSignIn/components/LinkSuccess.jsx";
+import LegacyLanguageSync from "./features/DoubleSignIn/components/LegacyLanguageSync.jsx";
 import { PAGES } from "./utils/constants.jsx";
 
 export const appRoutes = [
@@ -22,6 +23,10 @@ export const appRoutes = [
       </UserProvider>
     ),
     children: [
+      {
+        path: "/:language/link/lang-sync",
+        element: <LegacyLanguageSync />,
+      },
       {
         element: <RootLayout />,
         children: [

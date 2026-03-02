@@ -464,4 +464,25 @@ async def test_legacy_post_logout_callback_builds_redirect():
     ):
         response = await legacy_post_logout_callback(request)
     assert isinstance(response, RedirectResponse)
-    assert response.headers["location"].endswith("/en/link/success")
+    assert response.headers["location"].endswith("/en/link/lang-sync")
+
+
+@pytest.mark.asyncio
+async def test_legacy_post_logout_callback_defaults_to_en_when_lang_missing():
+    request = build_request()
+
+    response = await legacy_post_logout_callback(request)
+
+    assert isinstance(response, RedirectResponse)
+    assert response.headers["location"].endswith("/en/link/lang-sync")
+
+
+@pytest.mark.asyncio
+async def test_legacy_post_logout_callback_defaults_to_en_when_lang_unsupported():
+    request = build_request()
+    request.session[SessionKeys.CURRENT_LANGUAGE.value] = "es"
+
+    response = await legacy_post_logout_callback(request)
+
+    assert isinstance(response, RedirectResponse)
+    assert response.headers["location"].endswith("/en/link/lang-sync")

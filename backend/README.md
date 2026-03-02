@@ -58,6 +58,10 @@ RP_MIGRATION_CONFIG=[{"rp_client_id":"your-rp-client-id","rp_client_name":"Examp
 
 `LEGACY_IDP_LOGOUT_ENABLED` defaults to `false`. Set to `true` to enable legacy IdP (SIC) logout redirect.
 
+When legacy logout is enabled, the migration flow now redirects users to `/{lang}/link/lang-sync` before `/{lang}/link/success`.
+That sync step is handled in the frontend and calls `https://lang-canada.fjgc-gccf.gc.ca/v1/lang` from the browser with credentials.
+If the language API is unavailable or blocked (CORS/cookie policy/network), the app falls back to the language stored in backend session (`en` by default).
+
 `RP_MIGRATION_CONFIG` supports per-RP `acr_values`:
 - `""` (blank): no forced MFA; legacy provider choice unchanged (e.g., GCKey + Interac)
 - `"gckey"`: GCKey only
