@@ -6,7 +6,7 @@ import { getPageContent } from "../../../utils/functions.jsx";
 export function MigrationStepper({
   steps,
   currentStep,
-  showDescriptions = false,
+  showDescriptions = true,
 }) {
   const { language } = useParams();
 
