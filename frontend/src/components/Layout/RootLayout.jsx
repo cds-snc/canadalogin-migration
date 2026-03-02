@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { Outlet, useLocation, useParams } from "react-router";
 import { useLanguage } from "../Providers/LanguageProvider";
 import { getLangValues } from "../../utils/functions";
@@ -17,6 +17,10 @@ export default function RootLayout() {
     urlLanguage === "en" || urlLanguage === "fr" ? urlLanguage : undefined;
   const effectiveLanguage = normalizedUrlLanguage || language;
   const { langHref, currentLang } = getLangValues(effectiveLanguage, pathname);
+
+  useLayoutEffect(() => {
+    document.documentElement.lang = currentLang;
+  }, [currentLang]);
 
   useEffect(() => {
     trackPage(pathname);
