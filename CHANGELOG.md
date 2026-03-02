@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.3](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.2...v1.10.3) (2026-03-02)
+
+
+### Bug Fixes
+
+* **language:** supports the language cookie from SIC and GCCF (and in… ([#160](https://github.com/cds-snc/gc-sign-in-migration/issues/160)) ([529fb4d](https://github.com/cds-snc/gc-sign-in-migration/commit/529fb4d191b117de156d4c7472b324d49e711383))
+
 ## [1.10.2](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.1...v1.10.2) (2026-03-02)
 
 
