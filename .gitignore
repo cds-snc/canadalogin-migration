@@ -23,9 +23,6 @@ backend/.coverage
 .coverage
 coverage.xml
 
-#Storybook Build
-frontend/storybook-static/
-
 #Test Coverage
 frontend/coverage/*
 # Keep coverage folder for CI/CD workflows - otherwise the directory doesn't exist when CI/CD is running

@@ -31,13 +31,6 @@ This is the frontend application built with React and GC Design System for the G
    npm run test
    ```
 
-See package.json scripts for additional commands.
-
-4. Run Storybook:
-   ```bash
-   npm run storybook
-   ```
-
 ### Running Vitest
 
 To execute a specific unit test file, specify your file path:
