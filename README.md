@@ -22,6 +22,11 @@ git clone https://github.com/cds-snc/gc-sign-in-migration.git
 #### 2. Run frontend
 - See the [frontend README](frontend/README.md)
 
+### Legacy Language Sync
+- After legacy IDP callback, users are redirected to `/{lang}/link/lang-sync`.
+- The frontend page calls `https://lang-canada.fjgc-gccf.gc.ca/v1/lang` in the browser with credentials to resolve language.
+- If the language service call fails, the app falls back to session/URL language (`en` default).
+
 ### OpenAPI Spec
 
 Generate and update the checked-in backend OpenAPI spec:

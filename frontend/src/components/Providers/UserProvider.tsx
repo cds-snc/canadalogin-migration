@@ -1,5 +1,5 @@
 import { useReducer, useEffect, ReactNode, useRef, useMemo } from "react";
-import { useSearchParams, useParams } from "react-router";
+import { useSearchParams, useParams, useLocation } from "react-router";
 import {
   useEventSource,
   useEventSourceListener,
@@ -197,7 +197,9 @@ export function UserProvider({
   );
   const [searchParams] = useSearchParams();
   const { language } = useParams();
+  const { pathname } = useLocation();
   const pageContentJson = getPageContent(language, "SessionManagement");
+  const isLanguageSyncRoute = /^\/(en|fr)\/link\/lang-sync\/?$/.test(pathname);
 
   // keep latest expire in a ref so SSE handler can compare without capturing stale closure state
   const latestExpireRef = useRef<number | null>(
@@ -464,7 +466,9 @@ export function UserProvider({
     return (
       <Loader
         text={
-          userState.loadingText ? userState.loadingText : pageContentJson["9"]
+          isLanguageSyncRoute
+            ? "Loading / Chargement"
+            : userState.loadingText || pageContentJson["9"]
         }
       />
     );

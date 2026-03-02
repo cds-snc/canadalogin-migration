@@ -39,6 +39,15 @@ def get_target_rp_client_ids(
     return list(dict.fromkeys([rp_client_id, *dependent_client_ids]))
 
 
+def normalize_language(lang: str | None) -> str:
+    """Normalize language codes to supported values."""
+    if not lang or not isinstance(lang, str):
+        return "en"
+
+    language = lang.strip().lower()
+    return language if language in ("en", "fr") else "en"
+
+
 async def legacy_callback(
     request: Request,
     user_access_token: str,
@@ -186,12 +195,10 @@ async def legacy_callback(
 
 
 async def legacy_post_logout_callback(request: Request):
-    # Logged out of legacy IDP Redierct to Profile Management
-
-    lang = request.session[SessionKeys.CURRENT_LANGUAGE.value]
-    # TODO: Retrieve Lang Parameter
+    # Logged out of legacy IDP Redirect to profile management language sync page.
+    lang = normalize_language(request.session.get(SessionKeys.CURRENT_LANGUAGE.value))
     lang_path = "/" + lang
-    page_path = "/link/success"
+    page_path = "/link/lang-sync"
 
     base_profile_url = get_base_profile_management_url()
     redirect_url = f"{base_profile_url}{lang_path}{page_path}"
