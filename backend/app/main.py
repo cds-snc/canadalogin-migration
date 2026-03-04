@@ -23,6 +23,7 @@ from app.auth import v1_router as v1_auth_router
 from app.auth.services import oidc_config
 from app.auth_legacy import v1_router as v1_auth_legacy_router
 from app.rp import v1_router as v1_rp_router
+from app.utils.standardized_logging import StandardizedLoggingMiddleware
 
 configuration = get_configuration()
 
@@ -139,6 +140,9 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Logging
+app.add_middleware(StandardizedLoggingMiddleware)
 
 # Autoload session if cookie is present
 app.add_middleware(SessionAutoloadMiddleware)

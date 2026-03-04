@@ -37,5 +37,5 @@ async def health_check(request: Request):
     return {
         "status": "healthy",
         "timestamp": datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
-        "service": "gc-signin-backend",
+        "service": "gc-signin-migration-backend",
     }
