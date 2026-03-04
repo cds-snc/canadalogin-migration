@@ -37,6 +37,8 @@ make generate-openapi
 
 This writes `backend/openapi/openapi.json`.
 
+It is important to keep this up to date.
+
 ### Additional Documentation
 - [IBM Verify Documentation](https://docs.verify.ibm.com/verify/reference/overview)
 
