@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.6](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.5...v1.10.6) (2026-03-05)
+
+
+### Bug Fixes
+
+* Fix formatting issue in README.md ([#177](https://github.com/cds-snc/gc-sign-in-migration/issues/177)) ([20f0700](https://github.com/cds-snc/gc-sign-in-migration/commit/20f07000a2e76f028bcf6f15d41e53f9b4f2ba6a))
+
 ## [1.10.5](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.4...v1.10.5) (2026-03-05)
 
 
