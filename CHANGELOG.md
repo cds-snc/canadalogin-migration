@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.5](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.4...v1.10.5) (2026-03-05)
+
+
+### Continuous Integration
+
+* updated staging version "1.10.4" ([#172](https://github.com/cds-snc/gc-sign-in-migration/issues/172)) ([5e03b5a](https://github.com/cds-snc/gc-sign-in-migration/commit/5e03b5a8e439136a5ba72624bfab2dd139ce706e))
+
 ## [1.10.4](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.3...v1.10.4) (2026-03-05)
 
 
