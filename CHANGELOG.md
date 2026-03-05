@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.4](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.3...v1.10.4) (2026-03-05)
+
+
+### Bug Fixes
+
+* **forceRelease:** made a small change to force release ([f75d63d](https://github.com/cds-snc/gc-sign-in-migration/commit/f75d63d503b5cdf983516e252223d2d4bde30dbb))
+* **forceRelease:** made a small change to force release ([#169](https://github.com/cds-snc/gc-sign-in-migration/issues/169)) ([f75d63d](https://github.com/cds-snc/gc-sign-in-migration/commit/f75d63d503b5cdf983516e252223d2d4bde30dbb))
+
 ## [1.10.3](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.2...v1.10.3) (2026-03-02)
 
 
