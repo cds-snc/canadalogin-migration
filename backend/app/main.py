@@ -17,6 +17,7 @@ from app.config import get_configuration
 from app.utils.helpers import generate_error_response
 from app.auth.services.auth import redirect_user_to_idp_verify
 from app.constants.redis_keys import RedisKeys
+from app.constants.session_keys import SessionKeys
 
 from .routers import health
 from app.auth import v1_router as v1_auth_router
@@ -227,7 +228,31 @@ async def oauth_error_handler(request: Request, exc: OAuthError):
             status_code=401,
             content={"detail": "Invalid or expired token"},
         )
-    return await redirect_user_to_idp_verify(request)
+
+    client_id = (
+        request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+        or request.query_params.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+    )
+    lang = request.session.get(SessionKeys.CURRENT_LANGUAGE.value) or request.query_params.get(
+        "lang", "en"
+    )
+    if not isinstance(lang, str):
+        lang = "en"
+    lang = lang.lower()
+    if lang not in ("en", "fr"):
+        lang = "en"
+
+    if not client_id:
+        logger.error(
+            "OAuth exception handler missing rp_client_id for path %s; returning 401",
+            request.url.path,
+        )
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Invalid or expired token"},
+        )
+
+    return await redirect_user_to_idp_verify(request, client_id, lang)
 
 
 def log_request_response(

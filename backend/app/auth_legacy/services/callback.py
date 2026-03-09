@@ -31,6 +31,46 @@ logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
+def _extract_error_detail(response: httpx.Response) -> str:
+    """Best-effort extraction of upstream error details for client responses."""
+    try:
+        payload = response.json()
+    except ValueError:
+        text = (response.text or "").strip()
+        return text or "Unknown error"
+
+    return (
+        payload.get("detail")
+        or payload.get("message")
+        or payload.get("error")
+        or payload.get("messageId")
+        or "Unknown error"
+    )
+
+
+def _raise_for_failed_patch_response(
+    response: httpx.Response | dict, operation_name: str
+) -> None:
+    """
+    Normalize patch helper failures into HTTPException.
+
+    Patch helpers may return an httpx.Response or a dict error payload.
+    """
+    if isinstance(response, dict):
+        error_detail = (
+            response.get("detail")
+            or response.get("error")
+            or f"{operation_name} failed"
+        )
+        raise HTTPException(status_code=502, detail=error_detail)
+
+    if response.status_code != 204:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=_extract_error_detail(response),
+        )
+
+
 def get_target_rp_client_ids(
     rp_client_id: str, dependent_client_ids: list[str]
 ) -> list[str]:
@@ -118,14 +158,9 @@ async def legacy_callback(
             legacy_pai,
             target_rp_client_ids=target_rp_client_ids,
         )
-
-        if patch_legacy_pai_response.status_code != 204:
-            # parse error details safely
-            json_data = patch_legacy_pai_response.json()
-            error_detail = json_data.get("detail", "Unknown error")
-            raise HTTPException(
-                status_code=patch_legacy_pai_response.status_code, detail=error_detail
-            )
+        _raise_for_failed_patch_response(
+            patch_legacy_pai_response, operation_name="patch_legacy_pai"
+        )
 
         # AUDIT DATA LOGIC + PATCH
         patch_audit_data_response = await patch_audit_data(
@@ -135,14 +170,9 @@ async def legacy_callback(
             custom_attributes,
             AuditStatusKeys.LINKED_KEY.value,
         )
-
-        if patch_audit_data_response.status_code != 204:
-            # parse error details safely
-            json_data = patch_audit_data_response.json()
-            error_detail = json_data.get("detail", "Unknown error")
-            raise HTTPException(
-                status_code=patch_audit_data_response.status_code, detail=error_detail
-            )
+        _raise_for_failed_patch_response(
+            patch_audit_data_response, operation_name="patch_audit_data"
+        )
 
         # The discovery metadata is stored here:
         idp_metadata = client.server_metadata
