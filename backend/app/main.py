@@ -1,7 +1,6 @@
 import httpx
 import requests
 import logging
-import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -220,9 +219,9 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
 
 
 @app.exception_handler(OAuthError)
-async def oauth_error_handler(request: Request, exc: OAuthError):
+async def oauth_error_handler(request: Request, _exc: OAuthError):
     """Catch OAuth errors and redirect user to IdP login."""
-    logger.error("OAuth exception handler error: %s", exc)
+    logger.error("OAuth exception handler error")
     if "application/json" in request.headers.get("accept", ""):
         return JSONResponse(
             status_code=401,
