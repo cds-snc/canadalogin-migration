@@ -1,4 +1,4 @@
-.PHONY: install-dev-python install-python fmt-ci-python fmt-python lint-python run-tests generate-openapi check-openapi
+.PHONY: install-dev-python install-python fmt-ci-python fmt-python lint-python run-tests generate-openapi check-openapi install-precommit run-precommit
 
 install-python: 
 	@pip install -r ./backend/requirements.txt
@@ -8,6 +8,12 @@ install-dev-python:
 
 install-frontend-deps:
 	cd frontend && npm install
+
+install-precommit:
+	pre-commit install
+
+run-precommit:
+	pre-commit run --all-files
 
 fmt-python:
 	black . $(ARGS) --target-version py311
