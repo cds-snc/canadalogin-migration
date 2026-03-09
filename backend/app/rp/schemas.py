@@ -15,7 +15,6 @@ class LegacyIdpSchema(BaseModel):
 
 
 class RPSchema(BaseModel):
-    rp_config_id: Optional[str] = None
     rp_client_id: str
     rp_client_name: str
     rp_client_name_en: str

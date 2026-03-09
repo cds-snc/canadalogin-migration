@@ -68,14 +68,12 @@ If the language API is unavailable or blocked (CORS/cookie policy/network), the 
 - `"MFA"`: force MFA prompt
 - `"gckey,MFA"`: GCKey only + force MFA prompt
 
-A formatted legacy sample file is available at `backend/rp_migration_config/samples/rp_migration_config.sample.json`.
-RP migration config tooling now lives under `backend/rp_migration_config/` (see `backend/rp_migration_config/README.md`).
-Per-environment non-sensitive RP config now lives under `backend/rp_migration_config/config/env/<env>/rp_migration_config.json`.
+A formatted sample file is available at `backend/docs/rp_migration_config.sample.json`.
 
-To convert a formatted JSON file into a one-line env var value (legacy single-file mode):
+To convert a formatted JSON file into a one-line env var value:
 
 ```bash
-python3 backend/rp_migration_config/scripts/rp_migration_config_to_env.py
+python3 backend/scripts/rp_migration_config_to_env.py
 ```
 
 This prints:
@@ -88,34 +86,12 @@ Useful options:
 
 ```bash
 # Output raw compact JSON only (no RP_MIGRATION_CONFIG= prefix)
-python3 backend/rp_migration_config/scripts/rp_migration_config_to_env.py --format value
-
-# Output a single RP object (no array). Requires one RP result, e.g. via --rp-config-id
-cat backend/rp_migration_config/samples/rp_overrides.sample.json | \
-python3 backend/rp_migration_config/scripts/rp_migration_config_to_env.py \
-  --env dev \
-  --rp-overrides-stdin \
-  --rp-config-id atip \
-  --format single-value
+python3 backend/scripts/rp_migration_config_to_env.py --format value
 
 # Use a custom input file and write to output file
-python3 backend/rp_migration_config/scripts/rp_migration_config_to_env.py \
+python3 backend/scripts/rp_migration_config_to_env.py \
   --input /path/to/rp_migration_config.json \
   --output /tmp/rp_migration_config.env
-
-# Merge base RP config with env-specific values (recommended)
-python3 backend/rp_migration_config/scripts/rp_migration_config_to_env.py \
-  --env dev \
-  --rp-overrides-input backend/rp_migration_config/samples/rp_overrides.full.sample.json
-
-# Merge mode with one-time sensitive overrides from stdin (recommended for secrets)
-# `/secure/path/rp_overrides.json` is a placeholder. Replace it with your real secure file path.
-cat /secure/path/rp_overrides.json | \
-python3 backend/rp_migration_config/scripts/rp_migration_config_to_env.py \
-  --env dev \
-  --rp-overrides-stdin
-# Optional trace tag only (stderr): add `--run-id migration-2026-03-06`
-# Optional custom env config file: add `--env-input /path/to/config/env/dev/rp_migration_config.json`
 ```
 
 #### IBM_VERIFY_MIGRATION_CLIENT_ID and IBM_VERIFY_MIGRATION_SECRET
