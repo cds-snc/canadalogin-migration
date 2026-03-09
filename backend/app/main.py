@@ -229,13 +229,12 @@ async def oauth_error_handler(request: Request, exc: OAuthError):
             content={"detail": "Invalid or expired token"},
         )
 
-    client_id = (
-        request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
-        or request.query_params.get(SessionKeys.RP_CLIENT_ID_KEY.value)
-    )
-    lang = request.session.get(SessionKeys.CURRENT_LANGUAGE.value) or request.query_params.get(
-        "lang", "en"
-    )
+    client_id = request.session.get(
+        SessionKeys.RP_CLIENT_ID_KEY.value
+    ) or request.query_params.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+    lang = request.session.get(
+        SessionKeys.CURRENT_LANGUAGE.value
+    ) or request.query_params.get("lang", "en")
     if not isinstance(lang, str):
         lang = "en"
     lang = lang.lower()
@@ -260,11 +259,31 @@ def log_request_response(
 ):
     """Log request and response details"""
     try:
-        logger.info(f"[{endpoint}] Request data: {json.dumps(request_data, indent=2)}")
-        logger.info(f"[{endpoint}] Response status: {response.status_code}")
-        logger.info(f"[{endpoint}] Response headers: {dict(response.headers)}")
-        logger.info(
-            f"[{endpoint}] Response body: {json.dumps(response.json(), indent=2)}"
+        request_fields = (
+            sorted(request_data.keys()) if isinstance(request_data, dict) else []
         )
+        logger.info(
+            "[%s] Request fields: %s",
+            endpoint,
+            request_fields,
+        )
+        logger.info("[%s] Response status: %s", endpoint, response.status_code)
+        logger.info(
+            "[%s] Response header keys: %s",
+            endpoint,
+            sorted(dict(response.headers).keys()),
+        )
+        try:
+            response_body = response.json()
+            if isinstance(response_body, dict):
+                body_summary = sorted(response_body.keys())
+            elif isinstance(response_body, list):
+                body_summary = f"list[{len(response_body)}]"
+            else:
+                body_summary = type(response_body).__name__
+        except ValueError:
+            body_summary = "non-json"
+
+        logger.info("[%s] Response body summary: %s", endpoint, body_summary)
     except Exception as e:
         logger.error(f"[{endpoint}] Error logging request/response: {str(e)}")
