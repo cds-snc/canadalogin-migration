@@ -197,6 +197,54 @@ async def test_legacy_callback_raises_on_patch_failure():
 
 
 @pytest.mark.asyncio
+async def test_legacy_callback_raises_with_upstream_detail_when_patch_returns_dict_error():
+    request = build_request()
+    client = MagicMock()
+    client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
+    client.parse_id_token = AsyncMock(return_value={"sub": "legacy-sub"})
+    client.server_metadata = {
+        "server_metadata": {"end_session_endpoint": "https://idp/logout"}
+    }
+
+    legacy_idp = SimpleNamespace(client_name="SIC")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
+
+    request.session["rpname_SIC_code_verifier"] = "verifier"
+    request.session["rpname_SIC_nonce"] = "nonce"
+    request.session["rpname_SIC_state"] = "state"
+
+    with (
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.create_client",
+            new=AsyncMock(return_value=client),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_ibm_id",
+            new=MagicMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_legacy_pai",
+            new=AsyncMock(return_value={"error": "HTTP error: 500"}),
+        ),
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await legacy_callback(request, "user-at", "user-token", "rp-123")
+
+    assert raised.value.status_code == 502
+    assert raised.value.detail == "HTTP error: 500"
+
+
+@pytest.mark.asyncio
 async def test_legacy_callback_patches_audit_with_linked_status():
     request = build_request()
     client = MagicMock()
