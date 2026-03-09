@@ -186,10 +186,9 @@ def resolve_env_input_path(args: argparse.Namespace, env_name: str) -> Path:
 def normalize_rp_overrides(raw_overrides: Any) -> dict[str, dict[str, Any]]:
     # Convenience: accept a single override object instead of requiring a list/map.
     if isinstance(raw_overrides, dict):
-        has_override_identity = (
-            isinstance(raw_overrides.get("rp_config_id"), str)
-            or isinstance(raw_overrides.get("rp_client_name"), str)
-        )
+        has_override_identity = isinstance(
+            raw_overrides.get("rp_config_id"), str
+        ) or isinstance(raw_overrides.get("rp_client_name"), str)
         has_override_content = any(
             field in raw_overrides
             for field in (
@@ -407,7 +406,10 @@ def apply_rp_overrides(
         missing_fields.append("rp_redirect_uri")
     if not isinstance(final_idp_client_id, str) or not final_idp_client_id.strip():
         missing_fields.append("idp.client_id")
-    if not isinstance(final_idp_client_secret, str) or not final_idp_client_secret.strip():
+    if (
+        not isinstance(final_idp_client_secret, str)
+        or not final_idp_client_secret.strip()
+    ):
         missing_fields.append("idp.client_secret")
 
     if missing_fields:
@@ -475,7 +477,9 @@ def merge_base_with_overrides(
 
         rp_name = base_rp.get("rp_client_name")
         if not isinstance(rp_name, str) or not rp_name.strip():
-            raise ValueError(f"Base RP at index {idx} is missing non-empty `rp_client_name`.")
+            raise ValueError(
+                f"Base RP at index {idx} is missing non-empty `rp_client_name`."
+            )
         if rp_name in seen_base_rp_names:
             raise ValueError(f"Duplicate base RP `rp_client_name`: {rp_name}")
         seen_base_rp_names.add(rp_name)
