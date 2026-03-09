@@ -1,0 +1,38 @@
+[
+  {
+    "rp_config_id": "cdcp-secure-portal",
+    "rp_client_id": "replace-me-cdcp-rp-client-id",
+    "rp_redirect_uri": "https://<rp-host>/auth/callback/client1",
+    "dependentClientIds": [],
+    "acr_values": "",
+    "idp": {
+      "client_id": "replace-me-cdcp-sic-client-id",
+      "client_secret": "replace-me-cdcp-sic-client-secret"
+    }
+  },
+  {
+    "rp_config_id": "gc-digital-talent",
+    "rp_client_id": "replace-me-gcdt-rp-client-id",
+    "rp_redirect_uri": "https://<rp-host>/auth/callback/client1",
+    "dependentClientIds": [],
+    "acr_values": "",
+    "idp": {
+      "client_id": "replace-me-gcdt-sic-client-id",
+      "client_secret": "replace-me-gcdt-sic-client-secret"
+    }
+  },
+  {
+    "rp_config_id": "atip",
+    "rp_client_id": "replace-me-atip-rp-client-id",
+    "rp_redirect_uri": "https://<rp-host>/auth/callback/client1",
+    "dependentClientIds": [
+      "replace-me-atip-dependent-rp-client-id-1",
+      "replace-me-atip-dependent-rp-client-id-2"
+    ],
+    "acr_values": "",
+    "idp": {
+      "client_id": "replace-me-atip-sic-client-id",
+      "client_secret": "replace-me-atip-sic-client-secret"
+    }
+  }
+]

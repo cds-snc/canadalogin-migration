@@ -1,0 +1,106 @@
+[
+  {
+    "rp_config_id": "rp-migration-simulator",
+    "rp_client_id": "replace-me-cdcp-rp-client-id",
+    "rp_client_name": "CDCP Secure Portal",
+    "rp_client_name_en": "CDCP Secure Portal",
+    "rp_client_name_fr": "CDCP Secure Portal",
+    "rp_redirect_uri": "https://<rp-host>/auth/callback/client1",
+    "dependentClientIds": [],
+    "acr_values": "",
+    "IDP": [
+      {
+        "client_id": "replace-me-cdcp-sic-client-id",
+        "client_name": "SIC",
+        "client_secret": "replace-me-cdcp-sic-client-secret",
+        "openid_configuration": "https://te-auth.id.tbs-sct.gc.ca/oxauth/.well-known/openid-configuration",
+        "redirect_uris": [
+          "https://api.migration.login-connexion.cdssandbox.xyz/v1/auth/legacy/callback"
+        ],
+        "scope": "openid profile email",
+        "max_age": 3600,
+        "code_challenge_method": "S256",
+        "token_endpoint_auth_method": "client_secret_post"
+      }
+    ]
+  },
+  {
+    "rp_config_id": "gc-digital-talent",
+    "rp_client_id": "dab6fe6f-461e-4df8-91db-9f25b61f6a5e",
+    "rp_client_name": "GC Digital Talent",
+    "rp_client_name_en": "GC Digital Talent",
+    "rp_client_name_fr": "GC Digital Talent",
+    "rp_redirect_uri": "https://dev-talentcloud.tbs-sct.gc.ca/auth-callback",
+    "dependentClientIds": [],
+    "acr_values": "",
+    "IDP": [
+      {
+        "client_id": "0cf00f96-4fb0-41af-8c3d-af2c3184be13",
+        "client_name": "SIC",
+        "client_secret": "replace-me-gcdt-sic-client-secret",
+        "openid_configuration": "https://te-auth.id.tbs-sct.gc.ca/oxauth/.well-known/openid-configuration",
+        "redirect_uris": [
+          "https://api.migration.login-connexion.cdssandbox.xyz/v1/auth/legacy/callback"
+        ],
+        "scope": "openid profile email",
+        "max_age": 3600,
+        "code_challenge_method": "S256",
+        "token_endpoint_auth_method": "client_secret_post"
+      }
+    ]
+  },
+  {
+    "rp_config_id": "AORS",
+    "rp_client_id": "c1d6fb4d-37ff-40b5-b815-986794a59c2f",
+    "rp_client_name": "ATIP - AORS",
+    "rp_client_name_en": "ATIP - AORS",
+    "rp_client_name_fr": "ATIP - AORS",
+    "rp_redirect_uri": "https://dev2.atip-aiprp.tbs-sct.gc.ca/auth/gcsignin/callback",
+    "dependentClientIds": [
+      "e3a5cbcc-774f-403f-a30d-dd66342c3796"
+    ],
+    "acr_values": "",
+    "IDP": [
+      {
+        "client_id": "replace-me-atip-sic-client-id",
+        "client_name": "SIC",
+        "client_secret": "replace-me-atip-sic-client-secret",
+        "openid_configuration": "https://te-auth.id.tbs-sct.gc.ca/oxauth/.well-known/openid-configuration",
+        "redirect_uris": [
+          "https://api.migration.login-connexion.cdssandbox.xyz/v1/auth/legacy/callback"
+        ],
+        "scope": "openid profile email",
+        "max_age": 3600,
+        "code_challenge_method": "S256",
+        "token_endpoint_auth_method": "client_secret_post"
+      }
+    ]
+  },
+  {
+    "rp_config_id": "AOMT",
+    "rp_client_id": "e3a5cbcc-774f-403f-a30d-dd66342c3796",
+    "rp_client_name": "ATIP - AOMT",
+    "rp_client_name_en": "ATIP - AOMT",
+    "rp_client_name_fr": "ATIP - AOMT",
+    "rp_redirect_uri": "https://dev2.aomt-ogael.atip-aiprp.tbs-sct.gc.ca/auth/gcsignin/callback",
+    "dependentClientIds": [
+      "c1d6fb4d-37ff-40b5-b815-986794a59c2f"
+    ],
+    "acr_values": "",
+    "IDP": [
+      {
+        "client_id": "replace-me-atip-sic-client-id",
+        "client_name": "SIC",
+        "client_secret": "replace-me-atip-sic-client-secret",
+        "openid_configuration": "https://te-auth.id.tbs-sct.gc.ca/oxauth/.well-known/openid-configuration",
+        "redirect_uris": [
+          "https://api.migration.login-connexion.cdssandbox.xyz/v1/auth/legacy/callback"
+        ],
+        "scope": "openid profile email",
+        "max_age": 3600,
+        "code_challenge_method": "S256",
+        "token_endpoint_auth_method": "client_secret_post"
+      }
+    ]
+  }
+]
