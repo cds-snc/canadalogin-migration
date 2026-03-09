@@ -1,0 +1,4 @@
+[run]
+omit =
+    backend/rp_migration_config/*
+    backend/scripts/rp_migration_config_to_env.py
