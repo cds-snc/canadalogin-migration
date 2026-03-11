@@ -475,9 +475,11 @@
     "text_2": "Pour conserver les données de votre compte {RP_Name}, vous devrez utiliser votre ancienne méthode de connexion une dernière fois sur ce service. Cela mettra à jour votre méthode de connexion vers CanadaConnexion pour ce compte.",
     "text_3": "Utilisez la méthode de connexion que vous avez utilisée la dernière fois que vous vous êtes connecté à ce service.",
     "text_4": "Si vous ne vous êtes pas connecté à ce service avec Interac ou CléGC auparavant, vous pouvez ignorer cette étape.",
+    "text_4_gckey_only": "Si vous ne vous êtes pas connecté à ce service avec CléGC auparavant, vous pouvez ignorer cette étape.",
     "link_1": "Comment mettre à jour sa méthode de connexion",
     "link_2": "Ignorer et créer un nouveau compte",
     "btn_1": "Se connecter avec CléGC ou partenaire de connexion Interac",
+    "btn_1_gckey_only": "Se connecter avec CléGC",
     "notice_title": "Pour plus d'information"
   },
   "SkipLink": {

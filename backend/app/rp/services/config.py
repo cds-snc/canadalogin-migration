@@ -140,12 +140,20 @@ async def get_rp_config_details(
     try:
 
         rp = await get_config(rp_client_id)
+        normalized_acr_values = {
+            value.strip().lower()
+            for value in (rp.acr_values or "").split(",")
+            if value.strip()
+        }
+        is_gckey_only = "gckey" in normalized_acr_values
 
         rpConfig = {
             "rp_redirect_url": rp.rp_redirect_uri,
             "rp_client_name": rp.rp_client_name,
             "rp_client_name_en": rp.rp_client_name_en,
             "rp_client_name_fr": rp.rp_client_name_fr,
+            "acr_values": rp.acr_values,
+            "is_gckey_only": is_gckey_only,
         }
 
         return rpConfig

@@ -32,10 +32,12 @@ vi.mock("../../../../utils/functions.jsx", () => ({
         text_2: "Continue with {RP_Name}",
         text_3: "You can link now.",
         btn_1: "Link now",
+        btn_1_gckey_only: "Link with GCKey",
         notice_title: "Notice",
         link_1: "Learn more",
         subtitle: "Skip linking {RP_Name}",
         text_4: "You can skip.",
+        text_4_gckey_only: "You can skip if you did not use GCKey.",
         link_2: "Skip for now",
       };
     }
@@ -81,5 +83,23 @@ describe("LinkPrompt", () => {
 
     const skipLink = screen.getByText("Skip for now");
     expect(skipLink).toHaveAttribute("href", MIGRATION_END_POINTS.skip);
+  });
+
+  it("uses GCKey-only text when RP config is gckey only", async () => {
+    updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
+      rp_client_name_en: "Example RP",
+      is_gckey_only: true,
+    });
+
+    render(<LinkPrompt />);
+
+    await waitFor(() => {
+      expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("Link with GCKey")).toBeInTheDocument();
+    expect(
+      screen.getByText("You can skip if you did not use GCKey."),
+    ).toBeInTheDocument();
   });
 });
