@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.10.7](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.6...v1.10.7) (2026-03-11)
+
+
+### Bug Fixes
+
+* added more support for gckey only flow ([#192](https://github.com/cds-snc/gc-sign-in-migration/issues/192)) ([d645d5d](https://github.com/cds-snc/gc-sign-in-migration/commit/d645d5dc7c12a1bd9671f3adf48ecb11aa8142d0))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all patch dependencies ([#183](https://github.com/cds-snc/gc-sign-in-migration/issues/183)) ([255cff9](https://github.com/cds-snc/gc-sign-in-migration/commit/255cff9609c14539f64bea6209192610878fe5e0))
+* **deps:** update dependency fastapi to v0.135.1 ([#185](https://github.com/cds-snc/gc-sign-in-migration/issues/185)) ([fe377fe](https://github.com/cds-snc/gc-sign-in-migration/commit/fe377fe1ae517e2a715327ea9b13394ae1a22581))
+
+
+### Continuous Integration
+
+* Update version to 1.10.6 in prod.json ([#179](https://github.com/cds-snc/gc-sign-in-migration/issues/179)) ([b59b828](https://github.com/cds-snc/gc-sign-in-migration/commit/b59b828d47c29e4a0692a0dad25bbad80545ba3b))
+
 ## [1.10.6](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.5...v1.10.6) (2026-03-05)
 
 
