@@ -22,6 +22,7 @@ vi.mock("@cdssnc/gcds-components-react", () => ({
 
 vi.mock("react-router", () => ({
   useParams: () => ({ language: "en" }),
+  useLocation: () => ({ pathname: "/test-path" }),
 }));
 
 vi.mock("../../../../utils/functions.jsx", () => ({
