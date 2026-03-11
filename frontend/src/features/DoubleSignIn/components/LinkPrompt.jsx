@@ -10,17 +10,30 @@ import {
 import { getPageContent } from "../../../utils/functions.jsx";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
-import { MIGRATION_END_POINTS, PAGES } from "../../../utils/constants.jsx";
 import { useParams } from "react-router";
 import { MigrationStepper } from "./MigrationStepper.jsx";
+import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
+
+import {
+  PAGES,
+  MIGRATION_END_POINTS,
+  GA_LABELS,
+  GA_CATEGORIES,
+  GA_EVENTS,
+  GA_STEPS,
+} from "../../../utils/constants.jsx";
 
 export default function LinkPrompt() {
   const { language } = useParams();
+
+  const trackEvent = useTrackEvent();
 
   const [serverErrorMessage] = useState("");
 
   const pageContentJson = getPageContent(language, PAGES.LinkPrompt);
   const errorPageJson = getPageContent(language, PAGES.error);
+
+  useTrackPage("Migration - Legacy method prompt");
 
   const [links, setLinks] = useState({
     LinkingLink: "",
@@ -78,7 +91,18 @@ export default function LinkPrompt() {
         )}
       </GcdsText>
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
-      <GcdsButton type="link" href={links.LinkingLink}>
+      <GcdsButton
+        type="link"
+        href={links.LinkingLink}
+        onGcdsClick={() => {
+          trackEvent({
+            category: GA_CATEGORIES.formSubmit,
+            action: GA_EVENTS.click,
+            label: `${GA_LABELS.button}_StartMigration`,
+            step: GA_STEPS.step1,
+          });
+        }}
+      >
         {linkButtonText}
       </GcdsButton>
 
@@ -104,7 +128,19 @@ export default function LinkPrompt() {
       </GcdsHeading>
       <GcdsText>{skipHelpText}</GcdsText>
       <GcdsText>
-        <GcdsLink href={links.SkipLink}>{pageContentJson["link_2"]}</GcdsLink>
+        <GcdsLink
+          href={links.SkipLink}
+          onGcdsClick={() => {
+            trackEvent({
+              category: GA_CATEGORIES.formSubmit,
+              action: GA_EVENTS.click,
+              label: `${GA_LABELS.link}_SkipMigration`,
+              step: GA_STEPS.step1,
+            });
+          }}
+        >
+          {pageContentJson["link_2"]}
+        </GcdsLink>
       </GcdsText>
     </GcdsContainer>
   );

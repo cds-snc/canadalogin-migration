@@ -7,14 +7,24 @@ import {
 } from "@cdssnc/gcds-components-react";
 import { getPageContent } from "../../../utils/functions.jsx";
 
-import { PAGES } from "../../../utils/constants.jsx";
+import {
+  PAGES,
+  GA_LABELS,
+  GA_CATEGORIES,
+  GA_EVENTS,
+  GA_STEPS,
+} from "../../../utils/constants.jsx";
+
 import { useParams } from "react-router";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
 import { MigrationStepper } from "./MigrationStepper.jsx";
+import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
 
 export default function LinkSuccess() {
   const { language } = useParams();
+
+  const trackEvent = useTrackEvent();
 
   const [serverErrorMessage, setServerErrorMessage] = useState("");
 
@@ -22,6 +32,8 @@ export default function LinkSuccess() {
   const errorPageJson = getPageContent(language, PAGES.error);
 
   const [rpData, setRpData] = useState(null);
+
+  useTrackPage("Migration - Confirmation");
 
   useEffect(() => {
     async function getRPData() {
@@ -70,6 +82,12 @@ export default function LinkSuccess() {
         <GcdsButton
           onGcdsClick={(ev) => {
             ev.preventDefault();
+            trackEvent({
+              category: GA_CATEGORIES.formSubmit,
+              action: GA_EVENTS.click,
+              label: `${GA_LABELS.button}_MigrationConfirmation`,
+              step: GA_STEPS.step2,
+            });
             continueToRP();
           }}
         >
