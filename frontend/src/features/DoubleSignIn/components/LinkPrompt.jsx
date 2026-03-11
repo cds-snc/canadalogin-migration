@@ -52,6 +52,13 @@ export default function LinkPrompt() {
   }, [language]);
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
+  const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
+  const linkButtonText = isGcKeyOnly
+    ? pageContentJson["btn_1_gckey_only"] || pageContentJson["btn_1"]
+    : pageContentJson["btn_1"];
+  const skipHelpText = isGcKeyOnly
+    ? pageContentJson["text_4_gckey_only"] || pageContentJson["text_4"]
+    : pageContentJson["text_4"];
 
   return (
     <GcdsContainer>
@@ -72,7 +79,7 @@ export default function LinkPrompt() {
       </GcdsText>
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
       <GcdsButton type="link" href={links.LinkingLink}>
-        {pageContentJson["btn_1"]}
+        {linkButtonText}
       </GcdsButton>
 
       <div className="mt-500 mb-700">
@@ -95,7 +102,7 @@ export default function LinkPrompt() {
             : rpData?.rp_client_name_en,
         )}
       </GcdsHeading>
-      <GcdsText>{pageContentJson["text_4"]}</GcdsText>
+      <GcdsText>{skipHelpText}</GcdsText>
       <GcdsText>
         <GcdsLink href={links.SkipLink}>{pageContentJson["link_2"]}</GcdsLink>
       </GcdsText>

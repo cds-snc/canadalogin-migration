@@ -478,9 +478,11 @@
     "text_2": "To keep your {RP_Name} Account data, you'll need to use your old sign-in method one last time on this service. This will update your sign-in method to CanadaLogin for this account.",
     "text_3": "Use the sign-in method you used the last time you signed in to this service.",
     "text_4": "If you have not signed in to this service with Interac sign-in or GCKey in the past, you can skip this step.",
+    "text_4_gckey_only": "If you have not signed in to this service with GCKey in the past, you can skip this step.",
     "link_1": "How to update your sign-in method",
     "link_2": "Skip and create a new account",
     "btn_1": "Sign in with GCKey or Interac sign-in partner",
+    "btn_1_gckey_only": "Sign in with GCKey",
     "notice_title": "For more information"
   },
   "SkipLink": {
