@@ -132,6 +132,7 @@ export const RP_CLIENT_ID_KEY = "rp_client_id";
 
 export const GA_CATEGORIES = {
   pageView: "pageview",
+  formSubmit: "form_submit",
 };
 
 export const GA_ACTIONS = {};
@@ -142,6 +143,16 @@ export const GA_LABELS = {
   text: "Text",
   input: "Input",
   email: "Email",
+};
+
+export const GA_EVENTS = {
+  click: "click",
+};
+
+export const GA_STEPS = {
+  step1: "1",
+  step2: "2",
+  step3: "3",
 };
 
 export const countryMapping = {

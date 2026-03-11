@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect } from "react";
 import { Outlet, useLocation, useParams } from "react-router";
 import { useLanguage } from "../Providers/LanguageProvider";
 import { getLangValues } from "../../utils/functions";
-import { trackPage } from "../../utils/gatag.jsx";
 import Header from "../Layout/Header";
 import Footer from "../Layout/Footer";
 
@@ -23,10 +22,8 @@ export default function RootLayout() {
   }, [currentLang]);
 
   useEffect(() => {
-    trackPage(pathname);
-
     document.title = currentLang === "fr" ? "CanadaConnexion" : "CanadaLogin";
-  }, [pathname, currentLang]);
+  }, [currentLang]);
 
   return (
     <div className="mainBody">
