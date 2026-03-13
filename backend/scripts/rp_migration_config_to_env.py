@@ -59,10 +59,12 @@ def validate_and_normalize(payload: list) -> list:
     if str(backend_dir) not in sys.path:
         sys.path.insert(0, str(backend_dir))
 
-    from app.rp.schemas import RPSchema  # pylint: disable=import-outside-toplevel
+    from app.rp.schemas import RPConfigSourceSchema  # pylint: disable=import-outside-toplevel
 
     return [
-        RPSchema.model_validate(item).model_dump(by_alias=True, exclude_none=True)
+        RPConfigSourceSchema.model_validate(item).model_dump(
+            by_alias=True, exclude_none=True
+        )
         for item in payload
     ]
 
