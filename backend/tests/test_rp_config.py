@@ -158,3 +158,22 @@ async def test_get_config_json_raises_on_duplicate_secret_client_ids(monkeypatch
     with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
         with pytest.raises(ValueError, match="Duplicate client_id"):
             await get_config_json()
+
+
+@pytest.mark.asyncio
+async def test_get_config_json_ignores_unused_secret_client_ids(monkeypatch):
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
+    monkeypatch.setenv(
+        "RP_MIGRATION_CONFIG_SECRETS",
+        json.dumps(
+            [
+                {"client_id": "cid", "client_secret": "secret"},
+                {"client_id": "unused-cid", "client_secret": "unused-secret"},
+            ]
+        ),
+    )
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        payload = await get_config_json()
+
+    assert payload[0]["IDP"][0]["client_secret"] == "secret"

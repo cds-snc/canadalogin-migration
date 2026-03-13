@@ -206,15 +206,6 @@ def _merge_config_with_secrets(
             f"or include inline client_secret in {CONFIG_ENV_VAR}."
         )
 
-    unused_secret_client_ids = sorted(set(secrets_by_client_id) - referenced_client_ids)
-    if unused_secret_client_ids:
-        logger.warning(
-            "%s includes client_id values not referenced by %s: %s",
-            CONFIG_SECRETS_ENV_VAR,
-            CONFIG_ENV_VAR,
-            ", ".join(unused_secret_client_ids),
-        )
-
     return merged
 
 
