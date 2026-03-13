@@ -19,7 +19,6 @@ vi.mock("@cdssnc/gcds-components-react", () => ({
 vi.mock("../../../../config.jsx", () => ({
   default: {
     legacyLanguageApiUrl: "https://lang-canada.fjgc-gccf.gc.ca/v1/lang",
-    legacyLanguageTimeoutMs: 50,
   },
 }));
 
@@ -61,6 +60,19 @@ describe("LegacyLanguageSync", () => {
     });
   });
 
+  it("maps legacy fra code to fr", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ lang: "fra" }),
+    });
+
+    render(<LegacyLanguageSync />);
+
+    await waitFor(() => {
+      expect(window.location.replace).toHaveBeenCalledWith("/fr/link/success");
+    });
+  });
+
   it("falls back to URL language when API errors", async () => {
     mockUseParams.mockReturnValue({ language: "fr" });
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("network failure"));
@@ -86,21 +98,16 @@ describe("LegacyLanguageSync", () => {
     });
   });
 
-  it("falls back after timeout when request hangs", async () => {
-    globalThis.fetch = vi.fn().mockImplementation((_url, options) => {
-      const { signal } = options;
-      return new Promise((_, reject) => {
-        signal.addEventListener("abort", () => {
-          reject(new Error("aborted"));
-        });
-      });
-    });
+  it("waits for the language response instead of auto-falling back", async () => {
+    globalThis.fetch = vi.fn().mockImplementation(() => new Promise(() => {}));
 
     render(<LegacyLanguageSync />);
 
-    await waitFor(() => {
-      expect(window.location.replace).toHaveBeenCalledWith("/en/link/success");
+    await new Promise((resolve) => {
+      setTimeout(resolve, 25);
     });
+
+    expect(window.location.replace).not.toHaveBeenCalled();
   });
 
   it("calls language API with credentials included", async () => {

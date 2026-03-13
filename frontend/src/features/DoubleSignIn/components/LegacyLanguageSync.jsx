@@ -4,32 +4,30 @@ import { useParams } from "react-router";
 import config from "../../../config.jsx";
 import Loader from "../../../components/Layout/Loading.jsx";
 
-function normalizeLanguage(language) {
-  if (!language || typeof language !== "string") {
-    return "en";
-  }
-
-  const normalized = language.includes("-")
-    ? language.split("-")[0].toLowerCase()
-    : language.toLowerCase();
-
-  return normalized === "fr" ? "fr" : "en";
-}
-
-function resolveLegacyLanguage(language) {
+function toSupportedLanguage(language) {
   if (!language || typeof language !== "string") {
     return null;
   }
 
-  const normalized = language.includes("-")
-    ? language.split("-")[0].toLowerCase()
-    : language.toLowerCase();
+  const normalized = language.trim().toLowerCase().split(/[-_]/)[0];
 
-  if (normalized === "en" || normalized === "fr") {
-    return normalized;
+  if (normalized === "fr" || normalized === "fra") {
+    return "fr";
+  }
+
+  if (normalized === "en" || normalized === "eng") {
+    return "en";
   }
 
   return null;
+}
+
+function normalizeLanguage(language) {
+  return toSupportedLanguage(language) || "en";
+}
+
+function resolveLegacyLanguage(language) {
+  return toSupportedLanguage(language);
 }
 
 async function getLegacyLanguage(signal) {
@@ -54,10 +52,6 @@ export default function LegacyLanguageSync() {
   useEffect(() => {
     let isActive = true;
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(
-      () => controller.abort(),
-      config.legacyLanguageTimeoutMs,
-    );
 
     const redirectToSuccess = (resolvedLanguage) => {
       window.location.replace(`/${resolvedLanguage}/link/success`);
@@ -77,7 +71,6 @@ export default function LegacyLanguageSync() {
           error,
         );
       } finally {
-        window.clearTimeout(timeoutId);
         if (isActive) {
           redirectToSuccess(resolvedLanguage);
         }
@@ -88,7 +81,6 @@ export default function LegacyLanguageSync() {
 
     return () => {
       isActive = false;
-      window.clearTimeout(timeoutId);
       controller.abort();
     };
   }, [fallbackLanguage]);

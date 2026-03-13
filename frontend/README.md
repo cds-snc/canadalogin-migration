@@ -27,17 +27,16 @@ This is the frontend application built with React and GC Design System for the G
 
 ### Optional environment variables
 
-You can override the legacy language sync endpoint and timeout:
+You can override the legacy language sync endpoint:
 
 ```env
 VITE_LEGACY_LANGUAGE_API_URL=https://lang-canada.fjgc-gccf.gc.ca/v1/lang
-VITE_LEGACY_LANGUAGE_TIMEOUT_MS=1500
 ```
 
 Notes:
 
 - The language sync call is browser-side and uses `credentials: include`.
-- If the external language API fails, the app falls back to the language in the callback URL (`/en` or `/fr`).
+- If the external language API returns an error, the app falls back to the language in the callback URL (`/en` or `/fr`).
 
 3. Run tests:
 

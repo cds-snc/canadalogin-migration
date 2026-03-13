@@ -1,0 +1,39 @@
+From:	Doug Harris <Doug.Harris@xsilosystems.com>
+Sent:	May 6, 2020 3:17 PM
+To:	Kirk Waters; Leduc, Louis (SSC/SPC)
+Cc:	Kemp, Susan (Ext.); Shipman, Steve; Matta, Zeina; Magalhaes, Kurt 
+(SSC/SPC)
+Subject:	RE: Language Cookie Implementation
+
+function getLanguage(callback) {
+    $.ajax({
+        url: 'https://lang-canada.fjgc-gccf.gc.ca/v1/lang',
+        type: 'GET',
+        contentType: 'application/json',
+        xhrFields: {
+            withCredentials: true
+        },
+        success: function (data) { callback(data.lang) },
+        error: function (jqXHR, textStatus, errorThrown) { 
+console.log(errorThrown); callback(textStatus)}
+    });
+}
+
+function setLanguage(language, callback) {
+    $.ajax({
+        url: 'https://lang-canada.fjgc-gccf.gc.ca/v1/lang',
+        type: 'PUT',
+        datatype: 'application/json',
+        contentType: 'application/json',
+        data: JSON.stringify({lang: language}),
+        xhrFields: {
+            withCredentials: true
+        },
+        success: function (data) { callback(data.lang) },
+        error: function (jqXHR, textStatus, errorThrown) { 
+console.log(errorThrown); callback(textStatus)}
+    });
+}
+
+The API uses CORS to restrict access to GC domains, so your site must be hosted under either .gc.ca or 
+.canada.ca for this to work.
