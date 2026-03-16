@@ -1,4 +1,4 @@
-import { GcdsButton } from "@cdssnc/gcds-components-react";
+import { GcdsButton } from "@gcds-core/components-react";
 import { getPageContent } from "../../utils/functions.jsx";
 
 export default function SubmitButton({ currentLang, disabled }) {

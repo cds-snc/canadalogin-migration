@@ -1,4 +1,4 @@
-import { GcdsNotice, GcdsText } from "@cdssnc/gcds-components-react";
+import { GcdsNotice, GcdsText } from "@gcds-core/components-react";
 import { getPageContent } from "../../utils/functions";
 import { PAGES } from "../../utils/constants";
 import { useParams } from "react-router";

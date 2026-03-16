@@ -21,7 +21,7 @@ fi
 
 # Run tests
 echo "🧪 Running tests..."
-npm test -- --run
+npm test
 if [ $? -ne 0 ]; then
   echo "❌ Tests failed. Please fix the failing tests."
   exit 1

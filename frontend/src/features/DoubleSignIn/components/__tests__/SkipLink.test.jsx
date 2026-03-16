@@ -5,7 +5,7 @@ import "@testing-library/jest-dom/vitest";
 import SkipLink from "../SkipLink.jsx";
 import { MIGRATION_END_POINTS } from "../../../../utils/constants.jsx";
 
-vi.mock("@cdssnc/gcds-components-react", () => ({
+vi.mock("@gcds-core/components-react", () => ({
   GcdsContainer: ({ children }) => <div>{children}</div>,
   GcdsText: ({ children }) => <div>{children}</div>,
   GcdsDetails: ({ children }) => <div>{children}</div>,

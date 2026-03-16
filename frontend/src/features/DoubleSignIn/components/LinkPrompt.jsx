@@ -6,7 +6,7 @@ import {
   GcdsButton,
   GcdsHeading,
   GcdsNotice,
-} from "@cdssnc/gcds-components-react";
+} from "@gcds-core/components-react";
 import { getPageContent } from "../../../utils/functions.jsx";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";

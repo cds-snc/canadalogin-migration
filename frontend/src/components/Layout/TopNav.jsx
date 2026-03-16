@@ -2,7 +2,7 @@ import {
   GcdsContainer,
   GcdsNavLink,
   GcdsTopNav,
-} from "@cdssnc/gcds-components-react";
+} from "@gcds-core/components-react";
 import { getPageContent } from "../../utils/functions.jsx";
 import { useBreakpoints } from "../../hooks/useBreakpoints.ts";
 

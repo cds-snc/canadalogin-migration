@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import LinkSuccess from "../LinkSuccess.jsx";
 
-vi.mock("@cdssnc/gcds-components-react", () => ({
+vi.mock("@gcds-core/components-react", () => ({
   GcdsContainer: ({ children }) => <div>{children}</div>,
   GcdsText: ({ children }) => <div>{children}</div>,
   GcdsDetails: ({ children }) => <div>{children}</div>,

@@ -5,7 +5,7 @@ import { getLangValues } from "../../utils/functions";
 import Header from "../Layout/Header";
 import Footer from "../Layout/Footer";
 
-import { GcdsContainer } from "@cdssnc/gcds-components-react";
+import { GcdsContainer } from "@gcds-core/components-react";
 
 export default function RootLayout() {
   const { pathname } = useLocation();
