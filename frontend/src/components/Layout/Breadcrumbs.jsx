@@ -7,7 +7,7 @@ import {
   GcdsNavLink,
   GcdsText,
   GcdsTopNav,
-} from "@cdssnc/gcds-components-react";
+} from "@gcds-core/components-react";
 import { useMatches, useParams } from "react-router";
 import { getPageContent } from "../../utils/functions.jsx";
 import { useUser } from "../Providers/useUser";

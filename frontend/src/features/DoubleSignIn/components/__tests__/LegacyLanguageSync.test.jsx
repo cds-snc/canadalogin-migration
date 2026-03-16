@@ -10,7 +10,7 @@ vi.mock("react-router", () => ({
   useParams: () => mockUseParams(),
 }));
 
-vi.mock("@cdssnc/gcds-components-react", () => ({
+vi.mock("@gcds-core/components-react", () => ({
   GcdsContainer: ({ children }) => <div>{children}</div>,
   GcdsHeading: ({ children }) => <h1>{children}</h1>,
   GcdsText: ({ children }) => <p>{children}</p>,

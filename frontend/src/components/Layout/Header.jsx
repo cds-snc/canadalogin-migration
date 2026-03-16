@@ -1,4 +1,4 @@
-import { GcdsContainer, GcdsHeader } from "@cdssnc/gcds-components-react";
+import { GcdsContainer, GcdsHeader } from "@gcds-core/components-react";
 import Breadcrumbs from "./Breadcrumbs";
 import TopNav from "./TopNav";
 

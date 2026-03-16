@@ -1,6 +1,6 @@
 import { Suspense, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@cdssnc/gcds-components-react/gcds.css";
+import "@gcds-core/components-react/gcds.css";
 import "@gcds-core/css-shortcuts/dist/gcds-css-shortcuts.min.css";
 import "./index.css";
 import router from "./router";

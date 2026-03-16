@@ -1,4 +1,4 @@
-import { GcdsDetails, GcdsText, GcdsLink } from "@cdssnc/gcds-components-react";
+import { GcdsDetails, GcdsText, GcdsLink } from "@gcds-core/components-react";
 import { getPageContent } from "../../utils/functions.jsx";
 import { EXTERNAL_NAVIGATION_LINKS, PAGES } from "../../utils/constants.jsx";
 
