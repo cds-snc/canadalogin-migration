@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.9](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.8...v1.10.9) (2026-03-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update dependency pre-commit to v4.5.1 ([#203](https://github.com/cds-snc/gc-sign-in-migration/issues/203)) ([77c97a9](https://github.com/cds-snc/gc-sign-in-migration/commit/77c97a9029a75a176de77bafbbab2b5dd67112ea))
+* **deps:** update dependency pyjwt to v2.12.0 [security] ([#202](https://github.com/cds-snc/gc-sign-in-migration/issues/202)) ([d5bcf31](https://github.com/cds-snc/gc-sign-in-migration/commit/d5bcf31ad3045310c5059dec8c3d734701f1afac))
+
 ## [1.10.8](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.7...v1.10.8) (2026-03-17)
 
 
