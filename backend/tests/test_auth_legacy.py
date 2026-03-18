@@ -115,6 +115,10 @@ async def test_sic_legacy_login_auth_missing_legacy_idp_config_raises():
 @pytest.mark.asyncio
 async def test_skip_account_linking_redirects_to_rp():
     request = build_request()
+    request.session[SessionKeys.CUSTOM_PARAMETERS.value] = {
+        "fakeparam1": "value-1",
+        "fakeparam2": "value-2",
+    }
     rp = SimpleNamespace(rp_redirect_uri="https://rp.example.test/landing")
 
     with (
@@ -135,7 +139,10 @@ async def test_skip_account_linking_redirects_to_rp():
             request, "user-at", "user-token", "rp-123"
         )
         assert isinstance(response, RedirectResponse)
-        assert response.headers["location"] == rp.rp_redirect_uri
+        assert (
+            response.headers["location"]
+            == "https://rp.example.test/landing?fakeparam1=value-1&fakeparam2=value-2"
+        )
 
 
 @pytest.mark.asyncio

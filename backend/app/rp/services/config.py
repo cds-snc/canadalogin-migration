@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from app.rp.schemas import LegacyIdpSecretSchema, RPConfigSourceSchema, RPSchema
 from app.utils.redis import get_redis_client
 from app.config import get_configuration
+from app.utils.custom_parameters import append_customparameters_to_url
 
 
 # Get the desired log level from configuration
@@ -235,6 +236,7 @@ async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 864
 
 async def get_rp_config_details(
     rp_client_id: str,
+    custom_parameters: dict[str, str] | None = None,
 ):
     try:
 
@@ -247,7 +249,9 @@ async def get_rp_config_details(
         is_gckey_only = "gckey" in normalized_acr_values
 
         rpConfig = {
-            "rp_redirect_url": rp.rp_redirect_uri,
+            "rp_redirect_url": append_customparameters_to_url(
+                rp.rp_redirect_uri, custom_parameters
+            ),
             "rp_client_name": rp.rp_client_name,
             "rp_client_name_en": rp.rp_client_name_en,
             "rp_client_name_fr": rp.rp_client_name_fr,

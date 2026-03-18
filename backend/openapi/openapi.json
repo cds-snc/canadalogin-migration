@@ -619,6 +619,22 @@
               ],
               "title": "Lang"
             }
+          },
+          {
+            "in": "query",
+            "name": "customparameters",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customparameters"
+            }
           }
         ],
         "responses": {

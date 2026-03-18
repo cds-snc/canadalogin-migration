@@ -8,3 +8,4 @@ class SessionKeys(str, Enum):
     SESSION_USER_TOKEN = "token"
     RP_CLIENT_ID_KEY = "rp_client_id"
     CURRENT_LANGUAGE = "lang"
+    CUSTOM_PARAMETERS = "customparameters"
