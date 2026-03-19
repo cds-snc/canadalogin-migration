@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 
 from app.constants.session_keys import SessionKeys
 from app.rp.services.config import get_rp_config_details
+from app.utils.custom_parameters import get_customparameters_from_session
 
 
 router = APIRouter()
@@ -20,4 +21,5 @@ async def handle_get_rp_config_details(
 ):
     return await get_rp_config_details(
         rp_client_id=request.session[SessionKeys.RP_CLIENT_ID_KEY.value],
+        custom_parameters=get_customparameters_from_session(request),
     )

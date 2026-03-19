@@ -6,6 +6,7 @@ from app.utils.oidc import generate_code_challenge
 def test_session_keys_values():
     assert SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value == "access_token"
     assert SessionKeys.RP_CLIENT_ID_KEY.value == "rp_client_id"
+    assert SessionKeys.CUSTOM_PARAMETERS.value == "customparameters"
 
 
 def test_rp_schema_parses():

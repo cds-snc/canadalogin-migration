@@ -120,6 +120,23 @@ async def test_get_rp_config_details_marks_not_gckey_only_when_blank(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_get_rp_config_details_appends_custom_parameters(monkeypatch):
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
+    monkeypatch.setenv("RP_MIGRATION_CONFIG_SECRETS", json.dumps(_sample_rp_secrets()))
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        details = await get_rp_config_details(
+            "rp-123",
+            custom_parameters={"fakeparam1": "value-1", "fakeparam2": "value-2"},
+        )
+
+    assert (
+        details["rp_redirect_url"]
+        == "https://rp.example.test/landing?fakeparam1=value-1&fakeparam2=value-2"
+    )
+
+
+@pytest.mark.asyncio
 async def test_get_config_json_raises_when_secret_missing_for_client_id(monkeypatch):
     monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
     monkeypatch.delenv("RP_MIGRATION_CONFIG_SECRETS", raising=False)
