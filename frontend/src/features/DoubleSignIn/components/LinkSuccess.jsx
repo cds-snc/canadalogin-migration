@@ -68,7 +68,9 @@ export default function LinkSuccess() {
 
       {errorMessage ? <GcdsText>{errorMessage}</GcdsText> : null}
       {rpName ? (
-        <GcdsText>{replaceRpName(pageContentJson["text_1"], rpData, language)}</GcdsText>
+        <GcdsText>
+          {replaceRpName(pageContentJson["text_1"], rpData, language)}
+        </GcdsText>
       ) : null}
       <GcdsText>{pageContentJson["text_2"]}</GcdsText>
       <ul className="list-disc mt-0">

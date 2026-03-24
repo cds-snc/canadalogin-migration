@@ -85,7 +85,9 @@ export default function LinkPrompt() {
       {errorMessage ? <GcdsText>{errorMessage}</GcdsText> : null}
 
       {rpName ? (
-        <GcdsText>{replaceRpName(pageContentJson["text_2"], rpData, language)}</GcdsText>
+        <GcdsText>
+          {replaceRpName(pageContentJson["text_2"], rpData, language)}
+        </GcdsText>
       ) : null}
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
       <GcdsButton
