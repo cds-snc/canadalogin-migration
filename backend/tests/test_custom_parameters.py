@@ -77,9 +77,7 @@ def test_get_rp_return_parameters_from_session_ignores_invalid_lang():
         SessionKeys.CURRENT_LANGUAGE.value: "es",
     }
 
-    assert get_rp_return_parameters_from_session(request) == {
-        "fakeparam1": "value-1"
-    }
+    assert get_rp_return_parameters_from_session(request) == {"fakeparam1": "value-1"}
 
 
 def test_parse_customparameters_raises_for_invalid_payload():
