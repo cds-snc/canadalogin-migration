@@ -191,7 +191,7 @@ async def test_rp_config_details_calls_service():
     request.session = {SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1"}
     with (
         patch(
-            "app.rp.v1_router.get_customparameters_from_session",
+            "app.rp.v1_router.get_rp_return_parameters_from_session",
             return_value={"foo": "bar"},
         ),
         patch(
@@ -204,4 +204,5 @@ async def test_rp_config_details_calls_service():
         mocked.assert_awaited_once_with(
             rp_client_id="rp-1",
             custom_parameters={"foo": "bar"},
+            language=None,
         )

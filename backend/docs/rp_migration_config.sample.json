@@ -5,6 +5,8 @@
     "rp_client_name_en": "Example RP",
     "rp_client_name_fr": "Exemple RP",
     "rp_redirect_uri": "http://localhost:8080/auth/callback/client1",
+    "rp_redirect_uri_en": "http://localhost:8080/auth/callback/client1?lang=en",
+    "rp_redirect_uri_fr": "http://localhost:8080/auth/callback/client1?lang=fr",
     "dependentClientIds": [],
     "acr_values": "",
     "IDP": [

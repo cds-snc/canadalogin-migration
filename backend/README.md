@@ -53,7 +53,7 @@ IBM_VERIFY_MIGRATION_CLIENT_ID=
 IBM_VERIFY_MIGRATION_SECRET=
 IBM_VERIFY_MIGRATION_API_SECRET=
 LEGACY_IDP_LOGOUT_ENABLED=true
-RP_MIGRATION_CONFIG=[{"rp_client_id":"your-rp-client-id","rp_client_name":"Example RP","rp_client_name_en":"Example RP","rp_client_name_fr":"Exemple RP","rp_redirect_uri":"http://localhost:8080/auth/callback/client1","acr_values":"","IDP":[{"client_id":"your-legacy-idp-client-id","client_name":"SIC","openid_configuration":"https://te-auth.id.tbs-sct.gc.ca/oxauth/.well-known/openid-configuration","redirect_uris":["http://localhost:8000/v1/auth/legacy/callback"],"scope":"openid profile email","max_age":3600,"code_challenge_method":"S256","token_endpoint_auth_method":"client_secret_basic"}]}]
+RP_MIGRATION_CONFIG=[{"rp_client_id":"your-rp-client-id","rp_client_name":"Example RP","rp_client_name_en":"Example RP","rp_client_name_fr":"Exemple RP","rp_redirect_uri":"http://localhost:8080/auth/callback/client1","rp_redirect_uri_en":"http://localhost:8080/auth/callback/client1?lang=en","rp_redirect_uri_fr":"http://localhost:8080/auth/callback/client1?lang=fr","acr_values":"","IDP":[{"client_id":"your-legacy-idp-client-id","client_name":"SIC","openid_configuration":"https://te-auth.id.tbs-sct.gc.ca/oxauth/.well-known/openid-configuration","redirect_uris":["http://localhost:8000/v1/auth/legacy/callback"],"scope":"openid profile email","max_age":3600,"code_challenge_method":"S256","token_endpoint_auth_method":"client_secret_basic"}]}]
 RP_MIGRATION_CONFIG_SECRETS=[{"client_id":"your-legacy-idp-client-id","client_secret":"your-legacy-idp-client-secret"}]
 ```
 
@@ -68,6 +68,13 @@ If the language API is unavailable or blocked (CORS/cookie policy/network), the 
 - `"gckey"`: GCKey only
 - `"MFA"`: force MFA prompt
 - `"gckey,MFA"`: GCKey only + force MFA prompt
+
+`RP_MIGRATION_CONFIG` also supports per-language RP return URLs:
+- `rp_redirect_uri_en`: used when the migration session language is English
+- `rp_redirect_uri_fr`: used when the migration session language is French
+- `rp_redirect_uri`: optional fallback used when a language-specific URL is not configured
+
+At least one of `rp_redirect_uri`, `rp_redirect_uri_en`, or `rp_redirect_uri_fr` must be present for each RP.
 
 A formatted non-secret sample file is available at `backend/docs/rp_migration_config.sample.json`.
 A sample secrets payload is available at `backend/docs/rp_migration_config_secrets.sample.json`.

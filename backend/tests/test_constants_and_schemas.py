@@ -1,3 +1,5 @@
+import pytest
+
 from app.constants.session_keys import SessionKeys
 from app.rp.schemas import LegacyIdpSchema, RPSchema
 from app.utils.oidc import generate_code_challenge
@@ -81,6 +83,54 @@ def test_rp_schema_defaults_blank_acr_values():
         IDP=[legacy_idp],
     )
     assert rp.acr_values == ""
+
+
+def test_rp_schema_accepts_language_specific_redirect_uris():
+    legacy_idp = LegacyIdpSchema(
+        client_id="cid",
+        client_name="SIC",
+        client_secret="secret",
+        openid_configuration="https://idp/.well-known/openid-configuration",
+        redirect_uris=["https://callback"],
+        scope="openid",
+        max_age=0,
+        code_challenge_method="S256",
+    )
+    rp = RPSchema(
+        rp_client_id="rp-1",
+        rp_client_name="RP",
+        rp_client_name_en="RP EN",
+        rp_client_name_fr="RP FR",
+        rp_redirect_uri_en="https://rp.example.test/en",
+        rp_redirect_uri_fr="https://rp.example.test/fr",
+        IDP=[legacy_idp],
+    )
+
+    assert rp.rp_redirect_uri is None
+    assert rp.rp_redirect_uri_en == "https://rp.example.test/en"
+    assert rp.rp_redirect_uri_fr == "https://rp.example.test/fr"
+
+
+def test_rp_schema_requires_at_least_one_redirect_uri():
+    legacy_idp = LegacyIdpSchema(
+        client_id="cid",
+        client_name="SIC",
+        client_secret="secret",
+        openid_configuration="https://idp/.well-known/openid-configuration",
+        redirect_uris=["https://callback"],
+        scope="openid",
+        max_age=0,
+        code_challenge_method="S256",
+    )
+
+    with pytest.raises(ValueError, match="rp_redirect_uri"):
+        RPSchema(
+            rp_client_id="rp-1",
+            rp_client_name="RP",
+            rp_client_name_en="RP EN",
+            rp_client_name_fr="RP FR",
+            IDP=[legacy_idp],
+        )
 
 
 def test_generate_code_challenge_is_stable():
