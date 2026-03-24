@@ -59,6 +59,48 @@ async def get_config(
         raise
 
 
+def _normalize_redirect_language(language: str | None) -> str:
+    if not isinstance(language, str):
+        return "en"
+
+    normalized = language.strip().lower()
+    if "-" in normalized:
+        normalized = normalized.split("-")[0]
+
+    return normalized if normalized in ("en", "fr") else "en"
+
+
+def _is_present(value: object) -> bool:
+    return isinstance(value, str) and value.strip() != ""
+
+
+def resolve_rp_redirect_uri(rp: object, language: str | None = None) -> str:
+    normalized_language = _normalize_redirect_language(language)
+
+    if normalized_language == "fr":
+        candidates = (
+            getattr(rp, "rp_redirect_uri_fr", None),
+            getattr(rp, "rp_redirect_uri", None),
+            getattr(rp, "rp_redirect_uri_en", None),
+        )
+    else:
+        candidates = (
+            getattr(rp, "rp_redirect_uri_en", None),
+            getattr(rp, "rp_redirect_uri", None),
+            getattr(rp, "rp_redirect_uri_fr", None),
+        )
+
+    redirect_uri = next(
+        (candidate.strip() for candidate in candidates if _is_present(candidate)),
+        None,
+    )
+
+    if redirect_uri:
+        return redirect_uri
+
+    raise HTTPException(status_code=500, detail="RP redirect URI not configured")
+
+
 # load the legacy idp config, from wherever it is stored
 async def get_config_json() -> list:
     global _CONFIG_JSON_CACHE
@@ -237,6 +279,7 @@ async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 864
 async def get_rp_config_details(
     rp_client_id: str,
     custom_parameters: dict[str, str] | None = None,
+    language: str | None = None,
 ):
     try:
 
@@ -250,7 +293,7 @@ async def get_rp_config_details(
 
         rpConfig = {
             "rp_redirect_url": append_customparameters_to_url(
-                rp.rp_redirect_uri, custom_parameters
+                resolve_rp_redirect_uri(rp, language), custom_parameters
             ),
             "rp_client_name": rp.rp_client_name,
             "rp_client_name_en": rp.rp_client_name_en,

@@ -119,7 +119,12 @@ async def test_skip_account_linking_redirects_to_rp():
         "fakeparam1": "value-1",
         "fakeparam2": "value-2",
     }
-    rp = SimpleNamespace(rp_redirect_uri="https://rp.example.test/landing")
+    request.session[SessionKeys.CURRENT_LANGUAGE.value] = "fr"
+    rp = SimpleNamespace(
+        rp_redirect_uri="https://rp.example.test/landing",
+        rp_redirect_uri_en="https://rp.example.test/landing/en",
+        rp_redirect_uri_fr="https://rp.example.test/landing/fr",
+    )
 
     with (
         patch(
@@ -141,7 +146,7 @@ async def test_skip_account_linking_redirects_to_rp():
         assert isinstance(response, RedirectResponse)
         assert (
             response.headers["location"]
-            == "https://rp.example.test/landing?fakeparam1=value-1&fakeparam2=value-2"
+            == "https://rp.example.test/landing/fr?fakeparam1=value-1&fakeparam2=value-2&lang=fr&ui_locales=fr-CA"
         )
 
 

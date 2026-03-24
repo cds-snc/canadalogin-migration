@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from app.constants.session_keys import SessionKeys
 from app.utils.custom_parameters import (
     append_customparameters_to_url,
+    get_rp_return_parameters_from_session,
     parse_customparameters,
     set_customparameters_in_session,
 )
@@ -53,6 +54,30 @@ def test_append_customparameters_to_url_merges_existing_query():
     assert (
         redirect_url == "https://rp.example.test/landing?existing=1&fakeparam1=value-1"
     )
+
+
+def test_get_rp_return_parameters_from_session_includes_normalized_lang():
+    request = MagicMock()
+    request.session = {
+        SessionKeys.CUSTOM_PARAMETERS.value: {"fakeparam1": "value-1"},
+        SessionKeys.CURRENT_LANGUAGE.value: "fr-CA",
+    }
+
+    assert get_rp_return_parameters_from_session(request) == {
+        "fakeparam1": "value-1",
+        "lang": "fr",
+        "ui_locales": "fr-CA",
+    }
+
+
+def test_get_rp_return_parameters_from_session_ignores_invalid_lang():
+    request = MagicMock()
+    request.session = {
+        SessionKeys.CUSTOM_PARAMETERS.value: {"fakeparam1": "value-1"},
+        SessionKeys.CURRENT_LANGUAGE.value: "es",
+    }
+
+    assert get_rp_return_parameters_from_session(request) == {"fakeparam1": "value-1"}
 
 
 def test_parse_customparameters_raises_for_invalid_payload():

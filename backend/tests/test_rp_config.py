@@ -137,6 +137,20 @@ async def test_get_rp_config_details_appends_custom_parameters(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_get_rp_config_details_prefers_language_specific_redirect(monkeypatch):
+    config = _sample_rp_config()
+    config[0]["rp_redirect_uri_en"] = "https://rp.example.test/landing/en"
+    config[0]["rp_redirect_uri_fr"] = "https://rp.example.test/landing/fr"
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(config))
+    monkeypatch.setenv("RP_MIGRATION_CONFIG_SECRETS", json.dumps(_sample_rp_secrets()))
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        details = await get_rp_config_details("rp-123", language="fr-CA")
+
+    assert details["rp_redirect_url"] == "https://rp.example.test/landing/fr"
+
+
+@pytest.mark.asyncio
 async def test_get_config_json_raises_when_secret_missing_for_client_id(monkeypatch):
     monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
     monkeypatch.delenv("RP_MIGRATION_CONFIG_SECRETS", raising=False)

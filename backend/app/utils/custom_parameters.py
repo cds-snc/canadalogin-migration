@@ -111,6 +111,30 @@ def get_customparameters_from_session(request: Request) -> dict[str, str]:
     }
 
 
+def _normalize_session_language(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+
+    normalized = value.strip().lower()
+    if "-" in normalized:
+        normalized = normalized.split("-")[0]
+
+    return normalized if normalized in ("en", "fr") else None
+
+
+def get_rp_return_parameters_from_session(request: Request) -> dict[str, str]:
+    return_parameters = get_customparameters_from_session(request)
+    current_language = _normalize_session_language(
+        request.session.get(SessionKeys.CURRENT_LANGUAGE.value)
+    )
+
+    if current_language:
+        return_parameters["lang"] = current_language
+        return_parameters["ui_locales"] = f"{current_language}-CA"
+
+    return return_parameters
+
+
 def append_customparameters_to_url(
     url: str, custom_parameters: dict[str, str] | None
 ) -> str:
