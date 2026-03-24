@@ -10,6 +10,7 @@ import {
 import { getPageContent } from "../../../utils/functions.jsx";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
+import { getLocalizedRpName, replaceRpName } from "../utils/relyingParty.js";
 import { useParams } from "react-router";
 import { MigrationStepper } from "./MigrationStepper.jsx";
 import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
@@ -66,6 +67,7 @@ export default function LinkPrompt() {
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
   const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
+  const rpName = getLocalizedRpName(rpData, language);
   const linkButtonText = isGcKeyOnly
     ? pageContentJson["btn_1_gckey_only"] || pageContentJson["btn_1"]
     : pageContentJson["btn_1"];
@@ -82,14 +84,9 @@ export default function LinkPrompt() {
 
       {errorMessage ? <GcdsText>{errorMessage}</GcdsText> : null}
 
-      <GcdsText>
-        {pageContentJson["text_2"].replace(
-          "{RP_Name}",
-          language != "en"
-            ? rpData?.rp_client_name_fr
-            : rpData?.rp_client_name_en,
-        )}
-      </GcdsText>
+      {rpName ? (
+        <GcdsText>{replaceRpName(pageContentJson["text_2"], rpData, language)}</GcdsText>
+      ) : null}
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
       <GcdsButton
         type="link"
@@ -118,14 +115,11 @@ export default function LinkPrompt() {
           </GcdsLink>
         </GcdsNotice>
       </div>
-      <GcdsHeading tag="h2" lang={language}>
-        {pageContentJson["subtitle"].replace(
-          "{RP_Name}",
-          language != "en"
-            ? rpData?.rp_client_name_fr
-            : rpData?.rp_client_name_en,
-        )}
-      </GcdsHeading>
+      {rpName ? (
+        <GcdsHeading tag="h2" lang={language}>
+          {replaceRpName(pageContentJson["subtitle"], rpData, language)}
+        </GcdsHeading>
+      ) : null}
       <GcdsText>{skipHelpText}</GcdsText>
       <GcdsText>
         <GcdsLink

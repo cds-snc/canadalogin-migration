@@ -18,6 +18,7 @@ import {
 import { useParams } from "react-router";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
+import { getLocalizedRpName, replaceRpName } from "../utils/relyingParty.js";
 import { MigrationStepper } from "./MigrationStepper.jsx";
 import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
 
@@ -56,6 +57,7 @@ export default function LinkSuccess() {
   };
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
+  const rpName = getLocalizedRpName(rpData, language);
 
   return (
     <GcdsContainer>
@@ -65,14 +67,9 @@ export default function LinkSuccess() {
       </GcdsHeading>
 
       {errorMessage ? <GcdsText>{errorMessage}</GcdsText> : null}
-      <GcdsText>
-        {pageContentJson["text_1"].replace(
-          "{RP_Name}",
-          language != "en"
-            ? rpData?.rp_client_name_fr
-            : rpData?.rp_client_name_en,
-        )}
-      </GcdsText>
+      {rpName ? (
+        <GcdsText>{replaceRpName(pageContentJson["text_1"], rpData, language)}</GcdsText>
+      ) : null}
       <GcdsText>{pageContentJson["text_2"]}</GcdsText>
       <ul className="list-disc mt-0">
         <li>{pageContentJson["list_text_1"]}</li>
