@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.10.10](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.9...v1.10.10) (2026-03-24)
+
+
+### Bug Fixes
+
+* **extraParam:** support for extra parameters being sent bt RP to IBM… ([#212](https://github.com/cds-snc/gc-sign-in-migration/issues/212)) ([4f74c8b](https://github.com/cds-snc/gc-sign-in-migration/commit/4f74c8b9cb054f43ce71169c1725ba5db12b436d))
+* **language:** Feature/new french t ranslations ([#222](https://github.com/cds-snc/gc-sign-in-migration/issues/222)) ([5238903](https://github.com/cds-snc/gc-sign-in-migration/commit/5238903c3f4cf539b4064885ea31945f2ae3e9d7))
+* **staging:** deploy to staging ([#208](https://github.com/cds-snc/gc-sign-in-migration/issues/208)) ([db7c400](https://github.com/cds-snc/gc-sign-in-migration/commit/db7c4006585481afc5207e6d529509a732cc433c))
+
 ## [1.10.9](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.8...v1.10.9) (2026-03-17)
 
 
