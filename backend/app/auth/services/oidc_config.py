@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 def register_oidc(config):
     verify_config = config.ibm_verify_config
     logger.info(
-        f"PROFILE_MANAGEMENT_CLIENT_ID: {verify_config.IBM_VERIFY_MIGRATION_CLIENT_ID}"
+        "Registering IBM Verify OAuth client with PROFILE_MANAGEMENT_CLIENT_ID: %s",
+        verify_config.IBM_VERIFY_MIGRATION_CLIENT_ID,
     )
 
     oauth.register(

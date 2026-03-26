@@ -57,7 +57,7 @@ def get_callback_redirect_uri(request: Request):
     if config.ENVIRONMENT != "local":
         redirect_uri = str(redirect_uri).replace("http://", "https://")
 
-    logger.info(f"Callback Redirect URI: {redirect_uri}")
+    logger.info("Callback Redirect URI: %s", redirect_uri)
     return redirect_uri
 
 
@@ -72,8 +72,6 @@ async def redirect_user_to_idp_verify(request: Request, clientId: str, lang: str
         request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = clientId
 
         # TODO: Redirect if clientId = NULL
-
-        logger.info(f"Language selected: {lang}")
 
         callback_redirect_uri = get_callback_redirect_uri(request)
         callback_redirect_uri = f"{callback_redirect_uri}?lang={lang}"
@@ -93,23 +91,19 @@ async def callback_handler(request: Request, lang: str):
     This function is used to initiate the login process with IBM Verify.
     """
     try:
-        logger.info(f"lang in callback: {lang}")
         redirectValue = get_base_profile_management_url()
         returnToPageValue = request.session.get(SessionKeys.RETURN_TO_PAGE.value)
 
         if returnToPageValue:
             clientRedirectValue = f"{returnToPageValue}?{SessionKeys.RETURN_TO_PAGE.value}={returnToPageValue}"
             redirectValue += clientRedirectValue
-            logger.info(f"Return to page set in session: {redirectValue}")
+            logger.info("Return to page set in session: %s", redirectValue)
 
         try:
             oidc_response = await oauth.verify.authorize_access_token(request)
-            logger.info("OIDC Responsed")
         except OAuthError as error:
-            logger.error(f"OAuth error during token retrieval: {error}")
-            logger.error(
-                f"Redirect user back to IBM Verify to be re-authenticated: {redirectValue}"
-            )
+            logger.error("OAuth error during token retrieval")
+            logger.error("Redirecting user back to IBM Verify for re-authentication")
             # redirect back to IBM Verify to retry authentication
             raise OAuthError("Invalid or expired token") from error
 
@@ -123,14 +117,13 @@ async def callback_handler(request: Request, lang: str):
         if lang:
             redirectValue = f"{redirectValue}/{lang}"
 
-        logger.info("OIDC Callback Handler")
-        logger.info(f"Redirect to MIGRATION_SOLUTION_DOMAIN: {redirectValue}")
+        logger.info("Redirect to MIGRATION_SOLUTION_DOMAIN: %s", redirectValue)
         return RedirectResponse(url=redirectValue)
     except OAuthError as error:
-        logger.error(f"OAuth error: {error}")
+        logger.error("OAuth error during callback handling")
         raise OAuthError("Invalid or expired token") from error
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error("Unexpected error during callback handling")
         RequestErrorHandler.handle(e, context="Unexpected error during idp redirect")
 
 
@@ -147,7 +140,7 @@ async def reauthenticate_user(
 
         if returnToPage:
             request.session[SessionKeys.RETURN_TO_PAGE.value] = returnToPage
-            logger.info(f"Return to page set in session: {returnToPage}")
+            logger.info("Return to page set in session: %s", returnToPage)
 
         # if the user recently logged in, we can set the max age to 15 minutes
         # will reautenticate after max age value
@@ -194,9 +187,8 @@ async def verify_audit_status(
             AuditDataSchema(**json.loads(item)) for item in audit_data_array
         ]
 
-        logger.debug(f"Audit Object from Custom Attributes: {audit_data_array_parsed}")
         return audit_data_array_parsed
 
-    except Exception as e:
-        logger.error(f"Error verifying audit status: {e}")
+    except Exception:
+        logger.error("Error verifying audit status")
         return False

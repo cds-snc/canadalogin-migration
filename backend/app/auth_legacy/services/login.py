@@ -58,8 +58,8 @@ async def legacy_login(
 
         # handle Interac legacy login
 
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Unexpected error during legacy login")
         raise
 
 
@@ -106,8 +106,6 @@ async def SIC_legacy_login_auth(
 
         redirect_uri = redirect_uris[0]
         # redirect_uri = f"{redirect_uri}?lang={lang}"
-        logger.debug("Redirect_uri: %s", redirect_uri)
-
         state = generate_secure_token()
         nonce = generate_secure_token()
         code_verifier = generate_code_verifier()
@@ -157,6 +155,6 @@ async def SIC_legacy_login_auth(
             ui_locales=ui_locales,
         )
 
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Unexpected error during SIC legacy login")
         raise

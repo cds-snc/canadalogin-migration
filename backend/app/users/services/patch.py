@@ -65,12 +65,10 @@ def patching_payload(
         )
 
         payload = patch_request.model_dump_json()
-        logger.debug(f"Payload to Patch {custom_attribute_name}: {payload}")
-
         return payload
 
-    except ValidationError as e:
-        logger.error(f"Validation Error: {e.json()}")
+    except ValidationError:
+        logger.error("Validation error while building patch payload")
         raise HTTPException(status_code=422, detail="Request data validation error")
 
 
@@ -86,10 +84,7 @@ async def patch_custom_attribute(
         access_token = await get_admin_token(global_http_client)
 
         users_api_endpoint = f"{settings.users_api_endpoint}/{ibm_id}"
-        logger.debug(f"API Endpoint: {users_api_endpoint}")
-
         h = get_auth_request_headers(access_token, False)
-        logger.debug(f"headers: {h}")
 
         response = await global_http_client.patch(
             users_api_endpoint,
@@ -175,12 +170,11 @@ async def patch_processing_data(
         if isinstance(response, dict):
             logger.error(f"patch_processing_data_error: {response}")
             return response
-        logger.info(f"patch_processing_data_status: {response.status_code}")
 
         return response
 
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Unexpected error during patch_processing_data")
         raise
 
 
@@ -225,8 +219,7 @@ async def patch_legacy_pai(
                 if existing_value.pai != legacy_pai:
                     # Defensive fallback for unexpected data inconsistencies.
                     logger.warning(
-                        "Skipping legacy PAI update for client_id=%s due to conflicting existing PAI",
-                        client_id,
+                        "Skipping legacy PAI update due to conflicting existing value"
                     )
                 continue
 
@@ -237,10 +230,7 @@ async def patch_legacy_pai(
 
         # No-op success when all target client_ids already had values or were skipped due to conflicts.
         if not did_change:
-            logger.info(
-                "patch_legacy_pai no-op: no new client_id values to append for ibm_id=%s",
-                ibm_id,
-            )
+            logger.info("patch_legacy_pai no-op: no new values to append")
             return Response(status_code=204)
 
         # Stringify
@@ -261,12 +251,11 @@ async def patch_legacy_pai(
         if isinstance(response, dict):
             logger.error(f"patch_legacy_pai_error: {response}")
             return response
-        logger.info(f"patch_legacy_pai status_code: {response.status_code}")
 
         return response
 
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Unexpected error during patch_legacy_pai")
         raise
 
 
@@ -325,11 +314,10 @@ async def patch_audit_data(
         if isinstance(response, dict):
             logger.error(f"patch_audit_data_error: {response}")
             return response
-        logger.info(f"patch_audit_data_status: {response.status_code}")
 
         # Return Status from IBM
         return response
 
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Unexpected error during patch_audit_data")
         raise

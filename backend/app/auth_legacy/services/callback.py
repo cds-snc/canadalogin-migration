@@ -107,16 +107,14 @@ async def legacy_callback(
 
         # Unique for RP / IDP combo
         client_name = f"{rp.rp_client_name}_{legacy_idp.client_name}"
-        logger.debug(f"Callback Client Name: {client_name}")
         client = await create_client(client_name)
         # Exchange authorization code for tokens
         verifier = request.session.get(f"{client_name}_code_verifier")
         try:
             token = await client.authorize_access_token(request, code_verifier=verifier)
         except OAuthError as e:
-            logger.error(f"OAuth error during legacy callback token retrieval: {e}")
+            logger.error("OAuth error during legacy callback token retrieval")
             RequestErrorHandler.handle(e, context="OAuth error during legacy callback")
-        logger.debug("Token response keys: %s", list(token.keys()))
 
         # Parse ID token & extract legacy PAI
         nonce = request.session.get(f"{client_name}_nonce")
@@ -176,8 +174,6 @@ async def legacy_callback(
 
         # The discovery metadata is stored here:
         idp_metadata = client.server_metadata
-        logger.debug(f"IDP Metadata: {idp_metadata}")
-
         if not config.LEGACY_IDP_LOGOUT_ENABLED:
             logger.info("Legacy IdP logout disabled; skipping end-session redirect.")
             return await legacy_post_logout_callback(request)
@@ -204,8 +200,6 @@ async def legacy_callback(
             f"&client_id=e1a58c16-a649-45e1-b80c-3cd3daaeea0d"
         )
 
-        logger.debug(f"Logout URL: {logout_url}")
-
         return RedirectResponse(url=logout_url)
 
     except httpx.HTTPStatusError as e:
@@ -214,8 +208,8 @@ async def legacy_callback(
             return {"error": "Unauthorized: Invalid credentials or token"}
         return {"error": f"HTTP error: {e.response.status_code}"}
 
-    except ValidationError as e:
-        logger.error(f"Validation Error: {e.json()}")
+    except ValidationError:
+        logger.error("Validation error during legacy callback")
         raise HTTPException(status_code=422, detail="Request data validation error")
     except OAuthError as e:
         raise e

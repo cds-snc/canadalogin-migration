@@ -33,9 +33,6 @@ async def register_client(
     acr_values: str | None = "",
 ):
     try:
-
-        logger.info(f"Register OIDC Client - {client_name}")
-
         # (Clean) Fresh oidc client registration
         # Since this is done on request bases
         oauth._clients.pop(client_name, None)
@@ -45,12 +42,6 @@ async def register_client(
         assert isinstance(metadata, dict)
         assert "authorization_endpoint" in metadata
         assert "token_endpoint" in metadata
-
-        logger.debug("Metadata keys: %s", list(metadata.keys()))
-        logger.info(
-            "authorization_endpoint in metadata: %s",
-            metadata.get("authorization_endpoint"),
-        )
 
         # TODO: get language
         current_locale = ui_locales
@@ -64,41 +55,48 @@ async def register_client(
         if normalized_acr_values:
             authorize_params["acr_values"] = normalized_acr_values
 
-        oauth.register(
-            name=client_name,
-            client_id=idp.client_id,
-            client_secret=idp.client_secret,
-            authorize_url=metadata["authorization_endpoint"],
-            access_token_url=metadata["token_endpoint"],
-            jwks_uri=metadata["jwks_uri"],
-            server_metadata=metadata,
-            http_client=request.app.state.request_client,
-            client_kwargs={
+        registration_kwargs = {
+            "name": client_name,
+            "client_id": idp.client_id,
+            "authorize_url": metadata["authorization_endpoint"],
+            "access_token_url": metadata["token_endpoint"],
+            "jwks_uri": metadata["jwks_uri"],
+            "server_metadata": metadata,
+            "http_client": request.app.state.request_client,
+            "client_kwargs": {
                 "scope": idp.scope,
                 "token_endpoint_auth_method": idp.token_endpoint_auth_method
                 or "client_secret_post",
                 "max_age": 0,
             },
-            authorize_params=authorize_params,
-        )
+            "authorize_params": authorize_params,
+        }
+        if idp.client_secret:
+            registration_kwargs["client_secret"] = idp.client_secret
+        else:
+            logger.warning(
+                "Registering legacy OIDC client '%s' for client_id '%s' without "
+                "client_secret; the provider may require confidential client authentication",
+                client_name,
+                idp.client_id,
+            )
 
-    except OAuthError as e:
-        logger.error(f"OAuth Error: {str(e)}")
+        oauth.register(**registration_kwargs)
+
+    except OAuthError:
+        logger.error("OAuth error while registering legacy OIDC client")
         raise HTTPException(status_code=500, detail="Failed to create OIDC client")
 
 
 # Create Legacy RP to OAuth
 async def create_client(client_name: str):
     try:
-
-        logger.info(f"Create OIDC Client - {client_name}")
-
         client = oauth.create_client(client_name)
 
         return client
 
-    except OAuthError as e:
-        logger.error(f"OAuth Error: {str(e)}")
+    except OAuthError:
+        logger.error("OAuth error while creating legacy OIDC client")
         raise HTTPException(status_code=500, detail="Failed to create OIDC client")
 
 
