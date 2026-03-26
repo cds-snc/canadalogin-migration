@@ -234,13 +234,11 @@ def _merge_config_with_secrets(
         merged.append(rp_copy)
 
     if missing_secret_client_ids:
-        missing_ids = ", ".join(sorted(missing_secret_client_ids))
         logger.warning(
-            "Missing legacy IDP client_secret for client_id(s): %s. "
+            "Missing legacy IDP client_secret for one or more configured client_id values. "
             "Continuing without client_secret. Configure %s entries keyed by client_id "
             "or include inline client_secret in %s if those IdPs require confidential "
             "client auth.",
-            missing_ids,
             CONFIG_SECRETS_ENV_VAR,
             CONFIG_ENV_VAR,
         )

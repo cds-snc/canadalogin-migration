@@ -168,7 +168,7 @@ async def patch_processing_data(
 
         # Return Status from IBM
         if isinstance(response, dict):
-            logger.error(f"patch_processing_data_error: {response}")
+            logger.error("patch_processing_data_error")
             return response
 
         return response
@@ -249,7 +249,7 @@ async def patch_legacy_pai(
 
         # Return Status from IBM
         if isinstance(response, dict):
-            logger.error(f"patch_legacy_pai_error: {response}")
+            logger.error("patch_legacy_pai_error")
             return response
 
         return response
@@ -312,7 +312,7 @@ async def patch_audit_data(
         )
 
         if isinstance(response, dict):
-            logger.error(f"patch_audit_data_error: {response}")
+            logger.error("patch_audit_data_error")
             return response
 
         # Return Status from IBM
