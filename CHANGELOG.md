@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.11](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.10...v1.10.11) (2026-03-26)
+
+
+### Bug Fixes
+
+* **logging:** removed and cleanup logging, was to much uncessarily been logged to a… ([#225](https://github.com/cds-snc/gc-sign-in-migration/issues/225)) ([adb6a4d](https://github.com/cds-snc/gc-sign-in-migration/commit/adb6a4d0a3a3f4ecee57beb51eb7d81ff92fcbc5))
+
 ## [1.10.10](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.9...v1.10.10) (2026-03-24)
 
 
