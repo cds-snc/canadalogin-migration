@@ -50,14 +50,10 @@ def get_custom_attribute(
         custom_attribute_value = get_attribute_value(
             custom_attribute_name, custom_attributes
         )
-        logger.debug(
-            f"Custom Attribute {custom_attribute_name} value: {custom_attribute_value}"
-        )
-
         return custom_attribute_value
 
-    except ValidationError as e:
-        logger.error(f"Validation Error: {e.json()}")
+    except ValidationError:
+        logger.error("Validation error while reading custom attribute")
         raise HTTPException(status_code=422, detail="Request data validation error")
 
 
@@ -74,21 +70,21 @@ async def get_user_custom_attributes(
         headers = get_auth_request_headers(user_access_token)
         response = await global_http_client.get(profile_api_endpoint, headers=headers)
 
-    except ValidationError as e:
-        logger.error(f"Validation Error: {e.json()}")
+    except ValidationError:
+        logger.error("Validation error while loading user custom attributes")
         raise HTTPException(status_code=422, detail="Request data validation error")
 
     if response.status_code == 200:
         json_data = response.json()
-        logger.debug(f"json response: {json_data}")
         response_data = MeResponse(**json_data)
         custom_attributes = response_data.ibm_extension.custom_attributes
-        logger.debug(f"Custom Attributes List: {custom_attributes}")
         return custom_attributes
 
     else:
-
-        logger.error(f"Failed to retrieve profile. Response: {response.text}")
+        logger.error(
+            "Failed to retrieve profile from IBM Verify. Status code: %s",
+            response.status_code,
+        )
 
         if response.status_code == 401:
             raise HTTPException(status_code=401, detail="Not authenticated")

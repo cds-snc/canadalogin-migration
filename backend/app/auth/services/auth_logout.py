@@ -106,9 +106,6 @@ async def mark_session_logout(
     # Use Redis to store the processed token with expiration
     cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
     await redis_client.setex(cache_key, expiration_seconds, source)
-    logger.debug(
-        f"Marked logout session {sid} as processed in Redis with {expiration_seconds}s expiration, and source from {source}"
-    )
 
 
 async def logout_user(request: Request, id_token: str):
@@ -130,7 +127,6 @@ async def logout_user(request: Request, id_token: str):
             "ui_locales": locale,
         }
         redirect_url = f"{end_session_endpoint}?{urlencode(params)}"
-        logger.debug(f"Constructed logout redirect URL: {redirect_url}")
 
         # Create response with the redirect URL
         response_data = LogoutResponseModel(
@@ -149,7 +145,7 @@ async def logout_user(request: Request, id_token: str):
             message="Redirect url to logout",
         )
     except Exception as e:
-        logger.exception("Unexpected error during logout", str(e))
+        logger.exception("Unexpected error during logout")
         RequestErrorHandler.handle(e, context="Unexpected error during logout")
 
 
@@ -159,8 +155,6 @@ async def backchannel_logout(request: Request):
         claims = await validate_logout_token(request)
         sid = claims.get("sid")
         jti = claims.get("jti")  # JWT ID - unique identifier for the logout token
-        logger.debug(f"Backchannel logout for sid: {sid}, jti: {jti}")
-
         # Ensure sid is present (it should be based on validation)
         if not sid:
             logger.error("Missing sid claim in logout token")
@@ -172,16 +166,14 @@ async def backchannel_logout(request: Request):
 
         # Check if this logout token has already been processed
         if await is_logout_processed(request, sid):
-            logger.info(
-                f"Logout token {sid} already processed, ignoring duplicate request"
-            )
+            logger.info("Logout token already processed; ignoring duplicate request")
             return ResponseModel(
                 success=True, data=None, message="Backchannel logout already processed"
             )
 
         # Try to get Redis client from the application state
         redis_client = get_redis_client(request)
-        logger.info(f"Processing backchannel logout for sid: {sid}")
+        logger.info("Processing backchannel logout")
         # Delete the session from Redis for the given sid
         cache_key = f"{RedisKeys.REDIS_SESSION_KEY.value}{sid}"
         await redis_client.delete(cache_key)
@@ -193,7 +185,7 @@ async def backchannel_logout(request: Request):
             success=True, data=None, message="Backchannel logout successful"
         )
     except ValueError as ve:
-        logger.error(f"Value error during backchannel logout: {ve}")
+        logger.error("Value error during backchannel logout")
         raise HTTPException(status_code=400, detail=str(ve)) from ve
     except Exception:
         logger.exception("Unexpected error during backchannel logout")

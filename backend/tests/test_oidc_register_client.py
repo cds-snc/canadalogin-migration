@@ -107,3 +107,27 @@ async def test_register_client_preserves_acr_value_casing():
     authorize_params = mock_register.call_args.kwargs["authorize_params"]
     assert authorize_params["ui_locales"] == "en-CA"
     assert authorize_params["acr_values"] == "gckey,MFA"
+
+
+@pytest.mark.asyncio
+async def test_register_client_omits_client_secret_when_missing():
+    request = _build_request()
+    idp = _build_idp()
+    idp.client_secret = None
+
+    with (
+        patch(
+            "app.utils.oidc.get_legacy_idp_metadata",
+            new=AsyncMock(return_value=_build_metadata()),
+        ),
+        patch("app.utils.oidc.oauth.register") as mock_register,
+    ):
+        await register_client(
+            request,
+            client_name="rpname_SIC",
+            idp=idp,
+            ui_locales="en-CA",
+            acr_values="",
+        )
+
+    assert "client_secret" not in mock_register.call_args.kwargs

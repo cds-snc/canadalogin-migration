@@ -81,6 +81,8 @@ A sample secrets payload is available at `backend/docs/rp_migration_config_secre
 
 `RP_MIGRATION_CONFIG_SECRETS` is keyed by legacy IdP `client_id`.
 The loader merges matching `client_secret` values at startup before runtime validation.
+If a legacy IdP secret is missing, the config still loads and a warning is logged.
+Those IdPs may still require a configured `client_secret` at runtime if they use confidential client authentication.
 Inline `client_secret` inside `RP_MIGRATION_CONFIG` is still accepted for backward compatibility.
 
 To convert a formatted JSON file into a one-line env var value:

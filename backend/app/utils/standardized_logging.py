@@ -130,9 +130,9 @@ class StandardizedLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         try:
             response = await call_next(request)
-        except Exception as exc:
+        except Exception:
             # Log unhandled exceptions (500 errors)
-            logger.error(f"Unhandled exception: {exc} | Path: {request.url.path}")
+            logger.error("Unhandled exception on path %s", request.url.path)
             raise
 
         context = await self.build_context(request, response)

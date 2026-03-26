@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class LegacyIdpSchema(BaseModel):
     client_id: str
     client_name: str
-    client_secret: str
+    client_secret: Optional[str] = None
     openid_configuration: str
     redirect_uris: List[str]
     scope: str

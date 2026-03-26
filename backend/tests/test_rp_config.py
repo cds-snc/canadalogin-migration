@@ -151,13 +151,27 @@ async def test_get_rp_config_details_prefers_language_specific_redirect(monkeypa
 
 
 @pytest.mark.asyncio
-async def test_get_config_json_raises_when_secret_missing_for_client_id(monkeypatch):
+async def test_get_config_json_tolerates_missing_secret_for_client_id(monkeypatch):
     monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
     monkeypatch.delenv("RP_MIGRATION_CONFIG_SECRETS", raising=False)
 
     with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
-        with pytest.raises(ValueError, match="Missing legacy IDP client_secret"):
-            await get_config_json()
+        payload = await get_config_json()
+
+    assert payload[0]["IDP"][0]["client_id"] == "cid"
+    assert payload[0]["IDP"][0].get("client_secret") is None
+
+
+@pytest.mark.asyncio
+async def test_get_config_allows_missing_secret_for_client_id(monkeypatch):
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
+    monkeypatch.delenv("RP_MIGRATION_CONFIG_SECRETS", raising=False)
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        rp = await get_config("rp-123")
+
+    assert rp.IDP[0].client_id == "cid"
+    assert rp.IDP[0].client_secret is None
 
 
 @pytest.mark.asyncio

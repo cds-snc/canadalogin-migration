@@ -43,22 +43,19 @@ async def dispatch_get_my_profile_from_ibm(
         HTTPException: Via RequestErrorHandler for any request failures
     """
     try:
-        logger.info("Get my profile")
         settings = get_configuration()
         profile_api_endpoint = settings.profile_api_endpoint
-        logger.info("Fetching user profile from IBM Verify")
         response = await global_http_client.get(
             profile_api_endpoint,
             headers=get_auth_request_headers(user_access_token),
         )
         response.raise_for_status()
-        logger.info("User profile fetched successfully from IBM Verify")
 
         json_data = response.json()
 
         return IBMVerifyUserProfileSchema(**json_data)
     except Exception as e:
-        logger.error(f"Error fetching profile from IBM Verify: {str(e)}", exc_info=True)
+        logger.error("Error fetching profile from IBM Verify", exc_info=True)
         RequestErrorHandler.handle(e)
 
 
@@ -78,18 +75,15 @@ async def get_my_profile(
     Raises:
         HTTPException: For authentication, validation, or server errors
     """
-    logger.info("Get my profile")
-
     profile_response = await dispatch_get_my_profile_from_ibm(
         global_http_client, user_access_token
     )
-    logger.info("User profile retrieved successfully.")
     profile_data = profile_response.model_dump()
 
     try:
         response_data = IBMVerifyUserProfileSchema(**profile_data)
-    except ValidationError as e:
-        logger.error(f"Profile Validation Error: {e.json()}")
+    except ValidationError:
+        logger.error("Profile validation error")
         raise HTTPException(status_code=422, detail="Request data validation error")
     return ProfileResponse(
         success=True,
@@ -110,10 +104,8 @@ def get_ibm_id(
         # ibm_id = token.userinfo.sub
         # ibm_id = token.userinfo.uid
         ibm_id = token.userinfo.uniqueSecurityName
-        logger.debug(f"IBM Id: {ibm_id}")
-
         return ibm_id
 
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Exception while extracting IBM id from user token")
         raise

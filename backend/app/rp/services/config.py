@@ -50,12 +50,10 @@ async def get_config(
                 status_code=404, detail="Legacy IdP configuration not found"
             )
 
-        logger.debug(f"RP Config {matching_rp_idp}")
-
         return matching_rp_idp
 
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Exception while resolving RP config")
         raise
 
 
@@ -116,10 +114,6 @@ async def get_config_json() -> list:
                 f"Missing required configuration: {CONFIG_ENV_VAR} is not set or empty"
             )
 
-        logger.debug(
-            "Loading migration RP config from env var %s (local)",
-            CONFIG_ENV_VAR,
-        )
         try:
             source_data = _parse_config_json(env_payload)
         except Exception as e:
@@ -139,8 +133,8 @@ async def get_config_json() -> list:
 
         _CONFIG_JSON_CACHE = merged
         return merged
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Exception while loading RP config JSON")
         raise
 
 
@@ -217,7 +211,6 @@ def _merge_config_with_secrets(
     config_data: list, secrets_by_client_id: dict[str, str]
 ) -> list:
     merged: list = []
-    referenced_client_ids: set[str] = set()
     missing_secret_client_ids: set[str] = set()
 
     for rp in config_data:
@@ -228,7 +221,6 @@ def _merge_config_with_secrets(
             client_id = idp_copy.get("client_id")
 
             if client_id:
-                referenced_client_ids.add(client_id)
                 secret_from_env = secrets_by_client_id.get(client_id)
                 if secret_from_env:
                     idp_copy["client_secret"] = secret_from_env
@@ -242,11 +234,13 @@ def _merge_config_with_secrets(
         merged.append(rp_copy)
 
     if missing_secret_client_ids:
-        missing_ids = ", ".join(sorted(missing_secret_client_ids))
-        raise ValueError(
-            "Missing legacy IDP client_secret for client_id(s): "
-            f"{missing_ids}. Provide {CONFIG_SECRETS_ENV_VAR} entries keyed by client_id "
-            f"or include inline client_secret in {CONFIG_ENV_VAR}."
+        logger.warning(
+            "Missing legacy IDP client_secret for one or more configured client_id values. "
+            "Continuing without client_secret. Configure %s entries keyed by client_id "
+            "or include inline client_secret in %s if those IdPs require confidential "
+            "client auth.",
+            CONFIG_SECRETS_ENV_VAR,
+            CONFIG_ENV_VAR,
         )
 
     return merged
@@ -257,12 +251,9 @@ async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 864
 
     redis_client = get_redis_client(request)
 
-    logger.info(f"IDP url: {idp_url}")
-
     # Return cached metadata if available
     cached = await redis_client.get(idp_url)
     if cached:
-        logger.debug("Cached value: %s", cached[:200])  # first 200 chars
         return json.loads(cached.decode("utf-8"))
 
     # Fetch metadata from legacy IdP
@@ -304,6 +295,6 @@ async def get_rp_config_details(
 
         return rpConfig
 
-    except ValidationError as e:
-        logger.error(f"Validation Error: {e.json()}")
+    except ValidationError:
+        logger.error("Validation error while building RP config details")
         raise HTTPException(status_code=422, detail="Request data validation error")
