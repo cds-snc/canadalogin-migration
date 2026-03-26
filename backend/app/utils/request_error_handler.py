@@ -36,7 +36,9 @@ class RequestErrorHandler:
             ]:
                 body = RequestErrorHandler.extract_response_body(exc.response)
 
-                logger.error("%s failed with client-safe upstream error details", context)
+                logger.error(
+                    "%s failed with client-safe upstream error details", context
+                )
 
                 if response_status_code == status.HTTP_429_TOO_MANY_REQUESTS:
                     raise HTTPException(
