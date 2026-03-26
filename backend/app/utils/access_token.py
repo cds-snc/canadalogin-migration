@@ -1,7 +1,6 @@
 import logging
 import threading
 
-from datetime import datetime
 from fastapi import HTTPException
 from httpx import AsyncClient
 from app.config import get_configuration
@@ -43,9 +42,7 @@ async def request_access_token(global_http_client: AsyncClient):
 async def get_admin_token(global_http_client: AsyncClient) -> str:
     """Get access token for IBM Verify API operations"""
     try:
-        start_time = datetime.now()
         response = await request_access_token(global_http_client)
-        _duration = (datetime.now() - start_time).total_seconds()
         response_json = response.json()
         access_token = response_json.get("access_token")
         if not access_token:
