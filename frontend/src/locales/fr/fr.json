@@ -483,11 +483,11 @@
     "notice_title": "Pour en savoir plus"
   },
   "SkipLink": {
-    "title": "Are you sure you don’t have an existing account?",
-    "text_1": "If you don't link your account, you will lose all your existing account information. You will need to create a new account.",
-    "text_2": "You may not be able to link your accounts later.",
-    "btn_1": "Link my account",
-    "btn_2": "Skip and create a new account"
+    "title": "Êtes-vous sûr de ne pas avoir de compte existant?",
+    "text_1": "Si vous ne liez pas votre compte, vous perdrez tous les renseignements associés à votre compte actuel. Vous devrez créer un nouveau compte.",
+    "text_2": "Il se peut que vous ne puissiez pas lier vos comptes plus tard.",
+    "btn_1": "Lier mon compte",
+    "btn_2": "Ignorer et créer un nouveau compte"
   },
   "LinkSuccess": {
     "title": "Votre méthode de connexion a été mise à jour",
