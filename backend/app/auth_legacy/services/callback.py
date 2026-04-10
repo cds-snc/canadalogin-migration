@@ -15,6 +15,7 @@ from app.rp.services.config import get_config
 from app.users.services.custom_attributes import get_user_custom_attributes
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_legacy_pai, patch_audit_data
+from app.utils.auth_flow_logging import log_auth_flow_event
 from app.utils.correlation_id import (
     bind_linking_attempt_id,
     bind_session_correlation_id,
@@ -100,6 +101,13 @@ async def legacy_callback(
             rp_client_id = session_rp_client_id
         elif not rp_client_id:
             raise HTTPException(status_code=400, detail="Missing RP client id")
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_callback",
+            outcome="started",
+            rp_client_id=rp_client_id,
+        )
 
         # RP with SIC only has 1 IDP
         rp = await get_config(rp_client_id)
@@ -115,6 +123,14 @@ async def legacy_callback(
         except OAuthError as e:
             logger.error("OAuth error during legacy callback token retrieval")
             RequestErrorHandler.handle(e, context="OAuth error during legacy callback")
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_token_exchange",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            legacy_provider=legacy_idp.client_name,
+        )
 
         # Parse ID token & extract legacy PAI
         nonce = request.session.get(f"{client_name}_nonce")
@@ -137,6 +153,15 @@ async def legacy_callback(
 
         # Return IBM Id
         ibm_id = get_ibm_id(session_user_token)
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_identity_resolved",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+        )
 
         # Get Users Custom Attributes
         custom_attributes = await get_user_custom_attributes(
@@ -161,6 +186,16 @@ async def legacy_callback(
         _raise_for_failed_patch_response(
             patch_legacy_pai_response, operation_name="patch_legacy_pai"
         )
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_pai_patch",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+            target_rp_client_count=len(target_rp_client_ids),
+        )
 
         # AUDIT DATA LOGIC + PATCH
         patch_audit_data_response = await patch_audit_data(
@@ -175,11 +210,30 @@ async def legacy_callback(
         _raise_for_failed_patch_response(
             patch_audit_data_response, operation_name="patch_audit_data"
         )
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="audit_patch",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            audit_status=AuditStatusKeys.LINKED_KEY.value,
+            legacy_provider=legacy_idp.client_name,
+        )
 
         # The discovery metadata is stored here:
         idp_metadata = client.server_metadata
         if not config.LEGACY_IDP_LOGOUT_ENABLED:
             logger.info("Legacy IdP logout disabled; skipping end-session redirect.")
+            log_auth_flow_event(
+                logger,
+                flow="migration",
+                step="legacy_logout_redirect",
+                outcome="skipped",
+                rp_client_id=rp_client_id,
+                user_id=ibm_id,
+                legacy_provider=legacy_idp.client_name,
+            )
             return await legacy_post_logout_callback(request)
 
         # Grab the logout endpoint
@@ -203,13 +257,24 @@ async def legacy_callback(
             f"&state={state}"
             f"&client_id=e1a58c16-a649-45e1-b80c-3cd3daaeea0d"
         )
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_logout_redirect",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+        )
 
         return RedirectResponse(url=logout_url)
 
     except httpx.HTTPStatusError as e:
         # HTTPX error for status codes like 401
         status_code = e.response.status_code if e.response else 502
-        error_detail = _extract_error_detail(e.response) if e.response else "Unknown error"
+        error_detail = (
+            _extract_error_detail(e.response) if e.response else "Unknown error"
+        )
         logger.error(
             "legacy_callback upstream HTTP error status=%s detail=%s",
             status_code,
@@ -240,6 +305,14 @@ async def legacy_post_logout_callback(request: Request):
 
     base_profile_url = get_base_profile_management_url()
     redirect_url = f"{base_profile_url}{lang_path}{page_path}"
+    log_auth_flow_event(
+        logger,
+        flow="migration",
+        step="post_logout_redirect",
+        outcome="succeeded",
+        rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),
+        lang=lang,
+    )
     clear_linking_attempt_id(request)
 
     return RedirectResponse(url=redirect_url, status_code=302)

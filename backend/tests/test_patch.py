@@ -72,7 +72,9 @@ async def test_patch_custom_attribute_returns_response():
 async def test_patch_custom_attribute_returns_unauthorized_error():
     http_client = AsyncMock()
     response = MagicMock(status_code=401)
-    response.json = MagicMock(return_value={"detail": "invalid token", "access_token": "secret"})
+    response.json = MagicMock(
+        return_value={"detail": "invalid token", "access_token": "secret"}
+    )
     http_client.patch = AsyncMock(return_value=response)
 
     with patch(

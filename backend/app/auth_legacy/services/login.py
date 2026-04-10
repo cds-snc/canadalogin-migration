@@ -8,6 +8,7 @@ from app.constants.session_keys import SessionKeys
 from app.users.services.custom_attributes import get_user_custom_attributes
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_processing_data
+from app.utils.auth_flow_logging import log_auth_flow_event
 from app.utils.correlation_id import (
     ensure_session_correlation_id,
     start_linking_attempt_id,
@@ -19,6 +20,7 @@ from app.utils.oidc import (
     generate_secure_token,
     register_client,
 )
+
 logger = logging.getLogger(__name__)
 
 
@@ -145,6 +147,16 @@ async def SIC_legacy_login_auth(
         # Add/Update Processing Data in IBM
         # Return IBM Id
         ibm_id = get_ibm_id(session_user_token)
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_linking",
+            outcome="started",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+            lang=lang,
+        )
         # Get Users Custom Attributes
         custom_attributes = await get_user_custom_attributes(
             global_http_client, user_access_token
@@ -160,8 +172,17 @@ async def SIC_legacy_login_auth(
         )
 
         _raise_for_failed_processing_patch_response(patch_processing_data_response)
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="processing_data_patch",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+        )
 
-        return await client.authorize_redirect(
+        redirect_response = await client.authorize_redirect(
             request,
             redirect_uri,
             nonce=nonce,
@@ -170,6 +191,17 @@ async def SIC_legacy_login_auth(
             code_challenge_method=code_challenge_method,
             ui_locales=ui_locales,
         )
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_authorize_redirect",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+            lang=lang,
+        )
+        return redirect_response
 
     except Exception:
         logger.exception(

@@ -105,7 +105,9 @@ def bind_linking_attempt_id(request: Request) -> str | None:
         bind_attempt_id(attempt_id)
         return attempt_id
 
-    attempt_id = _get_session_value(request, SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value)
+    attempt_id = _get_session_value(
+        request, SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value
+    )
     if not attempt_id:
         return None
 

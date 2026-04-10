@@ -4,6 +4,13 @@ import json
 
 from app.auth.services.auth_user_session import get_users_current_session
 from app.main import app
+from app.utils.auth_flow_logging import hash_identifier, log_auth_flow_event
+from app.utils.correlation_id import (
+    bind_attempt_id,
+    bind_correlation_id,
+    reset_attempt_id,
+    reset_correlation_id,
+)
 from fastapi.testclient import TestClient
 from fastapi import HTTPException, status
 from fastapi.routing import APIRoute
@@ -252,3 +259,40 @@ async def test_log_includes_request_correlation_and_attempt_ids(monkeypatch, cap
     log_json = json.loads(record.message)
     assert log_json["context"]["correlation_id"] == "corr-123"
     assert log_json["context"]["attempt_id"] == "attempt-123"
+
+
+def test_log_auth_flow_event_hashes_sensitive_identifiers(caplog):
+    correlation_token = bind_correlation_id("corr-123")
+    attempt_token = bind_attempt_id("attempt-123")
+    logger = logging.getLogger("tests.auth_flow")
+
+    caplog.set_level(logging.INFO)
+    try:
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="token_exchange",
+            outcome="succeeded",
+            rp_client_id="rp-123",
+            user_id="user-123",
+            session_id_hash=hash_identifier("sid-123"),
+        )
+    finally:
+        reset_correlation_id(correlation_token)
+        reset_attempt_id(attempt_token)
+
+    record = caplog.records[-1]
+    log_json = json.loads(record.message)
+    assert log_json["code"] == "GCAuth.Migration.INFO.AUTH_FLOW"
+    assert log_json["event"] == "auth_flow"
+    assert log_json["flow"] == "verify"
+    assert log_json["step"] == "token_exchange"
+    assert log_json["outcome"] == "succeeded"
+    assert log_json["context"]["correlation_id"] == "corr-123"
+    assert log_json["context"]["attempt_id"] == "attempt-123"
+    assert log_json["context"]["rp_client_id_hash"] == hash_identifier("rp-123")
+    assert log_json["context"]["user_id_hash"] == hash_identifier("user-123")
+    assert log_json["context"]["session_id_hash"] == hash_identifier("sid-123")
+    assert "rp-123" not in record.message
+    assert "user-123" not in record.message
+    assert "sid-123" not in record.message

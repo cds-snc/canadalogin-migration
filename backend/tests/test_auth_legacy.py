@@ -1,3 +1,5 @@
+import json
+import logging
 import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -15,6 +17,7 @@ from app.auth_legacy.services.callback import (
 )
 from app.constants.session_keys import SessionKeys
 from app.constants.audit_status_keys import AuditStatusKeys
+from app.utils.auth_flow_logging import hash_identifier
 
 
 def build_request():
@@ -196,16 +199,66 @@ async def test_skip_account_linking_redirects_to_rp():
         )
         assert isinstance(response, RedirectResponse)
         assert mock_patch_audit.await_args.kwargs["correlation_id"]
-        assert (
-            SessionKeys.CORRELATION_ID.value in request.session
-        )
-        assert (
-            SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
-        )
+        assert SessionKeys.CORRELATION_ID.value in request.session
+        assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
         assert (
             response.headers["location"]
             == "https://rp.example.test/landing/fr?fakeparam1=value-1&fakeparam2=value-2&lang=fr&ui_locales=fr-CA"
         )
+
+
+@pytest.mark.asyncio
+async def test_skip_account_linking_logs_auth_flow_events(caplog):
+    request = build_request()
+    request.session[SessionKeys.CURRENT_LANGUAGE.value] = "fr"
+    rp = SimpleNamespace(
+        rp_redirect_uri="https://rp.example.test/landing",
+        rp_redirect_uri_en="https://rp.example.test/landing/en",
+        rp_redirect_uri_fr="https://rp.example.test/landing/fr",
+    )
+
+    caplog.set_level(logging.INFO)
+    with (
+        patch(
+            "app.auth_legacy.services.skip.get_ibm_id",
+            new=MagicMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.skip.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.skip.patch_audit_data",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.auth_legacy.services.skip.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+    ):
+        await skip_account_linking(request, "user-at", "user-token", "rp-123")
+
+    auth_flow_logs = [
+        json.loads(record.message)
+        for record in caplog.records
+        if '"event": "auth_flow"' in record.message
+    ]
+
+    assert auth_flow_logs[0]["flow"] == "migration"
+    assert auth_flow_logs[0]["step"] == "skip_linking"
+    assert auth_flow_logs[0]["outcome"] == "started"
+    assert auth_flow_logs[0]["context"]["rp_client_id_hash"] == hash_identifier(
+        "rp-123"
+    )
+    assert auth_flow_logs[0]["context"]["user_id_hash"] == hash_identifier("ibm1")
+
+    assert auth_flow_logs[1]["step"] == "audit_patch"
+    assert auth_flow_logs[1]["outcome"] == "succeeded"
+    assert auth_flow_logs[1]["context"]["audit_status"] == "SKIPPED"
+
+    assert auth_flow_logs[2]["step"] == "skip_linking"
+    assert auth_flow_logs[2]["outcome"] == "succeeded"
+    assert auth_flow_logs[2]["context"]["lang"] == "fr"
 
 
 @pytest.mark.asyncio
