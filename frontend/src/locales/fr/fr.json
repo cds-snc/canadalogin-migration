@@ -472,7 +472,7 @@
     "title": "Utilisez votre ancienne méthode de connexion",
     "subtitle": "Pas de compte du {RP_Name}?",
     "text_1": "Complété : Utiliser la nouvelle méthode de connexion",
-    "text_2": "Pour conserver les données de votre compte du {RP_Name}, vous devrez utiliser votre ancienne méthode de connexion une dernière fois sur ce service. Cela fera de ConnexionCanada votre méthode de connexion pour ce compte.",
+    "text_2": "Pour conserver les données de votre compte {RP_Name}, vous devrez utiliser votre ancienne méthode de connexion une dernière fois sur ce service. Cela fera de ConnexionCanada votre méthode de connexion pour ce compte.",
     "text_3": "Utilisez la méthode de connexion que vous avez utilisée la dernière fois que vous vous êtes connecté à ce service.",
     "text_4": "S’il s’agit de votre première connexion à ce service avec CléGC ou un partenaire de connexion Interac, vous pouvez ignorer cette étape.",
     "text_4_gckey_only": "S’il s’agit de votre première connexion à ce service avec CléGC, vous pouvez ignorer cette étape.",
