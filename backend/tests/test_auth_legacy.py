@@ -113,6 +113,54 @@ async def test_sic_legacy_login_auth_missing_legacy_idp_config_raises():
 
 
 @pytest.mark.asyncio
+async def test_sic_legacy_login_auth_raises_when_processing_patch_returns_dict_error():
+    request = build_request()
+    legacy_idp = SimpleNamespace(
+        client_name="SIC",
+        redirect_uris=["https://legacy.example.test/callback"],
+        code_challenge_method="S256",
+        client_id="cid",
+        client_secret="secret",
+        scope="openid",
+    )
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
+    client = MagicMock()
+    client.authorize_redirect = AsyncMock()
+
+    with (
+        patch(
+            "app.auth_legacy.services.login.get_config", new=AsyncMock(return_value=rp)
+        ),
+        patch("app.auth_legacy.services.login.register_client", new=AsyncMock()),
+        patch(
+            "app.auth_legacy.services.login.create_client",
+            new=AsyncMock(return_value=client),
+        ),
+        patch(
+            "app.auth_legacy.services.login.get_ibm_id",
+            new=MagicMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.login.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.login.patch_processing_data",
+            new=AsyncMock(return_value={"error": "HTTP error: 500"}),
+        ),
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await SIC_legacy_login_auth(
+                request, "user-at", "user-token", "rp-123", "en"
+            )
+
+    assert raised.value.status_code == 502
+    assert raised.value.detail == "HTTP error: 500"
+
+
+@pytest.mark.asyncio
 async def test_skip_account_linking_redirects_to_rp():
     request = build_request()
     request.session[SessionKeys.CUSTOM_PARAMETERS.value] = {
@@ -135,7 +183,10 @@ async def test_skip_account_linking_redirects_to_rp():
             "app.auth_legacy.services.skip.get_user_custom_attributes",
             new=AsyncMock(return_value=[]),
         ),
-        patch("app.auth_legacy.services.skip.patch_audit_data", new=AsyncMock()),
+        patch(
+            "app.auth_legacy.services.skip.patch_audit_data",
+            new=AsyncMock(),
+        ) as mock_patch_audit,
         patch(
             "app.auth_legacy.services.skip.get_config", new=AsyncMock(return_value=rp)
         ),
@@ -144,6 +195,13 @@ async def test_skip_account_linking_redirects_to_rp():
             request, "user-at", "user-token", "rp-123"
         )
         assert isinstance(response, RedirectResponse)
+        assert mock_patch_audit.await_args.kwargs["correlation_id"]
+        assert (
+            SessionKeys.CORRELATION_ID.value in request.session
+        )
+        assert (
+            SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
+        )
         assert (
             response.headers["location"]
             == "https://rp.example.test/landing/fr?fakeparam1=value-1&fakeparam2=value-2&lang=fr&ui_locales=fr-CA"
@@ -259,6 +317,8 @@ async def test_legacy_callback_raises_with_upstream_detail_when_patch_returns_di
 @pytest.mark.asyncio
 async def test_legacy_callback_patches_audit_with_linked_status():
     request = build_request()
+    request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
     client = MagicMock()
     client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
     client.parse_id_token = AsyncMock(return_value={"sub": "legacy-sub"})
@@ -311,16 +371,20 @@ async def test_legacy_callback_patches_audit_with_linked_status():
 
     assert isinstance(result, RedirectResponse)
     mock_patch_audit.assert_awaited_once()
-    args = mock_patch_audit.await_args.args
-    assert args[1] == "ibm1"
-    assert args[2] == "rp-123"
-    assert args[4] == AuditStatusKeys.LINKED_KEY.value
+    kwargs = mock_patch_audit.await_args.kwargs
+    assert kwargs["ibm_id"] == "ibm1"
+    assert kwargs["rp_client_id"] == "rp-123"
+    assert kwargs["status"] == AuditStatusKeys.LINKED_KEY.value
+    assert kwargs["correlation_id"] == "corr-123"
+    assert kwargs["attempt_id"] == "attempt-123"
 
 
 @pytest.mark.asyncio
 async def test_legacy_callback_uses_session_rp_client_id():
     request = build_request()
     request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = "rp-from-session"
+    request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
 
     client = MagicMock()
     client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
@@ -372,8 +436,10 @@ async def test_legacy_callback_uses_session_rp_client_id():
     ):
         await legacy_callback(request, "user-at", "user-token", "rp-123")
 
-    args = mock_patch_audit.await_args.args
-    assert args[2] == "rp-from-session"
+    kwargs = mock_patch_audit.await_args.kwargs
+    assert kwargs["rp_client_id"] == "rp-from-session"
+    assert kwargs["correlation_id"] == "corr-123"
+    assert kwargs["attempt_id"] == "attempt-123"
 
 
 @pytest.mark.asyncio
@@ -487,7 +553,7 @@ async def test_sic_legacy_login_auth_sets_session_and_state():
         patch(
             "app.auth_legacy.services.login.patch_processing_data",
             new=AsyncMock(return_value=MagicMock(status_code=204)),
-        ),
+        ) as mock_patch_processing_data,
     ):
         result = await SIC_legacy_login_auth(
             request, "user-at", "user-token", "rp-123", "en"
@@ -500,6 +566,16 @@ async def test_sic_legacy_login_auth_sets_session_and_state():
     assert request.session["rpname_SIC_code_verifier"] == "verifier-token"
     assert request.session["rpname_SIC_state"] == "state-token"
     assert request.session["rpname_SIC_nonce"] == "nonce-token"
+    assert request.session[SessionKeys.CORRELATION_ID.value]
+    assert request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value]
+    assert (
+        mock_patch_processing_data.await_args.kwargs["correlation_id"]
+        == request.session[SessionKeys.CORRELATION_ID.value]
+    )
+    assert (
+        mock_patch_processing_data.await_args.kwargs["attempt_id"]
+        == request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value]
+    )
 
     client.authorize_redirect.assert_awaited_once()
     args = client.authorize_redirect.await_args.args
@@ -516,6 +592,8 @@ async def test_sic_legacy_login_auth_sets_session_and_state():
 async def test_legacy_post_logout_callback_builds_redirect():
     request = build_request()
     request.session[SessionKeys.CURRENT_LANGUAGE.value] = "en"
+    request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
 
     config = SimpleNamespace(MIGRATION_SOLUTION_DOMAIN="https://profile.example.test")
     with patch(
@@ -524,6 +602,10 @@ async def test_legacy_post_logout_callback_builds_redirect():
     ):
         response = await legacy_post_logout_callback(request)
     assert isinstance(response, RedirectResponse)
+    assert request.state.correlation_id == "corr-123"
+    assert request.state.attempt_id == "attempt-123"
+    assert SessionKeys.CORRELATION_ID.value in request.session
+    assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
     assert response.headers["location"].endswith("/en/link/lang-sync")
 
 

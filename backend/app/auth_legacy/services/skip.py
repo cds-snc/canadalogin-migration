@@ -8,6 +8,11 @@ from app.constants.audit_status_keys import AuditStatusKeys
 from app.users.services.custom_attributes import get_user_custom_attributes
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_audit_data
+from app.utils.correlation_id import (
+    clear_linking_attempt_id,
+    ensure_linking_attempt_id,
+    ensure_session_correlation_id,
+)
 from app.utils.custom_parameters import (
     append_customparameters_to_url,
     get_rp_return_parameters_from_session,
@@ -21,6 +26,8 @@ async def skip_account_linking(
     session_user_token: str,
     rp_client_id: str,
 ):
+    correlation_id = ensure_session_correlation_id(request)
+    attempt_id = ensure_linking_attempt_id(request)
 
     ibm_id = get_ibm_id(session_user_token)
 
@@ -31,11 +38,13 @@ async def skip_account_linking(
 
     # AUDIT DATA LOGIC + PATCH
     await patch_audit_data(
-        global_http_client,
-        ibm_id,
-        rp_client_id,
-        custom_attributes,
-        AuditStatusKeys.SKIPPED_KEY.value,
+        global_http_client=global_http_client,
+        ibm_id=ibm_id,
+        rp_client_id=rp_client_id,
+        custom_attributes=custom_attributes,
+        status=AuditStatusKeys.SKIPPED_KEY.value,
+        correlation_id=correlation_id,
+        attempt_id=attempt_id,
     )
 
     rp = await get_config(rp_client_id)
@@ -45,5 +54,6 @@ async def skip_account_linking(
         resolve_rp_redirect_uri(rp, return_parameters.get("lang")),
         return_parameters,
     )
+    clear_linking_attempt_id(request)
 
     return RedirectResponse(url=redirect_url, status_code=302)

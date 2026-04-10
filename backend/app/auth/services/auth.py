@@ -20,16 +20,7 @@ from app.users.services.custom_attributes import (
     get_user_custom_attributes,
 )
 from app.users.schemas import AuditDataSchema
-
-# Get the desired log level from configuration
-config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
+from app.utils.correlation_id import ensure_session_correlation_id
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +58,7 @@ async def redirect_user_to_idp_verify(request: Request, clientId: str, lang: str
     This function is used to initiate the login process with IBM Verify.
     """
     try:
+        ensure_session_correlation_id(request)
 
         # Add Client Id from Ibm
         request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = clientId
@@ -81,7 +73,7 @@ async def redirect_user_to_idp_verify(request: Request, clientId: str, lang: str
         )
 
     except Exception as e:
-        logger.exception("Unexpected error during redirect_to_verify", str(e))
+        logger.exception("Unexpected error during redirect_to_verify")
         RequestErrorHandler.handle(e, context="Unexpected error during idp redirect")
 
 
@@ -91,6 +83,7 @@ async def callback_handler(request: Request, lang: str):
     This function is used to initiate the login process with IBM Verify.
     """
     try:
+        ensure_session_correlation_id(request)
         redirectValue = get_base_profile_management_url()
         returnToPageValue = request.session.get(SessionKeys.RETURN_TO_PAGE.value)
 
@@ -123,7 +116,7 @@ async def callback_handler(request: Request, lang: str):
         logger.error("OAuth error during callback handling")
         raise OAuthError("Invalid or expired token") from error
     except Exception as e:
-        logger.error("Unexpected error during callback handling")
+        logger.exception("Unexpected error during callback handling")
         RequestErrorHandler.handle(e, context="Unexpected error during idp redirect")
 
 
@@ -135,6 +128,7 @@ async def reauthenticate_user(
     This function is used to initiate a reauthentication flow with IBM Verify.
     """
     try:
+        ensure_session_correlation_id(request)
 
         callback_redirect_uri = get_callback_redirect_uri(request)
 
@@ -190,5 +184,5 @@ async def verify_audit_status(
         return audit_data_array_parsed
 
     except Exception:
-        logger.error("Error verifying audit status")
+        logger.exception("Error verifying audit status")
         return False

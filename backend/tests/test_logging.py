@@ -225,3 +225,30 @@ async def test_log_signed_out(monkeypatch, caplog):
     record = caplog.records[0]
     log_json = json.loads(record.message)
     assert "user" not in log_json["context"]
+
+
+@pytest.mark.asyncio
+async def test_log_includes_request_correlation_and_attempt_ids(monkeypatch, caplog):
+    caplog.set_level(logging.WARNING)
+
+    def mock_auth_user_session():
+        return {}
+
+    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
+
+    async def mock_500(request):
+        request.state.correlation_id = "corr-123"
+        request.state.attempt_id = "attempt-123"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error",
+        )
+
+    override_health_endpoint(monkeypatch, mock_500)
+
+    client.get("/health")
+
+    record = caplog.records[0]
+    log_json = json.loads(record.message)
+    assert log_json["context"]["correlation_id"] == "corr-123"
+    assert log_json["context"]["attempt_id"] == "attempt-123"

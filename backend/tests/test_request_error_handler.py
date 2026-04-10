@@ -1,5 +1,6 @@
 import pytest
 import httpx
+import logging
 from fastapi import HTTPException
 from pydantic import BaseModel, ValidationError
 from authlib.integrations.starlette_client import OAuthError
@@ -59,3 +60,17 @@ def test_handle_existing_http_exception_passthrough():
     with pytest.raises(HTTPException) as raised:
         RequestErrorHandler.handle(exc, context="test")
     assert raised.value.status_code == 418
+
+
+def test_handle_http_status_error_logs_safe_detail_only(caplog):
+    exc = build_http_status_error(
+        500,
+        {"detail": "upstream exploded", "access_token": "secret-token"},
+    )
+    caplog.set_level(logging.ERROR)
+
+    with pytest.raises(HTTPException):
+        RequestErrorHandler.handle(exc, context="test")
+
+    assert "upstream exploded" in caplog.text
+    assert "secret-token" not in caplog.text

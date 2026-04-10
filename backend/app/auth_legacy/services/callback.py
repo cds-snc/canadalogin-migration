@@ -15,19 +15,17 @@ from app.rp.services.config import get_config
 from app.users.services.custom_attributes import get_user_custom_attributes
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_legacy_pai, patch_audit_data
+from app.utils.correlation_id import (
+    bind_linking_attempt_id,
+    bind_session_correlation_id,
+    clear_linking_attempt_id,
+    ensure_linking_attempt_id,
+    ensure_session_correlation_id,
+)
 from app.utils.oidc import create_client
 from app.utils.request_error_handler import RequestErrorHandler
 
-
-# Get the desired log level from configuration
 config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -95,6 +93,8 @@ async def legacy_callback(
     rp_client_id: str,
 ):
     try:
+        correlation_id = ensure_session_correlation_id(request)
+        attempt_id = ensure_linking_attempt_id(request)
         session_rp_client_id = request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
         if session_rp_client_id:
             rp_client_id = session_rp_client_id
@@ -149,12 +149,14 @@ async def legacy_callback(
             rp.dependent_client_ids,
         )
         patch_legacy_pai_response = await patch_legacy_pai(
-            global_http_client,
-            ibm_id,
-            rp_client_id,
-            custom_attributes,
-            legacy_pai,
+            global_http_client=global_http_client,
+            ibm_id=ibm_id,
+            rp_client_id=rp_client_id,
+            custom_attributes=custom_attributes,
+            legacy_pai=legacy_pai,
             target_rp_client_ids=target_rp_client_ids,
+            correlation_id=correlation_id,
+            attempt_id=attempt_id,
         )
         _raise_for_failed_patch_response(
             patch_legacy_pai_response, operation_name="patch_legacy_pai"
@@ -162,11 +164,13 @@ async def legacy_callback(
 
         # AUDIT DATA LOGIC + PATCH
         patch_audit_data_response = await patch_audit_data(
-            global_http_client,
-            ibm_id,
-            rp_client_id,
-            custom_attributes,
-            AuditStatusKeys.LINKED_KEY.value,
+            global_http_client=global_http_client,
+            ibm_id=ibm_id,
+            rp_client_id=rp_client_id,
+            custom_attributes=custom_attributes,
+            status=AuditStatusKeys.LINKED_KEY.value,
+            correlation_id=correlation_id,
+            attempt_id=attempt_id,
         )
         _raise_for_failed_patch_response(
             patch_audit_data_response, operation_name="patch_audit_data"
@@ -204,9 +208,17 @@ async def legacy_callback(
 
     except httpx.HTTPStatusError as e:
         # HTTPX error for status codes like 401
-        if e.response.status_code == 401:
+        status_code = e.response.status_code if e.response else 502
+        error_detail = _extract_error_detail(e.response) if e.response else "Unknown error"
+        logger.error(
+            "legacy_callback upstream HTTP error status=%s detail=%s",
+            status_code,
+            error_detail,
+            exc_info=True,
+        )
+        if status_code == 401:
             return {"error": "Unauthorized: Invalid credentials or token"}
-        return {"error": f"HTTP error: {e.response.status_code}"}
+        return {"error": f"HTTP error: {status_code}"}
 
     except ValidationError:
         logger.error("Validation error during legacy callback")
@@ -220,11 +232,14 @@ async def legacy_callback(
 
 async def legacy_post_logout_callback(request: Request):
     # Logged out of legacy IDP Redirect to profile management language sync page.
+    bind_session_correlation_id(request)
+    bind_linking_attempt_id(request)
     lang = normalize_language(request.session.get(SessionKeys.CURRENT_LANGUAGE.value))
     lang_path = "/" + lang
     page_path = "/link/lang-sync"
 
     base_profile_url = get_base_profile_management_url()
     redirect_url = f"{base_profile_url}{lang_path}{page_path}"
+    clear_linking_attempt_id(request)
 
     return RedirectResponse(url=redirect_url, status_code=302)

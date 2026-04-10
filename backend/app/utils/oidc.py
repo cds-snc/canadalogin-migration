@@ -8,19 +8,9 @@ from authlib.integrations.starlette_client import OAuth, OAuthError
 
 from app.rp.schemas import LegacyIdpSchema
 from app.rp.services.config import get_legacy_idp_metadata
-from app.config import get_configuration
 
 
 oauth = OAuth()
-# Get the desired log level from configuration
-config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
