@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -71,6 +72,9 @@ async def test_patch_custom_attribute_returns_response():
 async def test_patch_custom_attribute_returns_unauthorized_error():
     http_client = AsyncMock()
     response = MagicMock(status_code=401)
+    response.json = MagicMock(
+        return_value={"detail": "invalid token", "access_token": "secret"}
+    )
     http_client.patch = AsyncMock(return_value=response)
 
     with patch(
@@ -83,11 +87,15 @@ async def test_patch_custom_attribute_returns_unauthorized_error():
 
 
 @pytest.mark.asyncio
-async def test_patch_custom_attribute_returns_http_error():
+async def test_patch_custom_attribute_returns_http_error(caplog):
     http_client = AsyncMock()
     response = MagicMock(status_code=500)
+    response.json = MagicMock(
+        return_value={"detail": "upstream patch failed", "access_token": "secret"}
+    )
     http_client.patch = AsyncMock(return_value=response)
 
+    caplog.set_level(logging.ERROR)
     with patch(
         "app.users.services.patch.get_admin_token",
         new=AsyncMock(return_value="admin-token"),
@@ -95,6 +103,8 @@ async def test_patch_custom_attribute_returns_http_error():
         result = await patch_custom_attribute(http_client, "ibm1", '{"x":"y"}')
 
     assert result == {"error": "HTTP error: 500"}
+    assert "upstream patch failed" in caplog.text
+    assert "secret" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -105,7 +115,14 @@ async def test_patch_processing_data_creates_new_record_on_empty_attributes():
         "app.users.services.patch.patch_custom_attribute",
         new=AsyncMock(return_value=MagicMock(status_code=204)),
     ) as mock_patch:
-        await patch_processing_data(http_client, "ibm1", "rp-123", [])
+        await patch_processing_data(
+            http_client,
+            "ibm1",
+            "rp-123",
+            [],
+            correlation_id="corr-123",
+            attempt_id="attempt-123",
+        )
 
     mock_patch.assert_awaited_once()
     assert mock_patch.await_args.args[0] is http_client
@@ -113,7 +130,15 @@ async def test_patch_processing_data_creates_new_record_on_empty_attributes():
     values = _extract_custom_attribute_values(patch_payload)
     parsed = json.loads(values[0])
     assert parsed["client_id"] == "rp-123"
-    assert parsed["retry_count"] == 1
+    assert parsed["retry_count"] == 0
+    assert parsed["correlation_id"] == "corr-123"
+    assert parsed["attempts"] == [
+        {
+            "correlation_id": "corr-123",
+            "attempt_id": "attempt-123",
+            "timestamp": parsed["timestamp"],
+        }
+    ]
 
 
 @pytest.mark.asyncio
@@ -135,14 +160,29 @@ async def test_patch_processing_data_updates_existing_record():
             new=AsyncMock(return_value=MagicMock(status_code=204)),
         ) as mock_patch,
     ):
-        await patch_processing_data(http_client, "ibm1", "rp-123", [])
+        await patch_processing_data(
+            http_client,
+            "ibm1",
+            "rp-123",
+            [],
+            correlation_id="corr-456",
+            attempt_id="attempt-456",
+        )
 
     patch_payload = mock_patch.await_args.kwargs["patch_payload"]
     assert mock_patch.await_args.args[0] is http_client
     values = _extract_custom_attribute_values(patch_payload)
     parsed = json.loads(values[0])
     assert parsed["client_id"] == "rp-123"
-    assert parsed["retry_count"] == 2
+    assert parsed["retry_count"] == 1
+    assert parsed["correlation_id"] == "corr-456"
+    assert parsed["attempts"] == [
+        {
+            "correlation_id": "corr-456",
+            "attempt_id": "attempt-456",
+            "timestamp": parsed["timestamp"],
+        }
+    ]
 
 
 @pytest.mark.asyncio
@@ -180,7 +220,15 @@ async def test_patch_legacy_pai_creates_new_entry_on_empty_attributes():
         "app.users.services.patch.patch_custom_attribute",
         new=AsyncMock(return_value=MagicMock(status_code=204)),
     ) as mock_patch:
-        await patch_legacy_pai(http_client, "ibm1", "rp-123", [], "legacy-pai")
+        await patch_legacy_pai(
+            http_client,
+            "ibm1",
+            "rp-123",
+            [],
+            "legacy-pai",
+            correlation_id="corr-123",
+            attempt_id="attempt-123",
+        )
 
     mock_patch.assert_awaited_once()
     assert mock_patch.await_args.args[0] is http_client
@@ -189,6 +237,8 @@ async def test_patch_legacy_pai_creates_new_entry_on_empty_attributes():
     parsed = json.loads(values[0])
     assert parsed["client_id"] == "rp-123"
     assert parsed["pai"] == "legacy-pai"
+    assert parsed["correlation_id"] == "corr-123"
+    assert parsed["attempt_id"] == "attempt-123"
 
 
 @pytest.mark.asyncio
@@ -237,7 +287,15 @@ async def test_patch_audit_data_creates_new_entry_with_timestamp():
         "app.users.services.patch.patch_custom_attribute",
         new=AsyncMock(return_value=MagicMock(status_code=204)),
     ) as mock_patch:
-        await patch_audit_data(http_client, "ibm1", "rp-123", [], status="LINKED")
+        await patch_audit_data(
+            http_client,
+            "ibm1",
+            "rp-123",
+            [],
+            status="LINKED",
+            correlation_id="corr-123",
+            attempt_id="attempt-123",
+        )
 
     mock_patch.assert_awaited_once()
     assert mock_patch.await_args.args[0] is http_client
@@ -246,6 +304,8 @@ async def test_patch_audit_data_creates_new_entry_with_timestamp():
     parsed = json.loads(values[0])
     assert parsed["client_id"] == "rp-123"
     assert parsed["status"] == "LINKED"
+    assert parsed["correlation_id"] == "corr-123"
+    assert parsed["attempt_id"] == "attempt-123"
     datetime.strptime(parsed["timestamp"], "%Y-%m-%d %H:%M:%S")
 
 

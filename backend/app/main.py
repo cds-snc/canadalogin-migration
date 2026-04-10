@@ -17,6 +17,7 @@ from app.utils.helpers import generate_error_response
 from app.auth.services.auth import redirect_user_to_idp_verify
 from app.constants.redis_keys import RedisKeys
 from app.constants.session_keys import SessionKeys
+from app.utils.logging_config import configure_logging
 
 from .routers import health
 from app.auth import v1_router as v1_auth_router
@@ -36,11 +37,8 @@ class HealthCheckFilter(logging.Filter):
         return record.getMessage().find("/health/health") == -1
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+log_level = getattr(logging, configuration.LOG_LEVEL.upper(), logging.INFO)
+configure_logging(log_level)
 logger = logging.getLogger(__name__)
 
 # Add filter to suppress healthcheck logs from Uvicorn access logs

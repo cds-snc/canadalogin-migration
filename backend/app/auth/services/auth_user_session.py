@@ -21,16 +21,6 @@ from app.utils.schemas import ResponseModel
 from app.utils.redis import get_redis_client
 from app.constants.redis_keys import RedisKeys
 
-
-# Get the desired log level from configuration
-config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -150,7 +140,7 @@ async def refresh_token(refresh_token: str):
         )
         return new_tokens
     except Exception:
-        logger.error("Error refreshing ID token", exc_info=True)
+        logger.exception("Error refreshing Verify ID token")
         raise OAuthError("get new token has failed")
 
 
@@ -258,7 +248,7 @@ async def session_event_sse_generator(request: Request):
         except asyncio.CancelledError:
             logger.info("SSE stream cancelled")
         except Exception:
-            logger.error("Error in event stream")
+            logger.exception("Error in event stream for session_id=%s", session_id)
             message_data = SSEventData(
                 status="error", error="An internal error has occurred."
             )

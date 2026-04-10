@@ -13,15 +13,6 @@ from app.utils.access_token import get_auth_request_headers
 from app.utils.request_error_handler import RequestErrorHandler
 from app.config import get_configuration
 
-# Get the desired log level from configuration
-config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 

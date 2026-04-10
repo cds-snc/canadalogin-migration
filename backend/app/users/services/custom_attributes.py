@@ -13,16 +13,7 @@ from app.users.schemas import (
 )
 
 from app.utils.access_token import get_auth_request_headers
-
-# Get the desired log level from configuration
-config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
+from app.utils.request_error_handler import RequestErrorHandler
 
 logger = logging.getLogger(__name__)
 
@@ -81,17 +72,24 @@ async def get_user_custom_attributes(
         return custom_attributes
 
     else:
-        logger.error(
-            "Failed to retrieve profile from IBM Verify. Status code: %s",
-            response.status_code,
-        )
+        safe_detail = RequestErrorHandler.extract_safe_error_detail(response)
+        if safe_detail:
+            logger.error(
+                "Failed to retrieve profile from IBM Verify. status=%s detail=%s",
+                response.status_code,
+                safe_detail,
+            )
+        else:
+            logger.error(
+                "Failed to retrieve profile from IBM Verify. status=%s",
+                response.status_code,
+            )
 
         if response.status_code == 401:
             raise HTTPException(status_code=401, detail="Not authenticated")
 
         else:
-            json_data = response.json()
-            error_details = json_data.get("detail")
+            error_details = safe_detail or "Unknown error"
             raise HTTPException(
                 status_code=response.status_code, detail=f"HTTP error, {error_details}"
             )

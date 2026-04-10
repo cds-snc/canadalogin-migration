@@ -20,16 +20,8 @@ from app.users.services.custom_attributes import (
     get_user_custom_attributes,
 )
 from app.users.schemas import AuditDataSchema
-
-# Get the desired log level from configuration
-config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
+from app.utils.auth_flow_logging import hash_identifier, log_auth_flow_event
+from app.utils.correlation_id import ensure_session_correlation_id
 
 logger = logging.getLogger(__name__)
 
@@ -67,21 +59,39 @@ async def redirect_user_to_idp_verify(request: Request, clientId: str, lang: str
     This function is used to initiate the login process with IBM Verify.
     """
     try:
+        ensure_session_correlation_id(request)
 
         # Add Client Id from Ibm
         request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = clientId
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="authorize_redirect",
+            outcome="started",
+            rp_client_id=clientId,
+            lang=lang,
+        )
 
         # TODO: Redirect if clientId = NULL
 
         callback_redirect_uri = get_callback_redirect_uri(request)
         callback_redirect_uri = f"{callback_redirect_uri}?lang={lang}"
 
-        return await oauth.verify.authorize_redirect(
+        redirect_response = await oauth.verify.authorize_redirect(
             request, callback_redirect_uri, ui_locales=lang
         )
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="authorize_redirect",
+            outcome="succeeded",
+            rp_client_id=clientId,
+            lang=lang,
+        )
+        return redirect_response
 
     except Exception as e:
-        logger.exception("Unexpected error during redirect_to_verify", str(e))
+        logger.exception("Unexpected error during redirect_to_verify")
         RequestErrorHandler.handle(e, context="Unexpected error during idp redirect")
 
 
@@ -91,8 +101,18 @@ async def callback_handler(request: Request, lang: str):
     This function is used to initiate the login process with IBM Verify.
     """
     try:
+        ensure_session_correlation_id(request)
         redirectValue = get_base_profile_management_url()
         returnToPageValue = request.session.get(SessionKeys.RETURN_TO_PAGE.value)
+        rp_client_id = request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="callback",
+            outcome="started",
+            rp_client_id=rp_client_id,
+            lang=lang,
+        )
 
         if returnToPageValue:
             clientRedirectValue = f"{returnToPageValue}?{SessionKeys.RETURN_TO_PAGE.value}={returnToPageValue}"
@@ -106,24 +126,52 @@ async def callback_handler(request: Request, lang: str):
             logger.error("Redirecting user back to IBM Verify for re-authentication")
             # redirect back to IBM Verify to retry authentication
             raise OAuthError("Invalid or expired token") from error
+        user_info = oidc_response.get("userinfo", {})
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="token_exchange",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=user_info.get("sub"),
+            auth_methods=user_info.get("amr"),
+        )
 
         # Get the handler and set your sid as session id. sid is uuid passed in id_token
         handler = get_session_handler(request)
-        new_session_id = oidc_response.get("userinfo").get("sid")
+        new_session_id = user_info.get("sid")
         handler.session_id = new_session_id
 
         update_session_tokens(request, oidc_response)
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="session_established",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=user_info.get("sub"),
+            session_id_hash=hash_identifier(user_info.get("sid")),
+        )
 
         if lang:
             redirectValue = f"{redirectValue}/{lang}"
 
         logger.info("Redirect to MIGRATION_SOLUTION_DOMAIN: %s", redirectValue)
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="callback",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=user_info.get("sub"),
+            lang=lang,
+        )
         return RedirectResponse(url=redirectValue)
     except OAuthError as error:
         logger.error("OAuth error during callback handling")
         raise OAuthError("Invalid or expired token") from error
     except Exception as e:
-        logger.error("Unexpected error during callback handling")
+        logger.exception("Unexpected error during callback handling")
         RequestErrorHandler.handle(e, context="Unexpected error during idp redirect")
 
 
@@ -135,6 +183,16 @@ async def reauthenticate_user(
     This function is used to initiate a reauthentication flow with IBM Verify.
     """
     try:
+        ensure_session_correlation_id(request)
+        rp_client_id = request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="reauthenticate",
+            outcome="started",
+            rp_client_id=rp_client_id,
+            lang=lang,
+        )
 
         callback_redirect_uri = get_callback_redirect_uri(request)
 
@@ -145,9 +203,19 @@ async def reauthenticate_user(
         # if the user recently logged in, we can set the max age to 15 minutes
         # will reautenticate after max age value
         max_age_in_seconds = 900
-        return await oauth.verify.authorize_redirect(
+        redirect_response = await oauth.verify.authorize_redirect(
             request, callback_redirect_uri, max_age=max_age_in_seconds
         )
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="reauthenticate",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            lang=lang,
+            return_to_page=bool(returnToPage),
+        )
+        return redirect_response
     except OAuthError as error:
         logger.exception("Unexpected error during redirect_to_verify")
         raise OAuthError("Invalid or expired token") from error
@@ -186,9 +254,17 @@ async def verify_audit_status(
         audit_data_array_parsed = [
             AuditDataSchema(**json.loads(item)) for item in audit_data_array
         ]
+        log_auth_flow_event(
+            logger,
+            flow="verify",
+            step="audit_status_lookup",
+            outcome="succeeded",
+            rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),
+            audit_record_count=len(audit_data_array_parsed),
+        )
 
         return audit_data_array_parsed
 
     except Exception:
-        logger.error("Error verifying audit status")
+        logger.exception("Error verifying audit status")
         return False
