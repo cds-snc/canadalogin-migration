@@ -36,6 +36,7 @@ class HealthCheckFilter(logging.Filter):
         # Suppress logs for /health/health endpoint
         return record.getMessage().find("/health/health") == -1
 
+
 log_level = getattr(logging, configuration.LOG_LEVEL.upper(), logging.INFO)
 configure_logging(log_level)
 logger = logging.getLogger(__name__)
