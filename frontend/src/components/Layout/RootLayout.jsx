@@ -22,7 +22,7 @@ export default function RootLayout() {
   }, [currentLang]);
 
   useEffect(() => {
-    document.title = currentLang === "fr" ? "CanadaConnexion" : "CanadaLogin";
+    document.title = currentLang === "fr" ? "ConnexionCanada" : "CanadaLogin";
   }, [currentLang]);
 
   return (

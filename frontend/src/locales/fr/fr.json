@@ -306,7 +306,7 @@
     "8": "Sign out"
   },
   "TopNavBar": {
-    "1": "CanadaConnexion",
+    "1": "ConnexionCanada",
     "2": "Menu",
     "3": "Compte Connexion GC",
     "4": "Renseignements personnels",
@@ -472,29 +472,29 @@
     "title": "Utilisez votre ancienne méthode de connexion",
     "subtitle": "Pas de compte du {RP_Name}?",
     "text_1": "Complété : Utiliser la nouvelle méthode de connexion",
-    "text_2": "Pour conserver les données de votre compte du {RP_Name}, vous devrez utiliser votre ancienne méthode de connexion une dernière fois sur ce service. Cela mettra à jour votre méthode de connexion à ConnexionCanada pour ce compte.",
+    "text_2": "Pour conserver les données de votre compte {RP_Name}, vous devrez utiliser votre ancienne méthode de connexion une dernière fois sur ce service. Cela fera de ConnexionCanada votre méthode de connexion pour ce compte.",
     "text_3": "Utilisez la méthode de connexion que vous avez utilisée la dernière fois que vous vous êtes connecté à ce service.",
-    "text_4": "Si vous ne vous êtes jamais connecté à ce service avec CléGC ou un partenaire de connexion Interac, vous pouvez ignorer cette étape.",
-    "text_4_gckey_only": "Si vous ne vous êtes jamais connecté à ce service avec CléGC, vous pouvez ignorer cette étape.",
-    "link_1": "Comment mettre à jour sa méthode de connexion",
+    "text_4": "S’il s’agit de votre première connexion à ce service avec CléGC ou un partenaire de connexion Interac, vous pouvez ignorer cette étape.",
+    "text_4_gckey_only": "S’il s’agit de votre première connexion à ce service avec CléGC, vous pouvez ignorer cette étape.",
+    "link_1": "Comment mettre à jour votre méthode de connexion",
     "link_2": "Ignorer et créer un nouveau compte",
-    "btn_1": "Se connecter avec CléGC ou partenaire de connexion Interac",
+    "btn_1": "Se connecter avec CléGC ou un partenaire de connexion Interac",
     "btn_1_gckey_only": "Se connecter avec CléGC",
     "notice_title": "Pour en savoir plus"
   },
   "SkipLink": {
-    "title": "Are you sure you don’t have an existing account?",
-    "text_1": "If you don't link your account, you will lose all your existing account information. You will need to create a new account.",
-    "text_2": "You may not be able to link your accounts later.",
-    "btn_1": "Link my account",
-    "btn_2": "Skip and create a new account"
+    "title": "Êtes-vous sûr de ne pas avoir de compte existant?",
+    "text_1": "Si vous ne liez pas votre compte, vous perdrez tous les renseignements associés à votre compte actuel. Vous devrez créer un nouveau compte.",
+    "text_2": "Il se peut que vous ne puissiez pas lier vos comptes plus tard.",
+    "btn_1": "Lier mon compte",
+    "btn_2": "Ignorer et créer un nouveau compte"
   },
   "LinkSuccess": {
     "title": "Votre méthode de connexion a été mise à jour",
     "text_1": "Vous pouvez désormais utiliser ConnexionCanada pour accéder à votre compte du {RP_Name}.",
-    "text_2": "Si vous utilisez CléGC ou un partenaire de connexion Interac pour accéder à d'autres comptes :",
-    "list_text_1": "vous devriez recevoir un courriel lorsque le service commencera à utiliser ConnexionCanada",
-    "list_text_2": "vous devrez mettre à jour votre méthode de connexion de CléGC ou d'un partenaire de connexion Interac à ConnexionCanada sur chaque service",
+    "text_2": "Si vous utilisez CléGC ou un partenaire de connexion Interac pour accéder à d'autres comptes, voici les prochaines étapes :",
+    "list_text_1": "Vous devriez recevoir un courriel lorsque le service commencera à utiliser ConnexionCanada.",
+    "list_text_2": "Vous devrez mettre à jour votre méthode de connexion (CléGC ou partenaire de connexion Interac) afin d'utiliser ConnexionCanada pour chaque service.",
     "btn_1": "Accéder à votre compte"
   },
   "MigrationStepper": {
@@ -503,7 +503,7 @@
     "sr_completed_prefix": "Étape complétée : ",
     "sr_step_prefix": "Étape ",
     "step_title": "Étape {n}",
-    "step_1": "Créez un authentifiant Connexion GC ou connectez-vous",
+    "step_1": "Créez un identifiant ConnexionCanada ou connectez-vous",
     "step_2": "Liez votre ancienne méthode de connexion",
     "step_3": "Accédez à votre compte existant"
   }

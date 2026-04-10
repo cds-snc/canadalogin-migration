@@ -81,8 +81,8 @@ export const PAGES = {
 
 export const FOOTERS = {
   default: {
-    en: '{ "About GC Sign in": "https://gc-signin.cdssandbox.xyz/en/", "Help": "https://gc-signin.cdssandbox.xyz/en/", "Terms": "https://gc-signin.cdssandbox.xyz/en/" }',
-    fr: '{ "À propos de Connexion GC": "https://gc-signin.cdssandbox.xyz/en/", "Aide": "https://gc-signin.cdssandbox.xyz/fr/", "Avis": "https://gc-signin.cdssandbox.xyz/en/" }',
+    en: '{ "About GC Sign in": "https://login.canada.ca/en/users/what-is-canadalogin/", "Help": "https://login.canada.ca/en/users/", "Terms": "https://login.canada.ca/en/users/terms/" }',
+    fr: '{ "À propos": "https://connexion.canada.ca/fr/utilisateurs/a-propos/", "Aide": "https://connexion.canada.ca/fr/utilisateurs/", "Avis": "https://connexion.canada.ca/fr/utilisateurs/avis/" }',
   },
 };
 
