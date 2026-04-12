@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = process.cwd();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, "..");
 const FRONTEND_SRC_DIR = path.join(ROOT, "src");
 const INDEX_HTML_PATH = path.join(ROOT, "index.html");
 const CODE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx"]);
