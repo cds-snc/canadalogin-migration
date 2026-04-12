@@ -14,7 +14,7 @@ This is the frontend application built with React and GC Design System for the G
 1. Install dependencies locally:
 
    ```bash
-   npm install
+   npm ci
    ```
 
 2. Run the development server:

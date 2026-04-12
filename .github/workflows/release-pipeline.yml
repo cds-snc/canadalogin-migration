@@ -86,6 +86,8 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "latest"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: configure aws credentials using OIDC role
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
@@ -102,7 +104,7 @@ jobs:
       - name: Build application
         working-directory: frontend
         run: |
-          npm install
+          npm ci
           npm run build
 
       - name: Upload build artifacts to S3
