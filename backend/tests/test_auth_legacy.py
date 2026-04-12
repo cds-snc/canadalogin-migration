@@ -1,5 +1,6 @@
 import json
 import logging
+import httpx
 import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -365,6 +366,48 @@ async def test_legacy_callback_raises_with_upstream_detail_when_patch_returns_di
 
     assert raised.value.status_code == 502
     assert raised.value.detail == "HTTP error: 500"
+
+
+@pytest.mark.asyncio
+async def test_legacy_callback_raises_http_exception_on_upstream_http_status_error():
+    request = build_request()
+    client = MagicMock()
+    legacy_request = httpx.Request("POST", "https://sic.example.test/token")
+    legacy_response = httpx.Response(
+        503,
+        json={"detail": "legacy idp unavailable"},
+        request=legacy_request,
+    )
+    client.authorize_access_token = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "service unavailable",
+            request=legacy_request,
+            response=legacy_response,
+        )
+    )
+
+    legacy_idp = SimpleNamespace(client_name="SIC")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
+
+    request.session["rpname_SIC_code_verifier"] = "verifier"
+
+    with (
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.create_client",
+            new=AsyncMock(return_value=client),
+        ),
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await legacy_callback(request, "user-at", "user-token", "rp-123")
+
+    assert raised.value.status_code == 503
+    assert raised.value.detail == "legacy idp unavailable"
 
 
 @pytest.mark.asyncio

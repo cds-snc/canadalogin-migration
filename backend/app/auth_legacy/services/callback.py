@@ -270,7 +270,6 @@ async def legacy_callback(
         return RedirectResponse(url=logout_url)
 
     except httpx.HTTPStatusError as e:
-        # HTTPX error for status codes like 401
         status_code = e.response.status_code if e.response else 502
         error_detail = (
             _extract_error_detail(e.response) if e.response else "Unknown error"
@@ -281,9 +280,7 @@ async def legacy_callback(
             error_detail,
             exc_info=True,
         )
-        if status_code == 401:
-            return {"error": "Unauthorized: Invalid credentials or token"}
-        return {"error": f"HTTP error: {status_code}"}
+        raise HTTPException(status_code=status_code, detail=error_detail) from e
 
     except ValidationError:
         logger.error("Validation error during legacy callback")
