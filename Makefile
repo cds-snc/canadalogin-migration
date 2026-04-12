@@ -7,7 +7,7 @@ install-dev-python:
 	@pip install -r ./backend/requirements-dev.txt
 
 install-frontend-deps:
-	cd frontend && npm ci
+	cd frontend && npm install
 
 install-precommit:
 	pre-commit install

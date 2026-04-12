@@ -34,7 +34,7 @@ jobs:
 
       - name: "Install Deps"
         working-directory: ${{ matrix.module }}
-        run: npm ci
+        run: npm install
 
       - name: "Run Vitest Code Coverage"
         working-directory: ${{ matrix.module }}
