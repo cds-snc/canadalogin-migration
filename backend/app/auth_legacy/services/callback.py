@@ -111,6 +111,121 @@ def _reject_legacy_callback(
     raise OAuthError("Invalid or expired token")
 
 
+def _validate_legacy_callback_state(
+    request: Request,
+    *,
+    client_name: str,
+    rp_client_id: str,
+    legacy_provider: str,
+) -> None:
+    callback_state = request.query_params.get("state")
+    expected_state = request.session.get(f"{client_name}_state")
+    if callback_state and callback_state != expected_state:
+        _reject_legacy_callback(
+            request,
+            rp_client_id=rp_client_id,
+            step="legacy_callback_state",
+            reason="mismatched_state",
+            client_name=client_name,
+            legacy_provider=legacy_provider,
+        )
+
+
+async def _authorize_legacy_access_token(
+    request: Request,
+    *,
+    client,
+    client_name: str,
+    rp_client_id: str,
+    legacy_provider: str,
+):
+    _validate_legacy_callback_state(
+        request,
+        client_name=client_name,
+        rp_client_id=rp_client_id,
+        legacy_provider=legacy_provider,
+    )
+
+    verifier = request.session.get(f"{client_name}_code_verifier")
+    try:
+        token = await client.authorize_access_token(request, code_verifier=verifier)
+    except OAuthError as error:
+        logger.error("OAuth error during legacy callback token retrieval")
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_token_exchange",
+            outcome="rejected",
+            rp_client_id=rp_client_id,
+            legacy_provider=legacy_provider,
+            reason="invalid_state_or_code_verifier",
+        )
+        clear_legacy_oidc_session(
+            request, clear_attempt_id=True, client_name=client_name
+        )
+        RequestErrorHandler.handle(error, context="OAuth error during legacy callback")
+
+    log_auth_flow_event(
+        logger,
+        flow="migration",
+        step="legacy_token_exchange",
+        outcome="succeeded",
+        rp_client_id=rp_client_id,
+        legacy_provider=legacy_provider,
+    )
+    return token
+
+
+async def _parse_legacy_id_token(
+    request: Request,
+    *,
+    client,
+    token: dict,
+    client_name: str,
+    rp_client_id: str,
+    legacy_provider: str,
+) -> tuple[dict, str | None]:
+    nonce = request.session.get(f"{client_name}_nonce")
+    state = request.session.get(f"{client_name}_state")
+
+    if not nonce:
+        _reject_legacy_callback(
+            request,
+            rp_client_id=rp_client_id,
+            step="legacy_id_token_validation",
+            reason="missing_nonce",
+            client_name=client_name,
+            legacy_provider=legacy_provider,
+        )
+
+    if "id_token" not in token:
+        logger.error(
+            "Token response missing id_token. Check requested scope includes 'openid'. "
+            "Token keys: %s",
+            list(token.keys()),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Token response missing id_token (scope likely missing 'openid')",
+        )
+
+    try:
+        user = await client.parse_id_token(token, nonce)
+    except Exception:
+        logger.error("Legacy callback rejected during ID token validation", exc_info=True)
+        _reject_legacy_callback(
+            request,
+            rp_client_id=rp_client_id,
+            step="legacy_id_token_validation",
+            reason="invalid_or_mismatched_nonce",
+            client_name=client_name,
+            legacy_provider=legacy_provider,
+        )
+
+    clear_legacy_oidc_session(request, client_name=client_name)
+    return user, state
+
+
 async def legacy_callback(
     request: Request,
     user_access_token: str,
@@ -141,85 +256,22 @@ async def legacy_callback(
         client_name = f"{rp.rp_client_name}_{legacy_idp.client_name}"
         client = await create_client(client_name)
 
-        callback_state = request.query_params.get("state")
-        expected_state = request.session.get(f"{client_name}_state")
-        if callback_state and callback_state != expected_state:
-            _reject_legacy_callback(
-                request,
-                rp_client_id=rp_client_id,
-                step="legacy_callback_state",
-                reason="mismatched_state",
-                client_name=client_name,
-                legacy_provider=legacy_idp.client_name,
-            )
-
-        # Exchange authorization code for tokens
-        verifier = request.session.get(f"{client_name}_code_verifier")
-        try:
-            token = await client.authorize_access_token(request, code_verifier=verifier)
-        except OAuthError as e:
-            logger.error("OAuth error during legacy callback token retrieval")
-            log_auth_flow_event(
-                logger,
-                flow="migration",
-                step="legacy_token_exchange",
-                outcome="rejected",
-                rp_client_id=rp_client_id,
-                legacy_provider=legacy_idp.client_name,
-                reason="invalid_state_or_code_verifier",
-            )
-            clear_legacy_oidc_session(
-                request, clear_attempt_id=True, client_name=client_name
-            )
-            RequestErrorHandler.handle(e, context="OAuth error during legacy callback")
-        log_auth_flow_event(
-            logger,
-            flow="migration",
-            step="legacy_token_exchange",
-            outcome="succeeded",
+        token = await _authorize_legacy_access_token(
+            request,
+            client=client,
+            client_name=client_name,
             rp_client_id=rp_client_id,
             legacy_provider=legacy_idp.client_name,
         )
-
-        # Parse ID token & extract legacy PAI
-        nonce = request.session.get(f"{client_name}_nonce")
-        state = request.session.get(f"{client_name}_state")
-        if not nonce:
-            _reject_legacy_callback(
-                request,
-                rp_client_id=rp_client_id,
-                step="legacy_id_token_validation",
-                reason="missing_nonce",
-                client_name=client_name,
-                legacy_provider=legacy_idp.client_name,
-            )
-        if "id_token" not in token:
-            logger.error(
-                "Token response missing id_token. Check requested scope includes 'openid'. "
-                "Token keys: %s",
-                list(token.keys()),
-            )
-            raise HTTPException(
-                status_code=500,
-                detail="Token response missing id_token (scope likely missing 'openid')",
-            )
-
-        try:
-            user = await client.parse_id_token(token, nonce)
-        except Exception:
-            logger.error(
-                "Legacy callback rejected during ID token validation", exc_info=True
-            )
-            _reject_legacy_callback(
-                request,
-                rp_client_id=rp_client_id,
-                step="legacy_id_token_validation",
-                reason="invalid_or_mismatched_nonce",
-                client_name=client_name,
-                legacy_provider=legacy_idp.client_name,
-            )
+        user, state = await _parse_legacy_id_token(
+            request,
+            client=client,
+            token=token,
+            client_name=client_name,
+            rp_client_id=rp_client_id,
+            legacy_provider=legacy_idp.client_name,
+        )
         legacy_pai = user["sub"]
-        clear_legacy_oidc_session(request, client_name=client_name)
 
         global_http_client = request.app.state.request_client
 
