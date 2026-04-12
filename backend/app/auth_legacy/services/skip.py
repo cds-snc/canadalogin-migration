@@ -4,6 +4,7 @@ from fastapi import Request
 
 from fastapi.responses import RedirectResponse
 
+from app.auth_legacy.services.session_state import clear_legacy_oidc_session
 from app.rp.services.config import get_config
 from app.rp.services.config import resolve_rp_redirect_uri
 from app.constants.audit_status_keys import AuditStatusKeys
@@ -12,7 +13,6 @@ from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_audit_data
 from app.utils.auth_flow_logging import log_auth_flow_event
 from app.utils.correlation_id import (
-    clear_linking_attempt_id,
     ensure_linking_attempt_id,
     ensure_session_correlation_id,
 )
@@ -85,6 +85,6 @@ async def skip_account_linking(
         user_id=ibm_id,
         lang=return_parameters.get("lang"),
     )
-    clear_linking_attempt_id(request)
+    clear_legacy_oidc_session(request, clear_attempt_id=True)
 
     return RedirectResponse(url=redirect_url, status_code=302)
