@@ -105,9 +105,7 @@ def _reject_legacy_callback(
         legacy_provider=legacy_provider,
         reason=reason,
     )
-    clear_legacy_oidc_session(
-        request, clear_attempt_id=True, client_name=client_name
-    )
+    clear_legacy_oidc_session(request, clear_attempt_id=True, client_name=client_name)
     raise OAuthError("Invalid or expired token")
 
 
@@ -212,7 +210,9 @@ async def _parse_legacy_id_token(
     try:
         user = await client.parse_id_token(token, nonce)
     except Exception:
-        logger.error("Legacy callback rejected during ID token validation", exc_info=True)
+        logger.error(
+            "Legacy callback rejected during ID token validation", exc_info=True
+        )
         _reject_legacy_callback(
             request,
             rp_client_id=rp_client_id,
