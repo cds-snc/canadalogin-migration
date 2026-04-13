@@ -26,7 +26,7 @@
     "@gcds-core/components-react": "^1.0.0",
     "@gcds-core/css-shortcuts": "^1.0.1",
     "@react-nano/use-event-source": "^0.16.0",
-    "axios": ">=1.13.5 <1.15.1",
+    "axios": "^1.15.0",
     "date-fns": "^4.1.0",
     "libphonenumber-js": "^1.12.9",
     "react": "^19.1.0",
