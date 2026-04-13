@@ -16,6 +16,11 @@ from app.constants.redis_keys import RedisKeys
 logger = logging.getLogger(__name__)
 
 
+def _redis_unavailable() -> HTTPException:
+    logger.error("Redis unavailable during logout flow")
+    return HTTPException(status_code=503, detail="Redis unavailable")
+
+
 async def validate_logout_token(request: Request):
     """Validate logout token using your registered OAuth client"""
     form_data = await request.form()
@@ -80,7 +85,10 @@ async def is_logout_processed(request: Request, sid: str) -> bool:
         return False
 
     # Try to get Redis client from the application state
-    redis_client = get_redis_client(request)
+    try:
+        redis_client = get_redis_client(request)
+    except ValueError as exc:
+        raise _redis_unavailable() from exc
     # Use Redis to check if token was processed
     cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
     result = await redis_client.get(cache_key)
@@ -102,7 +110,10 @@ async def mark_session_logout(
         return
 
     # Try to get Redis client from the application state
-    redis_client = get_redis_client(request)
+    try:
+        redis_client = get_redis_client(request)
+    except ValueError as exc:
+        raise _redis_unavailable() from exc
     # Use Redis to store the processed token with expiration
     cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
     await redis_client.setex(cache_key, expiration_seconds, source)
@@ -144,6 +155,8 @@ async def logout_user(request: Request, id_token: str):
             data=response_data,
             message="Redirect url to logout",
         )
+    except HTTPException as exc:
+        raise exc
     except Exception as e:
         logger.exception("Unexpected error during logout")
         RequestErrorHandler.handle(e, context="Unexpected error during logout")
@@ -172,7 +185,10 @@ async def backchannel_logout(request: Request):
             )
 
         # Try to get Redis client from the application state
-        redis_client = get_redis_client(request)
+        try:
+            redis_client = get_redis_client(request)
+        except ValueError as exc:
+            raise _redis_unavailable() from exc
         logger.info("Processing backchannel logout")
         # Delete the session from Redis for the given sid
         cache_key = f"{RedisKeys.REDIS_SESSION_KEY.value}{sid}"
@@ -187,6 +203,8 @@ async def backchannel_logout(request: Request):
     except ValueError as ve:
         logger.error("Value error during backchannel logout")
         raise HTTPException(status_code=400, detail=str(ve)) from ve
+    except HTTPException as exc:
+        raise exc
     except Exception:
         logger.exception("Unexpected error during backchannel logout")
         # IBM Verify expects a 400 response for any error during backchannel logout
