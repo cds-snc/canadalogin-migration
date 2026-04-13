@@ -39,8 +39,11 @@ async def _dependencies_ready(request: Request) -> bool:
     try:
         redis_client = get_redis_client(request)
         return bool(await redis_client.ping())
-    except Exception:
-        logger.exception("Health check failed: Redis dependency unavailable")
+    except ValueError as exc:
+        logger.error("Health check failed: Redis client not initialized: %s", exc)
+        return False
+    except Exception as exc:
+        logger.error("Health check failed: Redis dependency unavailable: %s", exc)
         return False
 
 
