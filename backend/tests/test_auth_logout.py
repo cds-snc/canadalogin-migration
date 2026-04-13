@@ -123,7 +123,9 @@ async def test_backchannel_logout_ignores_duplicate_sid():
 def test_get_redis_client_raises_value_error_when_missing():
     request = build_request_without_redis()
 
-    with pytest.raises(ValueError, match="Redis client is not initialized in app state"):
+    with pytest.raises(
+        ValueError, match="Redis client is not initialized in app state"
+    ):
         get_redis_client(request)
 
 
