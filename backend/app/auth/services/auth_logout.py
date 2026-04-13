@@ -112,7 +112,7 @@ async def mark_session_logout(
     # Try to get Redis client from the application state
     try:
         redis_client = get_redis_client(request)
-    except ValueError as exc:
+    except HTTPException as exc:
         raise _redis_unavailable() from exc
     # Use Redis to store the processed token with expiration
     cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
