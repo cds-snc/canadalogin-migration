@@ -155,7 +155,7 @@ async def logout_user(request: Request, id_token: str):
             data=response_data,
             message="Redirect url to logout",
         )
-    except HTTPException as exc:
+    except HTTPException:
         raise
     except Exception as e:
         logger.exception("Unexpected error during logout")
