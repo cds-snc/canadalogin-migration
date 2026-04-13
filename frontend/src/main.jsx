@@ -9,11 +9,13 @@ import ReactGA from "react-ga4";
 
 import config from "./config.jsx";
 
-ReactGA.initialize(config.gatag, {
-  gaOptions: {
-    anonymize_ip: true,
-  },
-});
+if (config.gatag) {
+  ReactGA.initialize(config.gatag, {
+    gaOptions: {
+      anonymize_ip: true,
+    },
+  });
+}
 try {
   createRoot(document.getElementById("root")).render(
     <StrictMode>
