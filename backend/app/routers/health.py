@@ -1,10 +1,11 @@
 """Health-related endpoints."""
 
 import logging
+from datetime import datetime
+
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from datetime import datetime
 
 from app.utils.redis import get_redis_client
 
@@ -67,7 +68,7 @@ async def health_check(request: Request):
     if not await _dependencies_ready(request):
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content=_health_payload("unhealthy"),
+            content=HealthResponse(**_health_payload("unhealthy")).model_dump(),
         )
 
-    return _health_payload("healthy")
+    return HealthResponse(**_health_payload("healthy"))
