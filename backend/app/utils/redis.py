@@ -1,5 +1,5 @@
 import logging
-from fastapi import Request
+from fastapi import HTTPException, Request, status
 from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
@@ -10,4 +10,7 @@ def get_redis_client(request: Request) -> Redis:
     if redis_client is not None:
         return request.app.state.redis_client
     logger.error("Redis client is not initialized in app state")
-    raise ValueError("Redis client is not initialized in app state")
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Redis unavailable",
+    )

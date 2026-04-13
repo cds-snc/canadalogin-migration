@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.10.12](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.11...v1.10.12) (2026-04-12)
+
+
+### Bug Fixes
+
+* **axios:** updated the versioning around axios ([#237](https://github.com/cds-snc/gc-sign-in-migration/issues/237)) ([2ec845f](https://github.com/cds-snc/gc-sign-in-migration/commit/2ec845fd51173e37c12ff46382bc3e87ec27c256))
+* **lang:** added missing french translations ([#239](https://github.com/cds-snc/gc-sign-in-migration/issues/239)) ([e47de50](https://github.com/cds-snc/gc-sign-in-migration/commit/e47de501f53b531e1dee200df2752772f3c9d3dd))
+* **logging:** added correlation ids and cleaned up logging a bit to c… ([#250](https://github.com/cds-snc/gc-sign-in-migration/issues/250)) ([a1dc8ed](https://github.com/cds-snc/gc-sign-in-migration/commit/a1dc8edd5cfca0567af50846a1acbbce2e76bd42))
+* **staging:** deploy to staging ([#242](https://github.com/cds-snc/gc-sign-in-migration/issues/242)) ([ff84422](https://github.com/cds-snc/gc-sign-in-migration/commit/ff8442233e82ab0028afb255d79252fba45b49a2))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump cryptography from 46.0.5 to 46.0.7 in /backend ([#238](https://github.com/cds-snc/gc-sign-in-migration/issues/238)) ([eb90156](https://github.com/cds-snc/gc-sign-in-migration/commit/eb901560d5853272b788164df5716ae1f60c1f18))
+* **deps:** bump requests from 2.32.5 to 2.33.0 in /backend ([#224](https://github.com/cds-snc/gc-sign-in-migration/issues/224)) ([eb31928](https://github.com/cds-snc/gc-sign-in-migration/commit/eb31928a7342d1302cb9ea1369328dc625da7b84))
+* **deps:** update all patch dependencies ([#217](https://github.com/cds-snc/gc-sign-in-migration/issues/217)) ([17feb54](https://github.com/cds-snc/gc-sign-in-migration/commit/17feb5429c1a4a5cf2904d95aad00477410ededc))
+* **deps:** update all patch dependencies ([#253](https://github.com/cds-snc/gc-sign-in-migration/issues/253)) ([28d2109](https://github.com/cds-snc/gc-sign-in-migration/commit/28d2109abb7ad8f469f99f754d2111bc953f0b2b))
+* **deps:** update dependency uvicorn to v0.43.0 ([#228](https://github.com/cds-snc/gc-sign-in-migration/issues/228)) ([7fd667b](https://github.com/cds-snc/gc-sign-in-migration/commit/7fd667b912dd2127db000b1d664703c64a4e957e))
+
 ## [1.10.11](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.10...v1.10.11) (2026-03-26)
 
 

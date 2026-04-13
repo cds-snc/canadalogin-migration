@@ -24,10 +24,30 @@ from app.utils.auth_flow_logging import hash_identifier
 def build_request():
     request = MagicMock()
     request.session = {}
+    request.query_params = {}
     request.app = MagicMock()
     request.app.state = MagicMock()
     request.app.state.request_client = AsyncMock()
     return request
+
+
+def seed_legacy_session(
+    request,
+    *,
+    client_name: str = "rpname_SIC",
+    state: str = "state",
+    nonce: str = "nonce",
+    verifier: str = "verifier",
+):
+    request.session["legacy_provider"] = "SIC"
+    request.session["legacy_client_name"] = client_name
+    request.session[f"{client_name}_code_verifier"] = verifier
+    request.session[f"{client_name}_nonce"] = nonce
+    request.session[f"{client_name}_state"] = state
+    request.session[f"_state_{client_name}_{state}"] = {
+        "data": {"nonce": nonce, "code_verifier": verifier},
+        "exp": 9999999999,
+    }
 
 
 def test_get_target_rp_client_ids_dedupes_and_preserves_order():
@@ -167,6 +187,7 @@ async def test_sic_legacy_login_auth_raises_when_processing_patch_returns_dict_e
 @pytest.mark.asyncio
 async def test_skip_account_linking_redirects_to_rp():
     request = build_request()
+    seed_legacy_session(request)
     request.session[SessionKeys.CUSTOM_PARAMETERS.value] = {
         "fakeparam1": "value-1",
         "fakeparam2": "value-2",
@@ -202,6 +223,12 @@ async def test_skip_account_linking_redirects_to_rp():
         assert mock_patch_audit.await_args.kwargs["correlation_id"]
         assert SessionKeys.CORRELATION_ID.value in request.session
         assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
+        assert "legacy_client_name" not in request.session
+        assert "legacy_provider" not in request.session
+        assert "rpname_SIC_code_verifier" not in request.session
+        assert "rpname_SIC_nonce" not in request.session
+        assert "rpname_SIC_state" not in request.session
+        assert "_state_rpname_SIC_state" not in request.session
         assert (
             response.headers["location"]
             == "https://rp.example.test/landing/fr?fakeparam1=value-1&fakeparam2=value-2&lang=fr&ui_locales=fr-CA"
@@ -415,6 +442,7 @@ async def test_legacy_callback_patches_audit_with_linked_status():
     request = build_request()
     request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
     request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    seed_legacy_session(request)
     client = MagicMock()
     client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
     client.parse_id_token = AsyncMock(return_value={"sub": "legacy-sub"})
@@ -426,10 +454,6 @@ async def test_legacy_callback_patches_audit_with_linked_status():
     rp = SimpleNamespace(
         IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
     )
-
-    request.session["rpname_SIC_code_verifier"] = "verifier"
-    request.session["rpname_SIC_nonce"] = "nonce"
-    request.session["rpname_SIC_state"] = "state"
 
     ok_response = MagicMock(status_code=204)
 
@@ -473,6 +497,13 @@ async def test_legacy_callback_patches_audit_with_linked_status():
     assert kwargs["status"] == AuditStatusKeys.LINKED_KEY.value
     assert kwargs["correlation_id"] == "corr-123"
     assert kwargs["attempt_id"] == "attempt-123"
+    assert request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] == "attempt-123"
+    assert "legacy_client_name" not in request.session
+    assert "legacy_provider" not in request.session
+    assert "rpname_SIC_code_verifier" not in request.session
+    assert "rpname_SIC_nonce" not in request.session
+    assert "rpname_SIC_state" not in request.session
+    assert "_state_rpname_SIC_state" not in request.session
 
 
 @pytest.mark.asyncio
@@ -481,6 +512,7 @@ async def test_legacy_callback_uses_session_rp_client_id():
     request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = "rp-from-session"
     request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
     request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    seed_legacy_session(request)
 
     client = MagicMock()
     client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
@@ -493,10 +525,6 @@ async def test_legacy_callback_uses_session_rp_client_id():
     rp = SimpleNamespace(
         IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
     )
-
-    request.session["rpname_SIC_code_verifier"] = "verifier"
-    request.session["rpname_SIC_nonce"] = "nonce"
-    request.session["rpname_SIC_state"] = "state"
 
     ok_response = MagicMock(status_code=204)
 
@@ -551,6 +579,7 @@ async def test_legacy_callback_raises_on_missing_rp_client_id():
 @pytest.mark.asyncio
 async def test_legacy_callback_handles_oauth_error():
     request = build_request()
+    seed_legacy_session(request)
     client = MagicMock()
     client.authorize_access_token = AsyncMock(side_effect=OAuthError("bad"))
 
@@ -558,8 +587,6 @@ async def test_legacy_callback_handles_oauth_error():
     rp = SimpleNamespace(
         IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
     )
-
-    request.session["rpname_SIC_code_verifier"] = "verifier"
 
     with (
         patch(
@@ -579,6 +606,95 @@ async def test_legacy_callback_handles_oauth_error():
             await legacy_callback(request, "user-at", "user-token", "rp-123")
 
     mock_handler.assert_called_once()
+    assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
+    assert "legacy_client_name" not in request.session
+    assert "legacy_provider" not in request.session
+    assert "rpname_SIC_code_verifier" not in request.session
+    assert "rpname_SIC_nonce" not in request.session
+    assert "rpname_SIC_state" not in request.session
+    assert "_state_rpname_SIC_state" not in request.session
+
+
+@pytest.mark.asyncio
+async def test_legacy_callback_rejects_mismatched_state():
+    request = build_request()
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    request.query_params = {"state": "other-state"}
+    seed_legacy_session(request)
+
+    client = MagicMock()
+    legacy_idp = SimpleNamespace(client_name="SIC")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
+
+    with (
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.create_client",
+            new=AsyncMock(return_value=client),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_legacy_pai",
+            new=AsyncMock(),
+        ) as mock_patch_legacy_pai,
+    ):
+        with pytest.raises(OAuthError):
+            await legacy_callback(request, "user-at", "user-token", "rp-123")
+
+    mock_patch_legacy_pai.assert_not_awaited()
+    assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
+    assert "legacy_client_name" not in request.session
+    assert "legacy_provider" not in request.session
+    assert "rpname_SIC_code_verifier" not in request.session
+    assert "rpname_SIC_nonce" not in request.session
+    assert "rpname_SIC_state" not in request.session
+    assert "_state_rpname_SIC_state" not in request.session
+
+
+@pytest.mark.asyncio
+async def test_legacy_callback_rejects_invalid_id_token_nonce():
+    request = build_request()
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    seed_legacy_session(request)
+
+    client = MagicMock()
+    client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
+    client.parse_id_token = AsyncMock(side_effect=ValueError("bad nonce"))
+
+    legacy_idp = SimpleNamespace(client_name="SIC")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
+
+    with (
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.create_client",
+            new=AsyncMock(return_value=client),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_legacy_pai",
+            new=AsyncMock(),
+        ) as mock_patch_legacy_pai,
+    ):
+        with pytest.raises(OAuthError):
+            await legacy_callback(request, "user-at", "user-token", "rp-123")
+
+    mock_patch_legacy_pai.assert_not_awaited()
+    assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
+    assert "legacy_client_name" not in request.session
+    assert "legacy_provider" not in request.session
+    assert "rpname_SIC_code_verifier" not in request.session
+    assert "rpname_SIC_nonce" not in request.session
+    assert "rpname_SIC_state" not in request.session
+    assert "_state_rpname_SIC_state" not in request.session
 
 
 @pytest.mark.asyncio
@@ -690,6 +806,7 @@ async def test_legacy_post_logout_callback_builds_redirect():
     request.session[SessionKeys.CURRENT_LANGUAGE.value] = "en"
     request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
     request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    seed_legacy_session(request)
 
     config = SimpleNamespace(MIGRATION_SOLUTION_DOMAIN="https://profile.example.test")
     with patch(
@@ -702,6 +819,12 @@ async def test_legacy_post_logout_callback_builds_redirect():
     assert request.state.attempt_id == "attempt-123"
     assert SessionKeys.CORRELATION_ID.value in request.session
     assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
+    assert "legacy_client_name" not in request.session
+    assert "legacy_provider" not in request.session
+    assert "rpname_SIC_code_verifier" not in request.session
+    assert "rpname_SIC_nonce" not in request.session
+    assert "rpname_SIC_state" not in request.session
+    assert "_state_rpname_SIC_state" not in request.session
     assert response.headers["location"].endswith("/en/link/lang-sync")
 
 

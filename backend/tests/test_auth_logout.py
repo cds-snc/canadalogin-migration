@@ -2,55 +2,62 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
 
 from app.auth.services.auth_logout import backchannel_logout, logout_user
-from app.utils.redis import get_redis_client
+from app.constants.redis_keys import RedisKeys
 
 
-def _build_request_without_redis():
-    return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace()))
-
-
-def test_get_redis_client_raises_value_error_when_missing():
-    request = _build_request_without_redis()
-
-    with pytest.raises(ValueError, match="Redis client is not initialized in app state"):
-        get_redis_client(request)
-
-
-@pytest.mark.asyncio
-async def test_logout_user_raises_503_when_redis_is_unavailable():
+def build_request():
     request = MagicMock()
+    request.session = {
+        "legacy_client_name": "rpname_SIC",
+        "rpname_SIC_state": "legacy-state",
+    }
+    request.app = MagicMock()
+    request.app.state = MagicMock()
     request.app.state.config = SimpleNamespace(
         end_session_endpoint="https://verify.example.test/logout"
     )
-    request.session = MagicMock()
+    request.app.state.redis_client = MagicMock()
+    request.app.state.redis_client.delete = AsyncMock()
+    return request
+
+
+@pytest.mark.asyncio
+async def test_logout_user_clears_session_and_marks_logout():
+    request = build_request()
 
     with (
         patch(
             "app.auth.services.auth_logout.get_user_info",
-            new=AsyncMock(return_value={"sid": "sid-123", "locale": "en"}),
+            new=AsyncMock(return_value={"locale": "fr", "sid": "sid-123"}),
         ),
         patch(
             "app.auth.services.auth_logout.get_base_profile_management_url",
             return_value="https://profile.example.test",
         ),
         patch(
-            "app.auth.services.auth_logout.get_redis_client",
-            side_effect=ValueError("Redis client is not initialized in app state"),
-        ),
+            "app.auth.services.auth_logout.mark_session_logout",
+            new=AsyncMock(),
+        ) as mock_mark_session_logout,
     ):
-        with pytest.raises(HTTPException) as raised:
-            await logout_user(request, "id-token")
+        result = await logout_user(request, "id-token-123")
 
-    assert raised.value.status_code == 503
-    assert raised.value.detail == "Redis unavailable"
+    assert result.success is True
+    assert result.message == "Redirect url to logout"
+    assert request.session == {}
+    assert (
+        result.data.redirect_url
+        == "https://verify.example.test/logout?id_token_hint=id-token-123&post_logout_redirect_uri=https%3A%2F%2Fprofile.example.test&ui_locales=fr"
+    )
+    mock_mark_session_logout.assert_awaited_once_with(
+        request, sid="sid-123", source="logout_button"
+    )
 
 
 @pytest.mark.asyncio
-async def test_backchannel_logout_raises_503_when_redis_is_unavailable():
-    request = MagicMock()
+async def test_backchannel_logout_deletes_session_and_marks_processed():
+    request = build_request()
 
     with (
         patch(
@@ -62,12 +69,38 @@ async def test_backchannel_logout_raises_503_when_redis_is_unavailable():
             new=AsyncMock(return_value=False),
         ),
         patch(
-            "app.auth.services.auth_logout.get_redis_client",
-            side_effect=ValueError("Redis client is not initialized in app state"),
+            "app.auth.services.auth_logout.mark_session_logout",
+            new=AsyncMock(),
+        ) as mock_mark_session_logout,
+    ):
+        result = await backchannel_logout(request)
+
+    assert result.success is True
+    assert result.message == "Backchannel logout successful"
+    request.app.state.redis_client.delete.assert_awaited_once_with(
+        f"{RedisKeys.REDIS_SESSION_KEY.value}sid-123"
+    )
+    mock_mark_session_logout.assert_awaited_once_with(
+        request, "sid-123", source="backchannel_logout"
+    )
+
+
+@pytest.mark.asyncio
+async def test_backchannel_logout_ignores_duplicate_sid():
+    request = build_request()
+
+    with (
+        patch(
+            "app.auth.services.auth_logout.validate_logout_token",
+            new=AsyncMock(return_value={"sid": "sid-123", "jti": "jti-123"}),
+        ),
+        patch(
+            "app.auth.services.auth_logout.is_logout_processed",
+            new=AsyncMock(return_value=True),
         ),
     ):
-        with pytest.raises(HTTPException) as raised:
-            await backchannel_logout(request)
+        result = await backchannel_logout(request)
 
-    assert raised.value.status_code == 503
-    assert raised.value.detail == "Redis unavailable"
+    assert result.success is True
+    assert result.message == "Backchannel logout already processed"
+    request.app.state.redis_client.delete.assert_not_awaited()
