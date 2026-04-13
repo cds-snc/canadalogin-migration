@@ -1,11 +1,17 @@
 import json
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from app.rp.services.config import get_config, get_config_json, get_rp_config_details
+from app.rp.services.config import (
+    get_config,
+    get_config_json,
+    get_legacy_idp_metadata,
+    get_rp_config_details,
+)
 
 
 def _sample_rp_config(include_inline_secret: bool = False):
@@ -222,3 +228,34 @@ async def test_get_config_json_ignores_unused_secret_client_ids(monkeypatch):
         payload = await get_config_json()
 
     assert payload[0]["IDP"][0]["client_secret"] == "secret"
+
+
+@pytest.mark.asyncio
+async def test_get_legacy_idp_metadata_raises_503_when_redis_missing():
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace()))
+
+    with pytest.raises(HTTPException) as raised:
+        await get_legacy_idp_metadata(
+            request, "https://idp.example.test/.well-known/openid-configuration"
+        )
+
+    assert raised.value.status_code == 503
+    assert raised.value.detail == "Redis unavailable"
+
+
+@pytest.mark.asyncio
+async def test_get_legacy_idp_metadata_raises_503_when_redis_get_fails():
+    redis_client = SimpleNamespace(
+        get=AsyncMock(side_effect=RuntimeError("redis down"))
+    )
+    request = SimpleNamespace(
+        app=SimpleNamespace(state=SimpleNamespace(redis_client=redis_client))
+    )
+
+    with pytest.raises(HTTPException) as raised:
+        await get_legacy_idp_metadata(
+            request, "https://idp.example.test/.well-known/openid-configuration"
+        )
+
+    assert raised.value.status_code == 503
+    assert raised.value.detail == "Redis unavailable"

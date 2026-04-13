@@ -238,11 +238,17 @@ def _merge_config_with_secrets(
 
 # Fetch and cache legacy IdP metadata in Redis.
 async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 86400):
+    try:
+        redis_client = get_redis_client(request)
+        cached = await redis_client.get(idp_url)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(
+            "Redis unavailable during legacy IdP metadata lookup", exc_info=True
+        )
+        raise HTTPException(status_code=503, detail="Redis unavailable") from exc
 
-    redis_client = get_redis_client(request)
-
-    # Return cached metadata if available
-    cached = await redis_client.get(idp_url)
     if cached:
         return json.loads(cached.decode("utf-8"))
 
@@ -255,8 +261,13 @@ async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 864
     except Exception as exc:
         RequestErrorHandler.handle(exc, context="legacy IdP metadata fetch")
 
-    # Store in Redis with TTL
-    await redis_client.set(idp_url, json.dumps(metadata), ex=ttl)
+    try:
+        await redis_client.set(idp_url, json.dumps(metadata), ex=ttl)
+    except Exception as exc:
+        logger.error(
+            "Redis unavailable while caching legacy IdP metadata", exc_info=True
+        )
+        raise HTTPException(status_code=503, detail="Redis unavailable") from exc
     return metadata
 
 
