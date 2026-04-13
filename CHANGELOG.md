@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.10.13](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.12...v1.10.13) (2026-04-13)
+
+
+### Bug Fixes
+
+* **deps:** update dependency axios to &gt;=1.13.5 &lt;1.15.1 [security] ([#241](https://github.com/cds-snc/gc-sign-in-migration/issues/241)) ([c68a693](https://github.com/cds-snc/gc-sign-in-migration/commit/c68a693baf953d18af5f307a9716a04b030e7cde))
+* **migration:** fail closed on SIC and Redis dependency errors ([#252](https://github.com/cds-snc/gc-sign-in-migration/issues/252)) ([7da1918](https://github.com/cds-snc/gc-sign-in-migration/commit/7da1918bc172ac3ea1b605a55deb5693c6d9cb3d))
+* **saa:** implemented code to meet controls ([#254](https://github.com/cds-snc/gc-sign-in-migration/issues/254)) ([80d79e8](https://github.com/cds-snc/gc-sign-in-migration/commit/80d79e8fd80e4f9ded1a1cdc16b829af1d764166))
+
 ## [1.10.12](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.11...v1.10.12) (2026-04-12)
 
 
