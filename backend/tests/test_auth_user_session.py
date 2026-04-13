@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import HTTPException
+from fastapi.responses import StreamingResponse
 from authlib.integrations.starlette_client import OAuthError
 
 from app.auth.services import auth_user_session
@@ -48,6 +49,21 @@ async def test_get_session_data_by_id_decodes_bytes_to_dict():
 
 
 @pytest.mark.asyncio
+async def test_get_session_data_by_id_raises_503_when_redis_is_unavailable():
+    mock_request = MagicMock()
+
+    with patch(
+        "app.auth.services.auth_user_session.get_redis_client",
+        side_effect=ValueError("Redis client is not initialized in app state"),
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await auth_user_session.get_session_data_by_id(mock_request, "sid123")
+
+    assert raised.value.status_code == 503
+    assert raised.value.detail == "Redis unavailable"
+
+
+@pytest.mark.asyncio
 async def test_is_backchannel_logout_false_when_no_sid():
     mock_request = MagicMock()
     result = await auth_user_session.is_backchannel_logout(mock_request, "")
@@ -78,6 +94,54 @@ async def test_is_backchannel_logout_false_for_other_value():
     ):
         result = await auth_user_session.is_backchannel_logout(mock_request, "sid000")
         assert result is False
+
+
+@pytest.mark.asyncio
+async def test_is_backchannel_logout_raises_503_when_redis_is_unavailable():
+    mock_request = MagicMock()
+
+    with patch(
+        "app.auth.services.auth_user_session.get_redis_client",
+        side_effect=ValueError("Redis client is not initialized in app state"),
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await auth_user_session.is_backchannel_logout(mock_request, "sid123")
+
+    assert raised.value.status_code == 503
+    assert raised.value.detail == "Redis unavailable"
+
+
+@pytest.mark.asyncio
+async def test_session_event_sse_generator_yields_error_when_redis_is_unavailable():
+    mock_request = MagicMock()
+    config = MagicMock(CORS_ORIGINS="https://frontend.example.test")
+
+    with (
+        patch(
+            "app.auth.services.auth_user_session.get_configuration",
+            return_value=config,
+        ),
+        patch(
+            "app.auth.services.auth_user_session.get_user_info",
+            new=AsyncMock(return_value={"sid": "sid123"}),
+        ),
+        patch(
+            "app.auth.services.auth_user_session.get_session_data_by_id",
+            new=AsyncMock(
+                side_effect=HTTPException(status_code=503, detail="Redis unavailable")
+            ),
+        ),
+    ):
+        response = await auth_user_session.session_event_sse_generator(mock_request)
+        chunks = []
+        async for chunk in response.body_iterator:
+            chunks.append(chunk)
+
+    assert isinstance(response, StreamingResponse)
+
+    payload = "".join(chunks)
+    assert "event: error" in payload
+    assert "Redis unavailable" in payload
 
 
 def test_update_session_tokens_updates_session_dict():

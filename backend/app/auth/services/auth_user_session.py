@@ -24,6 +24,11 @@ from app.constants.redis_keys import RedisKeys
 logger = logging.getLogger(__name__)
 
 
+def _redis_unavailable() -> HTTPException:
+    logger.error("Redis unavailable during session status flow")
+    return HTTPException(status_code=503, detail="Redis unavailable")
+
+
 async def get_http_client(request: Request) -> AsyncClient:
     return request.app.state.request_client
 
@@ -157,7 +162,10 @@ def update_session_tokens(request: Request, new_tokens: dict):
 async def get_session_data_by_id(request: Request, session_id: str):
     # Try to get Redis client from the application state
     session_data = None
-    redis_client = get_redis_client(request)
+    try:
+        redis_client = get_redis_client(request)
+    except ValueError as exc:
+        raise _redis_unavailable() from exc
     # read the session from Redis for the given session_id
     cache_key = f"{RedisKeys.REDIS_SESSION_KEY.value}{session_id}"
     session = await redis_client.get(cache_key)
@@ -247,6 +255,10 @@ async def session_event_sse_generator(request: Request):
 
         except asyncio.CancelledError:
             logger.info("SSE stream cancelled")
+        except HTTPException as exc:
+            logger.error("Session event stream unavailable: %s", exc.detail)
+            message_data = SSEventData(status="error", error=str(exc.detail))
+            yield f"event: error\ndata: {message_data.model_dump_json()}\n\n"
         except Exception:
             logger.exception("Error in event stream for session_id=%s", session_id)
             message_data = SSEventData(
@@ -329,7 +341,10 @@ async def is_backchannel_logout(request: Request, sid: str) -> bool:
         return False
 
     # Try to get Redis client from the application state
-    redis_client = get_redis_client(request)
+    try:
+        redis_client = get_redis_client(request)
+    except ValueError as exc:
+        raise _redis_unavailable() from exc
 
     # Use Redis to check if token was processed
     cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
