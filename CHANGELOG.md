@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.14](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.13...v1.10.14) (2026-04-14)
+
+
+### Bug Fixes
+
+* **release:** release to test and staging ([#263](https://github.com/cds-snc/gc-sign-in-migration/issues/263)) ([d565b41](https://github.com/cds-snc/gc-sign-in-migration/commit/d565b41650763ecc44a1def885704acb97900a55))
+* **release:** releasling latest to test and staging ([#259](https://github.com/cds-snc/gc-sign-in-migration/issues/259)) ([cbb53dc](https://github.com/cds-snc/gc-sign-in-migration/commit/cbb53dcd7e6f68deec6feb0938a3169133721ef6))
+
 ## [1.10.13](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.12...v1.10.13) (2026-04-13)
 
 
