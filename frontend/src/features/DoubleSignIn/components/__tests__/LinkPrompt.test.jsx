@@ -3,7 +3,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
 import LinkPrompt from "../LinkPrompt.jsx";
-import { MIGRATION_END_POINTS } from "../../../../utils/constants.jsx";
+import {
+  EXTERNAL_NAVIGATION_LINKS,
+  MIGRATION_END_POINTS,
+} from "../../../../utils/constants.jsx";
+
+let mockLanguage = "en";
 
 vi.mock("@gcds-core/components-react", () => ({
   GcdsContainer: ({ children }) => <div>{children}</div>,
@@ -21,7 +26,7 @@ vi.mock("@gcds-core/components-react", () => ({
 }));
 
 vi.mock("react-router", () => ({
-  useParams: () => ({ language: "en" }),
+  useParams: () => ({ language: mockLanguage }),
   useLocation: () => ({ pathname: "/test-path" }),
 }));
 
@@ -61,8 +66,10 @@ import { updateLinkStateAPI } from "../../api/UpdateLinkState.jsx";
 describe("LinkPrompt", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLanguage = "en";
     updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
       rp_client_name_en: "Example RP",
+      rp_client_name_fr: "Exemple RP",
     });
   });
 
@@ -84,6 +91,30 @@ describe("LinkPrompt", () => {
 
     const skipLink = screen.getByText("Skip for now");
     expect(skipLink).toHaveAttribute("href", MIGRATION_END_POINTS.skip);
+  });
+
+  it("links the info notice to the English sign-in method help page", async () => {
+    render(<LinkPrompt />);
+
+    const learnMoreLink = await screen.findByText("Learn more");
+
+    expect(learnMoreLink).toHaveAttribute(
+      "href",
+      EXTERNAL_NAVIGATION_LINKS.updateSignInMethod.en,
+    );
+  });
+
+  it("links the info notice to the French sign-in method help page", async () => {
+    mockLanguage = "fr";
+
+    render(<LinkPrompt />);
+
+    const learnMoreLink = await screen.findByText("Learn more");
+
+    expect(learnMoreLink).toHaveAttribute(
+      "href",
+      EXTERNAL_NAVIGATION_LINKS.updateSignInMethod.fr,
+    );
   });
 
   it("uses GCKey-only text when RP config is gckey only", async () => {

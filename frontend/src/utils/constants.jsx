@@ -12,6 +12,10 @@ export const LANGUAGE_DISPLAY_NAMES = {
 export const EXTERNAL_NAVIGATION_LINKS = {
   gcAccountDirectory:
     "https://www.canada.ca/en/government/sign-in-online-account.html",
+  updateSignInMethod: {
+    en: "https://login.canada.ca/en/users/migrate-account/updating-signin-method/",
+    fr: "https://connexion.canada.ca/fr/utilisateurs/migrer-compte/mise-a-jour-methode-connexion/",
+  },
 };
 export const OIDC_REDIRECT = {
   login: `${config.apiUrl}/v1/auth/login`,

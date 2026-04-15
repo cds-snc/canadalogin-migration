@@ -18,6 +18,7 @@ import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
 import {
   PAGES,
   MIGRATION_END_POINTS,
+  EXTERNAL_NAVIGATION_LINKS,
   GA_LABELS,
   GA_CATEGORIES,
   GA_EVENTS,
@@ -107,12 +108,18 @@ export default function LinkPrompt() {
 
       <div className="mt-500 mb-700">
         <GcdsNotice
-          type="info"
+          noticeRole="info"
           noticeTitle={pageContentJson["notice_title"]}
           noticeTitleTag="h2"
           lang={language}
         >
-          <GcdsLink href="#" external>
+          <GcdsLink
+            href={
+              EXTERNAL_NAVIGATION_LINKS.updateSignInMethod[language] ||
+              EXTERNAL_NAVIGATION_LINKS.updateSignInMethod.en
+            }
+            external
+          >
             {pageContentJson["link_1"]}
           </GcdsLink>
         </GcdsNotice>
