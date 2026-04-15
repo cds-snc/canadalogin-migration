@@ -5,6 +5,12 @@ import "@testing-library/jest-dom/vitest";
 import LinkPrompt from "../LinkPrompt.jsx";
 import { MIGRATION_END_POINTS } from "../../../../utils/constants.jsx";
 
+let mockLanguage = "en";
+const localizedHelpLinks = {
+  en: "https://example.test/en/sign-in-method",
+  fr: "https://example.test/fr/methode-connexion",
+};
+
 vi.mock("@gcds-core/components-react", () => ({
   GcdsContainer: ({ children }) => <div>{children}</div>,
   GcdsText: ({ children }) => <div>{children}</div>,
@@ -21,7 +27,7 @@ vi.mock("@gcds-core/components-react", () => ({
 }));
 
 vi.mock("react-router", () => ({
-  useParams: () => ({ language: "en" }),
+  useParams: () => ({ language: mockLanguage }),
   useLocation: () => ({ pathname: "/test-path" }),
 }));
 
@@ -36,6 +42,7 @@ vi.mock("../../../../utils/functions.jsx", () => ({
         btn_1_gckey_only: "Link with GCKey",
         notice_title: "Notice",
         link_1: "Learn more",
+        link_1_url: localizedHelpLinks[_language],
         subtitle: "Skip linking {RP_Name}",
         text_4: "You can skip.",
         text_4_gckey_only: "You can skip if you did not use GCKey.",
@@ -61,8 +68,10 @@ import { updateLinkStateAPI } from "../../api/UpdateLinkState.jsx";
 describe("LinkPrompt", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLanguage = "en";
     updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
       rp_client_name_en: "Example RP",
+      rp_client_name_fr: "Exemple RP",
     });
   });
 
@@ -84,6 +93,24 @@ describe("LinkPrompt", () => {
 
     const skipLink = screen.getByText("Skip for now");
     expect(skipLink).toHaveAttribute("href", MIGRATION_END_POINTS.skip);
+  });
+
+  it("links the info notice to the English sign-in method help page", async () => {
+    render(<LinkPrompt />);
+
+    const learnMoreLink = await screen.findByText("Learn more");
+
+    expect(learnMoreLink).toHaveAttribute("href", localizedHelpLinks.en);
+  });
+
+  it("links the info notice to the French sign-in method help page", async () => {
+    mockLanguage = "fr";
+
+    render(<LinkPrompt />);
+
+    const learnMoreLink = await screen.findByText("Learn more");
+
+    expect(learnMoreLink).toHaveAttribute("href", localizedHelpLinks.fr);
   });
 
   it("uses GCKey-only text when RP config is gckey only", async () => {

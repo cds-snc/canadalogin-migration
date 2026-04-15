@@ -107,12 +107,12 @@ export default function LinkPrompt() {
 
       <div className="mt-500 mb-700">
         <GcdsNotice
-          type="info"
+          noticeRole="info"
           noticeTitle={pageContentJson["notice_title"]}
           noticeTitleTag="h2"
           lang={language}
         >
-          <GcdsLink href="#" external>
+          <GcdsLink href={pageContentJson["link_1_url"]} external>
             {pageContentJson["link_1"]}
           </GcdsLink>
         </GcdsNotice>
