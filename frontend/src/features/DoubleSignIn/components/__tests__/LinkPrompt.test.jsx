@@ -3,12 +3,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
 import LinkPrompt from "../LinkPrompt.jsx";
-import {
-  EXTERNAL_NAVIGATION_LINKS,
-  MIGRATION_END_POINTS,
-} from "../../../../utils/constants.jsx";
+import { MIGRATION_END_POINTS } from "../../../../utils/constants.jsx";
 
 let mockLanguage = "en";
+const localizedHelpLinks = {
+  en: "https://example.test/en/sign-in-method",
+  fr: "https://example.test/fr/methode-connexion",
+};
 
 vi.mock("@gcds-core/components-react", () => ({
   GcdsContainer: ({ children }) => <div>{children}</div>,
@@ -41,6 +42,7 @@ vi.mock("../../../../utils/functions.jsx", () => ({
         btn_1_gckey_only: "Link with GCKey",
         notice_title: "Notice",
         link_1: "Learn more",
+        link_1_url: localizedHelpLinks[_language],
         subtitle: "Skip linking {RP_Name}",
         text_4: "You can skip.",
         text_4_gckey_only: "You can skip if you did not use GCKey.",
@@ -98,10 +100,7 @@ describe("LinkPrompt", () => {
 
     const learnMoreLink = await screen.findByText("Learn more");
 
-    expect(learnMoreLink).toHaveAttribute(
-      "href",
-      EXTERNAL_NAVIGATION_LINKS.updateSignInMethod.en,
-    );
+    expect(learnMoreLink).toHaveAttribute("href", localizedHelpLinks.en);
   });
 
   it("links the info notice to the French sign-in method help page", async () => {
@@ -111,10 +110,7 @@ describe("LinkPrompt", () => {
 
     const learnMoreLink = await screen.findByText("Learn more");
 
-    expect(learnMoreLink).toHaveAttribute(
-      "href",
-      EXTERNAL_NAVIGATION_LINKS.updateSignInMethod.fr,
-    );
+    expect(learnMoreLink).toHaveAttribute("href", localizedHelpLinks.fr);
   });
 
   it("uses GCKey-only text when RP config is gckey only", async () => {

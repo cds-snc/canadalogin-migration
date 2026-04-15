@@ -477,6 +477,7 @@
     "text_4": "S’il s’agit de votre première connexion à ce service avec CléGC ou un partenaire de connexion Interac, vous pouvez ignorer cette étape.",
     "text_4_gckey_only": "S’il s’agit de votre première connexion à ce service avec CléGC, vous pouvez ignorer cette étape.",
     "link_1": "Comment mettre à jour votre méthode de connexion",
+    "link_1_url": "https://connexion.canada.ca/fr/utilisateurs/migrer-compte/mise-a-jour-methode-connexion/",
     "link_2": "Ignorer et créer un nouveau compte",
     "btn_1": "Se connecter avec CléGC ou un partenaire de connexion Interac",
     "btn_1_gckey_only": "Se connecter avec CléGC",
