@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.15](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.14...v1.10.15) (2026-04-15)
+
+
+### Bug Fixes
+
+* **bug:** add missing info banner with english and french urls ([#267](https://github.com/cds-snc/gc-sign-in-migration/issues/267)) ([7889b7f](https://github.com/cds-snc/gc-sign-in-migration/commit/7889b7f13697b05290004bdbd52cf5a53f3fc8a4))
+* **release:** deploy to prod ([#265](https://github.com/cds-snc/gc-sign-in-migration/issues/265)) ([4836dc4](https://github.com/cds-snc/gc-sign-in-migration/commit/4836dc4d17d6e9cc3239e68f004753daa567a1f2))
+
 ## [1.10.14](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.13...v1.10.14) (2026-04-14)
 
 
