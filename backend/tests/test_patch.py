@@ -222,6 +222,48 @@ async def test_patch_processing_data_keeps_summary_retry_count_without_ids():
 
 
 @pytest.mark.asyncio
+async def test_patch_processing_data_preserves_existing_ids_when_missing():
+    http_client = AsyncMock()
+    existing = {
+        "client_id": "rp-123",
+        "retry_count": 3,
+        "timestamp": "2020-01-04 00:00:00",
+        "first_attempt_timestamp": "2020-01-01 00:00:00",
+        "last_attempt_timestamp": "2020-01-04 00:00:00",
+        "correlation_id": "corr-existing",
+        "attempt_id": "attempt-existing",
+    }
+
+    with (
+        patch(
+            "app.users.services.patch.get_custom_attribute",
+            new=MagicMock(return_value=[json.dumps(existing)]),
+        ),
+        patch(
+            "app.users.services.patch.patch_custom_attribute",
+            new=AsyncMock(return_value=MagicMock(status_code=204)),
+        ) as mock_patch,
+    ):
+        await patch_processing_data(
+            http_client,
+            "ibm1",
+            "rp-123",
+            [],
+        )
+
+    patch_payload = mock_patch.await_args.kwargs["patch_payload"]
+    values = _extract_custom_attribute_values(patch_payload)
+    parsed_values = [json.loads(value) for value in values]
+
+    assert len(parsed_values) == 1
+    assert parsed_values[0]["retry_count"] == 4
+    assert parsed_values[0]["first_attempt_timestamp"] == "2020-01-01 00:00:00"
+    assert parsed_values[0]["last_attempt_timestamp"] == parsed_values[0]["timestamp"]
+    assert parsed_values[0]["correlation_id"] == "corr-existing"
+    assert parsed_values[0]["attempt_id"] == "attempt-existing"
+
+
+@pytest.mark.asyncio
 async def test_patch_processing_data_summarizes_existing_attempts():
     http_client = AsyncMock()
     existing = {

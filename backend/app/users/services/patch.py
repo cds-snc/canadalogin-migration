@@ -387,6 +387,20 @@ async def patch_processing_data(
             if existing_processing_data
             else timestamp
         )
+        existing_correlation_id = (
+            existing_processing_data.correlation_id
+            if existing_processing_data
+            else None
+        )
+        effective_correlation_id = (
+            correlation_id if correlation_id is not None else existing_correlation_id
+        )
+        existing_attempt_id = (
+            existing_processing_data.attempt_id if existing_processing_data else None
+        )
+        effective_attempt_id = (
+            attempt_id if attempt_id is not None else existing_attempt_id
+        )
 
         processing_data_array_parsed = _upsert_client_record(
             processing_data_array_parsed,
@@ -395,8 +409,8 @@ async def patch_processing_data(
                 retry_count=retry_count,
                 timestamp=timestamp,
                 first_attempt_timestamp=first_attempt_timestamp,
-                correlation_id=correlation_id,
-                attempt_id=attempt_id,
+                correlation_id=effective_correlation_id,
+                attempt_id=effective_attempt_id,
             ),
         )
 
