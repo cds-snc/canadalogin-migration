@@ -18,7 +18,6 @@ from app.users.schemas import (
     CustomAttributeOperation,
     NotifyTypeOperation,
     PatchRequest,
-    ProcessingAttemptSchema,
     ProcessingDataSchema,
 )
 
@@ -31,38 +30,90 @@ from app.utils.access_token import (
 from app.utils.request_error_handler import RequestErrorHandler
 
 logger = logging.getLogger(__name__)
-MAX_PROCESSING_ATTEMPTS = 10
 
 
-def _normalize_retry_count(processing_data: ProcessingDataSchema) -> None:
+def _get_effective_retry_count(processing_data: ProcessingDataSchema) -> int:
     # Legacy records stored the initial attempt as retry_count=1.
     if (
         processing_data.retry_count > 0
         and not processing_data.attempts
         and not processing_data.correlation_id
     ):
-        processing_data.retry_count -= 1
+        return processing_data.retry_count - 1
+
+    return processing_data.retry_count
 
 
-def _append_processing_attempt(
-    processing_data: ProcessingDataSchema,
+def _flatten_processing_data_records(
+    processing_data_records: List[ProcessingDataSchema],
+) -> List[ProcessingDataSchema]:
+    flattened_records = []
+
+    for processing_data in processing_data_records:
+        if not processing_data.attempts:
+            retry_count = _get_effective_retry_count(processing_data)
+            flattened_records.append(
+                processing_data.model_copy(
+                    update={
+                        "retry_count": retry_count,
+                        "attempts": [],
+                    }
+                )
+            )
+            continue
+
+        first_retry_count = max(
+            0,
+            processing_data.retry_count - len(processing_data.attempts) + 1,
+        )
+        for attempt_index, attempt in enumerate(processing_data.attempts):
+            flattened_records.append(
+                ProcessingDataSchema(
+                    client_id=processing_data.client_id,
+                    retry_count=first_retry_count + attempt_index,
+                    timestamp=attempt.timestamp,
+                    correlation_id=attempt.correlation_id,
+                    attempt_id=attempt.attempt_id,
+                )
+            )
+
+    return flattened_records
+
+
+def _dump_processing_data_record(processing_data: ProcessingDataSchema) -> str:
+    return json.dumps(processing_data.model_dump(exclude_none=True))
+
+
+def _get_next_processing_retry_count(
+    processing_data_records: List[ProcessingDataSchema],
+    rp_client_id: str,
+) -> int:
+    retry_counts = [
+        processing_data.retry_count
+        for processing_data in processing_data_records
+        if processing_data.client_id == rp_client_id
+    ]
+
+    if not retry_counts:
+        return 0
+
+    return max(retry_counts) + 1
+
+
+def _build_processing_attempt_record(
+    rp_client_id: str,
+    retry_count: int,
+    timestamp: str,
     correlation_id: str | None,
     attempt_id: str | None,
-    timestamp: str,
-) -> None:
-    if not correlation_id and not attempt_id:
-        return
-
-    if correlation_id:
-        processing_data.correlation_id = correlation_id
-    processing_data.attempts.append(
-        ProcessingAttemptSchema(
-            correlation_id=correlation_id,
-            attempt_id=attempt_id,
-            timestamp=timestamp,
-        )
+) -> ProcessingDataSchema:
+    return ProcessingDataSchema(
+        client_id=rp_client_id,
+        retry_count=retry_count,
+        timestamp=timestamp,
+        correlation_id=correlation_id,
+        attempt_id=attempt_id,
     )
-    processing_data.attempts = processing_data.attempts[-MAX_PROCESSING_ATTEMPTS:]
 
 
 def patching_payload(
@@ -203,36 +254,28 @@ async def patch_processing_data(
                 ProcessingDataSchema(**json.loads(item))
                 for item in processing_data_array
             ]
+            processing_data_array_parsed = _flatten_processing_data_records(
+                processing_data_array_parsed
+            )
 
-        exsists = False
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        retry_count = _get_next_processing_retry_count(
+            processing_data_array_parsed, rp_client_id
+        )
 
-        # Check if Exsists for current rp_client_id
-        for i in processing_data_array_parsed:
-            if i.client_id == rp_client_id:
-                _normalize_retry_count(i)
-                i.retry_count += 1
-                i.timestamp = timestamp
-                _append_processing_attempt(i, correlation_id, attempt_id, timestamp)
-                exsists = True
-                break
-
-        if not exsists:
-            # Append Data
-            data_to_append = ProcessingDataSchema(
-                client_id=rp_client_id,
-                retry_count=0,
+        processing_data_array_parsed.append(
+            _build_processing_attempt_record(
+                rp_client_id=rp_client_id,
+                retry_count=retry_count,
                 timestamp=timestamp,
                 correlation_id=correlation_id,
+                attempt_id=attempt_id,
             )
-            _append_processing_attempt(
-                data_to_append, correlation_id, attempt_id, timestamp
-            )
-            processing_data_array_parsed.append(data_to_append)
+        )
 
         # Stringify
         processing_data_array_stringified = [
-            json.dumps(item.model_dump(exclude_none=True))
+            _dump_processing_data_record(item)
             for item in processing_data_array_parsed
         ]
 

@@ -261,4 +261,6 @@ class ProcessingDataSchema(BaseModel):
     retry_count: int = 0
     timestamp: str
     correlation_id: Optional[str] = None
-    attempts: List[ProcessingAttemptSchema] = Field(default_factory=list)
+    attempt_id: Optional[str] = None
+    # Read old nested processing records, but never write nested attempts back to IBM.
+    attempts: List[ProcessingAttemptSchema] = Field(default_factory=list, exclude=True)

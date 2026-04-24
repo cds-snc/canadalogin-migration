@@ -132,17 +132,12 @@ async def test_patch_processing_data_creates_new_record_on_empty_attributes():
     assert parsed["client_id"] == "rp-123"
     assert parsed["retry_count"] == 0
     assert parsed["correlation_id"] == "corr-123"
-    assert parsed["attempts"] == [
-        {
-            "correlation_id": "corr-123",
-            "attempt_id": "attempt-123",
-            "timestamp": parsed["timestamp"],
-        }
-    ]
+    assert parsed["attempt_id"] == "attempt-123"
+    assert "attempts" not in parsed
 
 
 @pytest.mark.asyncio
-async def test_patch_processing_data_updates_existing_record():
+async def test_patch_processing_data_appends_new_attempt_record():
     http_client = AsyncMock()
     existing = {
         "client_id": "rp-123",
@@ -172,17 +167,84 @@ async def test_patch_processing_data_updates_existing_record():
     patch_payload = mock_patch.await_args.kwargs["patch_payload"]
     assert mock_patch.await_args.args[0] is http_client
     values = _extract_custom_attribute_values(patch_payload)
-    parsed = json.loads(values[0])
-    assert parsed["client_id"] == "rp-123"
-    assert parsed["retry_count"] == 1
-    assert parsed["correlation_id"] == "corr-456"
-    assert parsed["attempts"] == [
-        {
-            "correlation_id": "corr-456",
-            "attempt_id": "attempt-456",
-            "timestamp": parsed["timestamp"],
-        }
-    ]
+    parsed_values = [json.loads(value) for value in values]
+
+    assert parsed_values[0] == {
+        "client_id": "rp-123",
+        "retry_count": 0,
+        "timestamp": "2020-01-01 00:00:00",
+    }
+    assert parsed_values[1]["client_id"] == "rp-123"
+    assert parsed_values[1]["retry_count"] == 1
+    assert parsed_values[1]["correlation_id"] == "corr-456"
+    assert parsed_values[1]["attempt_id"] == "attempt-456"
+    assert "attempts" not in parsed_values[1]
+
+
+@pytest.mark.asyncio
+async def test_patch_processing_data_flattens_existing_attempts():
+    http_client = AsyncMock()
+    existing = {
+        "client_id": "rp-123",
+        "retry_count": 1,
+        "timestamp": "2020-01-02 00:00:00",
+        "correlation_id": "corr-previous",
+        "attempts": [
+            {
+                "correlation_id": "corr-123",
+                "attempt_id": "attempt-123",
+                "timestamp": "2020-01-01 00:00:00",
+            },
+            {
+                "correlation_id": "corr-456",
+                "attempt_id": "attempt-456",
+                "timestamp": "2020-01-02 00:00:00",
+            },
+        ],
+    }
+
+    with (
+        patch(
+            "app.users.services.patch.get_custom_attribute",
+            new=MagicMock(return_value=[json.dumps(existing)]),
+        ),
+        patch(
+            "app.users.services.patch.patch_custom_attribute",
+            new=AsyncMock(return_value=MagicMock(status_code=204)),
+        ) as mock_patch,
+    ):
+        await patch_processing_data(
+            http_client,
+            "ibm1",
+            "rp-123",
+            [],
+            correlation_id="corr-789",
+            attempt_id="attempt-789",
+        )
+
+    patch_payload = mock_patch.await_args.kwargs["patch_payload"]
+    values = _extract_custom_attribute_values(patch_payload)
+    parsed_values = [json.loads(value) for value in values]
+
+    assert parsed_values[0] == {
+        "client_id": "rp-123",
+        "retry_count": 0,
+        "timestamp": "2020-01-01 00:00:00",
+        "correlation_id": "corr-123",
+        "attempt_id": "attempt-123",
+    }
+    assert parsed_values[1] == {
+        "client_id": "rp-123",
+        "retry_count": 1,
+        "timestamp": "2020-01-02 00:00:00",
+        "correlation_id": "corr-456",
+        "attempt_id": "attempt-456",
+    }
+    assert parsed_values[2]["retry_count"] == 2
+    assert parsed_values[2]["correlation_id"] == "corr-789"
+    assert parsed_values[2]["attempt_id"] == "attempt-789"
+    assert all("attempts" not in value for value in parsed_values)
+    assert all(len(value) < 1000 for value in values)
 
 
 @pytest.mark.asyncio
