@@ -175,8 +175,16 @@ async def test_patch_legacy_pai_preserves_conflicting_duplicate_client_id_entrie
             custom_attributes=[existing],
             legacy_pai="legacy-sub",
             target_rp_client_ids=["rp-a"],
+            correlation_id="corr-1",
         )
 
     assert response.status_code == 204
     mock_patch_custom_attribute.assert_not_awaited()
-    assert "Skipping legacy PAI update due to conflicting existing value" in caplog.text
+    warning_message = caplog.records[-1].getMessage()
+    assert (
+        "Skipping legacy PAI update due to conflicting existing value"
+        == warning_message
+    )
+    assert "rp-a" not in warning_message
+    assert "corr-1" not in warning_message
+    assert "ibm-1" not in warning_message
