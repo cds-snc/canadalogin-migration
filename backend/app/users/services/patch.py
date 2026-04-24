@@ -275,8 +275,7 @@ async def patch_processing_data(
 
         # Stringify
         processing_data_array_stringified = [
-            _dump_processing_data_record(item)
-            for item in processing_data_array_parsed
+            _dump_processing_data_record(item) for item in processing_data_array_parsed
         ]
 
         # Build Payload for patch
