@@ -182,6 +182,46 @@ async def test_patch_processing_data_updates_existing_client_summary():
 
 
 @pytest.mark.asyncio
+async def test_patch_processing_data_keeps_summary_retry_count_without_ids():
+    http_client = AsyncMock()
+    existing = {
+        "client_id": "rp-123",
+        "retry_count": 3,
+        "timestamp": "2020-01-04 00:00:00",
+        "first_attempt_timestamp": "2020-01-01 00:00:00",
+        "last_attempt_timestamp": "2020-01-04 00:00:00",
+    }
+
+    with (
+        patch(
+            "app.users.services.patch.get_custom_attribute",
+            new=MagicMock(return_value=[json.dumps(existing)]),
+        ),
+        patch(
+            "app.users.services.patch.patch_custom_attribute",
+            new=AsyncMock(return_value=MagicMock(status_code=204)),
+        ) as mock_patch,
+    ):
+        await patch_processing_data(
+            http_client,
+            "ibm1",
+            "rp-123",
+            [],
+        )
+
+    patch_payload = mock_patch.await_args.kwargs["patch_payload"]
+    values = _extract_custom_attribute_values(patch_payload)
+    parsed_values = [json.loads(value) for value in values]
+
+    assert len(parsed_values) == 1
+    assert parsed_values[0]["retry_count"] == 4
+    assert parsed_values[0]["first_attempt_timestamp"] == "2020-01-01 00:00:00"
+    assert parsed_values[0]["last_attempt_timestamp"] == parsed_values[0]["timestamp"]
+    assert "correlation_id" not in parsed_values[0]
+    assert "attempt_id" not in parsed_values[0]
+
+
+@pytest.mark.asyncio
 async def test_patch_processing_data_summarizes_existing_attempts():
     http_client = AsyncMock()
     existing = {

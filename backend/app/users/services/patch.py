@@ -39,13 +39,20 @@ class _ClientRecord(Protocol):
 TClientRecord = TypeVar("TClientRecord", bound=_ClientRecord)
 
 
-def _get_effective_retry_count(processing_data: ProcessingDataSchema) -> int:
-    # Legacy records stored the initial attempt as retry_count=1.
-    if (
+def _is_legacy_retry_count_record(processing_data: ProcessingDataSchema) -> bool:
+    return (
         processing_data.retry_count > 0
         and not processing_data.attempts
         and not processing_data.correlation_id
-    ):
+        and not processing_data.attempt_id
+        and not processing_data.first_attempt_timestamp
+        and not processing_data.last_attempt_timestamp
+    )
+
+
+def _get_effective_retry_count(processing_data: ProcessingDataSchema) -> int:
+    # Legacy records stored the initial attempt as retry_count=1.
+    if _is_legacy_retry_count_record(processing_data):
         return processing_data.retry_count - 1
 
     return processing_data.retry_count
@@ -320,7 +327,7 @@ async def patch_processing_data(
     global_http_client: AsyncClient,
     ibm_id: str,
     rp_client_id: str,
-    custom_attributes: str,
+    custom_attributes: List[CustomAttribute],
     correlation_id: str | None = None,
     attempt_id: str | None = None,
 ):
@@ -509,7 +516,7 @@ async def patch_audit_data(
     global_http_client: AsyncClient,
     ibm_id: str,
     rp_client_id: str,
-    custom_attributes: str,
+    custom_attributes: List[CustomAttribute],
     status: str,
     correlation_id: str | None = None,
     attempt_id: str | None = None,
