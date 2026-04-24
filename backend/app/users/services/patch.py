@@ -577,14 +577,34 @@ async def patch_audit_data(
 
         legacy_idp = ""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        existing_audit_data = next(
+            (
+                item
+                for item in audit_data_array_parsed
+                if item.client_id == rp_client_id
+            ),
+            None,
+        )
+        existing_correlation_id = (
+            existing_audit_data.correlation_id if existing_audit_data else None
+        )
+        effective_correlation_id = (
+            correlation_id if correlation_id is not None else existing_correlation_id
+        )
+        existing_attempt_id = (
+            existing_audit_data.attempt_id if existing_audit_data else None
+        )
+        effective_attempt_id = (
+            attempt_id if attempt_id is not None else existing_attempt_id
+        )
 
         data_to_append = AuditDataSchema(
             client_id=rp_client_id,
             legacy_idp=legacy_idp,
             timestamp=timestamp,
             status=status,
-            correlation_id=correlation_id,
-            attempt_id=attempt_id,
+            correlation_id=effective_correlation_id,
+            attempt_id=effective_attempt_id,
         )
 
         audit_data_array_parsed = _upsert_client_record(
