@@ -80,6 +80,58 @@ def _flatten_processing_data_records(
     return flattened_records
 
 
+def _get_first_attempt_timestamp(processing_data: ProcessingDataSchema) -> str:
+    return processing_data.first_attempt_timestamp or processing_data.timestamp
+
+
+def _get_last_attempt_timestamp(processing_data: ProcessingDataSchema) -> str:
+    return processing_data.last_attempt_timestamp or processing_data.timestamp
+
+
+def _summarize_processing_data_records(
+    processing_data_records: List[ProcessingDataSchema],
+) -> List[ProcessingDataSchema]:
+    summary_by_client_id = {}
+
+    for processing_data in _flatten_processing_data_records(processing_data_records):
+        existing_value = summary_by_client_id.get(processing_data.client_id)
+        first_attempt_timestamp = _get_first_attempt_timestamp(processing_data)
+        last_attempt_timestamp = _get_last_attempt_timestamp(processing_data)
+
+        if existing_value is None:
+            summary_by_client_id[processing_data.client_id] = (
+                processing_data.model_copy(
+                    update={
+                        "first_attempt_timestamp": first_attempt_timestamp,
+                        "last_attempt_timestamp": last_attempt_timestamp,
+                    }
+                )
+            )
+            continue
+
+        first_attempt_timestamp = min(
+            _get_first_attempt_timestamp(existing_value),
+            first_attempt_timestamp,
+        )
+        last_attempt_timestamp = max(
+            _get_last_attempt_timestamp(existing_value),
+            last_attempt_timestamp,
+        )
+        if processing_data.retry_count >= existing_value.retry_count:
+            latest_value = processing_data
+        else:
+            latest_value = existing_value
+
+        summary_by_client_id[processing_data.client_id] = latest_value.model_copy(
+            update={
+                "first_attempt_timestamp": first_attempt_timestamp,
+                "last_attempt_timestamp": last_attempt_timestamp,
+            }
+        )
+
+    return list(summary_by_client_id.values())
+
+
 def _dump_processing_data_record(processing_data: ProcessingDataSchema) -> str:
     return json.dumps(processing_data.model_dump(exclude_none=True))
 
@@ -100,10 +152,11 @@ def _get_next_processing_retry_count(
     return max(retry_counts) + 1
 
 
-def _build_processing_attempt_record(
+def _build_processing_summary_record(
     rp_client_id: str,
     retry_count: int,
     timestamp: str,
+    first_attempt_timestamp: str,
     correlation_id: str | None,
     attempt_id: str | None,
 ) -> ProcessingDataSchema:
@@ -111,9 +164,30 @@ def _build_processing_attempt_record(
         client_id=rp_client_id,
         retry_count=retry_count,
         timestamp=timestamp,
+        first_attempt_timestamp=first_attempt_timestamp,
+        last_attempt_timestamp=timestamp,
         correlation_id=correlation_id,
         attempt_id=attempt_id,
     )
+
+
+def _upsert_client_record(records, record_to_upsert):
+    for index, record in enumerate(records):
+        if record.client_id == record_to_upsert.client_id:
+            records[index] = record_to_upsert
+            return records
+
+    records.append(record_to_upsert)
+    return records
+
+
+def _dedupe_client_records(records):
+    records_by_client_id = {}
+
+    for record in records:
+        records_by_client_id[record.client_id] = record
+
+    return list(records_by_client_id.values())
 
 
 def patching_payload(
@@ -254,7 +328,7 @@ async def patch_processing_data(
                 ProcessingDataSchema(**json.loads(item))
                 for item in processing_data_array
             ]
-            processing_data_array_parsed = _flatten_processing_data_records(
+            processing_data_array_parsed = _summarize_processing_data_records(
                 processing_data_array_parsed
             )
 
@@ -262,15 +336,30 @@ async def patch_processing_data(
         retry_count = _get_next_processing_retry_count(
             processing_data_array_parsed, rp_client_id
         )
+        existing_processing_data = next(
+            (
+                item
+                for item in processing_data_array_parsed
+                if item.client_id == rp_client_id
+            ),
+            None,
+        )
+        first_attempt_timestamp = (
+            _get_first_attempt_timestamp(existing_processing_data)
+            if existing_processing_data
+            else timestamp
+        )
 
-        processing_data_array_parsed.append(
-            _build_processing_attempt_record(
+        processing_data_array_parsed = _upsert_client_record(
+            processing_data_array_parsed,
+            _build_processing_summary_record(
                 rp_client_id=rp_client_id,
                 retry_count=retry_count,
                 timestamp=timestamp,
+                first_attempt_timestamp=first_attempt_timestamp,
                 correlation_id=correlation_id,
                 attempt_id=attempt_id,
-            )
+            ),
         )
 
         # Stringify
@@ -324,6 +413,7 @@ async def patch_legacy_pai(
         )
 
         # Parse into Pydantic model
+        did_change = False
         if not legacy_pai_array:
             legacy_pai_array_parsed = []
 
@@ -331,6 +421,9 @@ async def patch_legacy_pai(
             legacy_pai_array_parsed = [
                 LegacyPaiDataSchema(**json.loads(item)) for item in legacy_pai_array
             ]
+            deduped_legacy_pai_array = _dedupe_client_records(legacy_pai_array_parsed)
+            did_change = len(deduped_legacy_pai_array) != len(legacy_pai_array_parsed)
+            legacy_pai_array_parsed = deduped_legacy_pai_array
 
         if target_rp_client_ids:
             # Preserve order while removing duplicates from config.
@@ -341,7 +434,6 @@ async def patch_legacy_pai(
         existing_by_client_id = {
             item.client_id: item for item in legacy_pai_array_parsed
         }
-        did_change = False
 
         for client_id in candidate_client_ids:
             existing_value = existing_by_client_id.get(client_id)
@@ -425,6 +517,7 @@ async def patch_audit_data(
             audit_data_array_parsed = [
                 AuditDataSchema(**json.loads(item)) for item in audit_data_array
             ]
+            audit_data_array_parsed = _dedupe_client_records(audit_data_array_parsed)
 
         legacy_idp = ""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -438,8 +531,9 @@ async def patch_audit_data(
             attempt_id=attempt_id,
         )
 
-        # Append Data
-        audit_data_array_parsed.append(data_to_append)
+        audit_data_array_parsed = _upsert_client_record(
+            audit_data_array_parsed, data_to_append
+        )
 
         # Stringify
         audit_data_array_stringified = [
