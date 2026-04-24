@@ -1,4 +1,5 @@
 import json
+import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -149,3 +150,33 @@ async def test_patch_legacy_pai_dedupes_existing_client_id_entries():
             "correlation_id": "corr-new",
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_patch_legacy_pai_preserves_conflicting_duplicate_client_id_entries(
+    caplog,
+):
+    existing = _legacy_pai_custom_attribute(
+        [
+            {"client_id": "rp-a", "pai": "legacy-sub"},
+            {"client_id": "rp-a", "pai": "different-sub"},
+        ]
+    )
+
+    caplog.set_level(logging.WARNING)
+    with patch(
+        "app.users.services.patch.patch_custom_attribute",
+        new=AsyncMock(return_value=SimpleNamespace(status_code=204)),
+    ) as mock_patch_custom_attribute:
+        response = await patch_legacy_pai(
+            global_http_client=AsyncMock(),
+            ibm_id="ibm-1",
+            rp_client_id="rp-a",
+            custom_attributes=[existing],
+            legacy_pai="legacy-sub",
+            target_rp_client_ids=["rp-a"],
+        )
+
+    assert response.status_code == 204
+    mock_patch_custom_attribute.assert_not_awaited()
+    assert "Skipping legacy PAI update due to conflicting existing value" in caplog.text

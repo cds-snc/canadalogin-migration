@@ -209,6 +209,25 @@ def _dedupe_client_records(
     return list(records_by_client_id.values())
 
 
+def _dedupe_matching_legacy_pai_records(
+    records: List[LegacyPaiDataSchema],
+) -> tuple[List[LegacyPaiDataSchema], bool]:
+    records_by_client_id: dict[str, List[LegacyPaiDataSchema]] = {}
+
+    for record in records:
+        records_by_client_id.setdefault(record.client_id, []).append(record)
+
+    deduped_records = []
+    for client_records in records_by_client_id.values():
+        pai_values = {record.pai for record in client_records}
+        if len(pai_values) == 1:
+            deduped_records.append(client_records[-1])
+        else:
+            deduped_records.extend(client_records)
+
+    return deduped_records, len(deduped_records) != len(records)
+
+
 def patching_payload(
     custom_attribute_name: str,
     custom_attribute_value: str,
@@ -440,9 +459,10 @@ async def patch_legacy_pai(
             legacy_pai_array_parsed = [
                 LegacyPaiDataSchema(**json.loads(item)) for item in legacy_pai_array
             ]
-            deduped_legacy_pai_array = _dedupe_client_records(legacy_pai_array_parsed)
-            did_change = len(deduped_legacy_pai_array) != len(legacy_pai_array_parsed)
-            legacy_pai_array_parsed = deduped_legacy_pai_array
+            (
+                legacy_pai_array_parsed,
+                did_change,
+            ) = _dedupe_matching_legacy_pai_records(legacy_pai_array_parsed)
 
         if target_rp_client_ids:
             # Preserve order while removing duplicates from config.
@@ -450,14 +470,17 @@ async def patch_legacy_pai(
         else:
             candidate_client_ids = [rp_client_id]
 
-        existing_by_client_id = {
-            item.client_id: item for item in legacy_pai_array_parsed
-        }
+        existing_by_client_id = {}
+        for item in legacy_pai_array_parsed:
+            existing_by_client_id.setdefault(item.client_id, []).append(item)
 
         for client_id in candidate_client_ids:
-            existing_value = existing_by_client_id.get(client_id)
-            if existing_value:
-                if existing_value.pai != legacy_pai:
+            existing_values = existing_by_client_id.get(client_id)
+            if existing_values:
+                if any(
+                    existing_value.pai != legacy_pai
+                    for existing_value in existing_values
+                ):
                     # Defensive fallback for unexpected data inconsistencies.
                     logger.warning(
                         "Skipping legacy PAI update due to conflicting existing value"
@@ -471,7 +494,7 @@ async def patch_legacy_pai(
                 attempt_id=attempt_id,
             )
             legacy_pai_array_parsed.append(data_to_append)
-            existing_by_client_id[client_id] = data_to_append
+            existing_by_client_id[client_id] = [data_to_append]
             did_change = True
 
         # No-op success when all target client_ids already had values or were skipped due to conflicts.
