@@ -107,3 +107,45 @@ async def test_patch_legacy_pai_noop_when_no_new_values_to_write():
 
     assert response.status_code == 204
     mock_patch_custom_attribute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_patch_legacy_pai_dedupes_existing_client_id_entries():
+    existing = _legacy_pai_custom_attribute(
+        [
+            {
+                "client_id": "rp-a",
+                "pai": "legacy-sub",
+                "correlation_id": "corr-old",
+            },
+            {
+                "client_id": "rp-a",
+                "pai": "legacy-sub",
+                "correlation_id": "corr-new",
+            },
+        ]
+    )
+
+    with patch(
+        "app.users.services.patch.patch_custom_attribute",
+        new=AsyncMock(return_value=SimpleNamespace(status_code=204)),
+    ) as mock_patch_custom_attribute:
+        await patch_legacy_pai(
+            global_http_client=AsyncMock(),
+            ibm_id="ibm-1",
+            rp_client_id="rp-a",
+            custom_attributes=[existing],
+            legacy_pai="legacy-sub",
+            target_rp_client_ids=["rp-a"],
+        )
+
+    mock_patch_custom_attribute.assert_awaited_once()
+    patch_payload = mock_patch_custom_attribute.await_args.kwargs["patch_payload"]
+    entries = _extract_payload_entries(patch_payload)
+    assert entries == [
+        {
+            "client_id": "rp-a",
+            "pai": "legacy-sub",
+            "correlation_id": "corr-new",
+        }
+    ]

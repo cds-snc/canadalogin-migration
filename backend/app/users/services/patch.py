@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from httpx import AsyncClient, HTTPStatusError, Response
 from pydantic import ValidationError
-from typing import List
+from typing import List, Protocol, TypeVar
 
 from app.config import get_configuration
 
@@ -30,6 +30,13 @@ from app.utils.access_token import (
 from app.utils.request_error_handler import RequestErrorHandler
 
 logger = logging.getLogger(__name__)
+
+
+class _ClientRecord(Protocol):
+    client_id: str
+
+
+TClientRecord = TypeVar("TClientRecord", bound=_ClientRecord)
 
 
 def _get_effective_retry_count(processing_data: ProcessingDataSchema) -> int:
@@ -171,7 +178,10 @@ def _build_processing_summary_record(
     )
 
 
-def _upsert_client_record(records, record_to_upsert):
+def _upsert_client_record(
+    records: List[TClientRecord],
+    record_to_upsert: TClientRecord,
+) -> List[TClientRecord]:
     for index, record in enumerate(records):
         if record.client_id == record_to_upsert.client_id:
             records[index] = record_to_upsert
@@ -181,8 +191,10 @@ def _upsert_client_record(records, record_to_upsert):
     return records
 
 
-def _dedupe_client_records(records):
-    records_by_client_id = {}
+def _dedupe_client_records(
+    records: List[TClientRecord],
+) -> List[TClientRecord]:
+    records_by_client_id: dict[str, TClientRecord] = {}
 
     for record in records:
         records_by_client_id[record.client_id] = record
