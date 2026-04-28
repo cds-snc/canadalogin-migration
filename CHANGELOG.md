@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.16](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.15...v1.10.16) (2026-04-28)
+
+
+### Bug Fixes
+
+* **logs:** resolve issue with logs exceeding 1000 characters per entry ([#276](https://github.com/cds-snc/gc-sign-in-migration/issues/276)) ([d15b2ef](https://github.com/cds-snc/gc-sign-in-migration/commit/d15b2ef6e55ab5ac1f5eaca0e6b982309d14c078))
+
 ## [1.10.15](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.14...v1.10.15) (2026-04-15)
 
 
