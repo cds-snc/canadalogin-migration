@@ -30,7 +30,7 @@ def get_attribute_value(
 
 def get_custom_attribute(
     custom_attribute_name: str,
-    custom_attributes: List[CustomAttribute],
+    custom_attributes: List[CustomAttribute] | None,
 ):
     try:
 
@@ -52,7 +52,7 @@ def get_custom_attribute(
 async def get_user_custom_attributes(
     global_http_client: AsyncClient,
     user_access_token: str,
-):
+) -> List[CustomAttribute] | None:
     try:
 
         settings = get_configuration()
@@ -68,6 +68,9 @@ async def get_user_custom_attributes(
     if response.status_code == 200:
         json_data = response.json()
         response_data = MeResponse(**json_data)
+        if not response_data.ibm_extension:
+            return None
+
         custom_attributes = response_data.ibm_extension.custom_attributes
         return custom_attributes
 

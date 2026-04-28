@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from httpx import AsyncClient, HTTPStatusError, Response
 from pydantic import ValidationError
-from typing import List
+from typing import List, Protocol, TypeVar
 
 from app.config import get_configuration
 
@@ -18,7 +18,6 @@ from app.users.schemas import (
     CustomAttributeOperation,
     NotifyTypeOperation,
     PatchRequest,
-    ProcessingAttemptSchema,
     ProcessingDataSchema,
 )
 
@@ -31,38 +30,202 @@ from app.utils.access_token import (
 from app.utils.request_error_handler import RequestErrorHandler
 
 logger = logging.getLogger(__name__)
-MAX_PROCESSING_ATTEMPTS = 10
 
 
-def _normalize_retry_count(processing_data: ProcessingDataSchema) -> None:
-    # Legacy records stored the initial attempt as retry_count=1.
-    if (
+class _ClientRecord(Protocol):
+    client_id: str
+
+
+TClientRecord = TypeVar("TClientRecord", bound=_ClientRecord)
+
+
+def _is_legacy_retry_count_record(processing_data: ProcessingDataSchema) -> bool:
+    return (
         processing_data.retry_count > 0
         and not processing_data.attempts
         and not processing_data.correlation_id
-    ):
-        processing_data.retry_count -= 1
+        and not processing_data.attempt_id
+        and not processing_data.first_attempt_timestamp
+        and not processing_data.last_attempt_timestamp
+    )
 
 
-def _append_processing_attempt(
-    processing_data: ProcessingDataSchema,
+def _get_effective_retry_count(processing_data: ProcessingDataSchema) -> int:
+    # Legacy records stored the initial attempt as retry_count=1.
+    if _is_legacy_retry_count_record(processing_data):
+        return processing_data.retry_count - 1
+
+    return processing_data.retry_count
+
+
+def _flatten_processing_data_records(
+    processing_data_records: List[ProcessingDataSchema],
+) -> List[ProcessingDataSchema]:
+    flattened_records = []
+
+    for processing_data in processing_data_records:
+        if not processing_data.attempts:
+            retry_count = _get_effective_retry_count(processing_data)
+            flattened_records.append(
+                processing_data.model_copy(
+                    update={
+                        "retry_count": retry_count,
+                        "attempts": [],
+                    }
+                )
+            )
+            continue
+
+        first_retry_count = max(
+            0,
+            processing_data.retry_count - len(processing_data.attempts) + 1,
+        )
+        for attempt_index, attempt in enumerate(processing_data.attempts):
+            flattened_records.append(
+                ProcessingDataSchema(
+                    client_id=processing_data.client_id,
+                    retry_count=first_retry_count + attempt_index,
+                    timestamp=attempt.timestamp,
+                    correlation_id=attempt.correlation_id,
+                    attempt_id=attempt.attempt_id,
+                )
+            )
+
+    return flattened_records
+
+
+def _get_first_attempt_timestamp(processing_data: ProcessingDataSchema) -> str:
+    return processing_data.first_attempt_timestamp or processing_data.timestamp
+
+
+def _get_last_attempt_timestamp(processing_data: ProcessingDataSchema) -> str:
+    return processing_data.last_attempt_timestamp or processing_data.timestamp
+
+
+def _summarize_processing_data_records(
+    processing_data_records: List[ProcessingDataSchema],
+) -> List[ProcessingDataSchema]:
+    summary_by_client_id = {}
+
+    for processing_data in _flatten_processing_data_records(processing_data_records):
+        existing_value = summary_by_client_id.get(processing_data.client_id)
+        first_attempt_timestamp = _get_first_attempt_timestamp(processing_data)
+        last_attempt_timestamp = _get_last_attempt_timestamp(processing_data)
+
+        if existing_value is None:
+            summary_by_client_id[processing_data.client_id] = (
+                processing_data.model_copy(
+                    update={
+                        "first_attempt_timestamp": first_attempt_timestamp,
+                        "last_attempt_timestamp": last_attempt_timestamp,
+                    }
+                )
+            )
+            continue
+
+        first_attempt_timestamp = min(
+            _get_first_attempt_timestamp(existing_value),
+            first_attempt_timestamp,
+        )
+        last_attempt_timestamp = max(
+            _get_last_attempt_timestamp(existing_value),
+            last_attempt_timestamp,
+        )
+        if processing_data.retry_count >= existing_value.retry_count:
+            latest_value = processing_data
+        else:
+            latest_value = existing_value
+
+        summary_by_client_id[processing_data.client_id] = latest_value.model_copy(
+            update={
+                "first_attempt_timestamp": first_attempt_timestamp,
+                "last_attempt_timestamp": last_attempt_timestamp,
+            }
+        )
+
+    return list(summary_by_client_id.values())
+
+
+def _dump_processing_data_record(processing_data: ProcessingDataSchema) -> str:
+    return json.dumps(processing_data.model_dump(exclude_none=True))
+
+
+def _get_next_processing_retry_count(
+    processing_data_records: List[ProcessingDataSchema],
+    rp_client_id: str,
+) -> int:
+    retry_counts = [
+        processing_data.retry_count
+        for processing_data in processing_data_records
+        if processing_data.client_id == rp_client_id
+    ]
+
+    if not retry_counts:
+        return 0
+
+    return max(retry_counts) + 1
+
+
+def _build_processing_summary_record(
+    rp_client_id: str,
+    retry_count: int,
+    timestamp: str,
+    first_attempt_timestamp: str,
     correlation_id: str | None,
     attempt_id: str | None,
-    timestamp: str,
-) -> None:
-    if not correlation_id and not attempt_id:
-        return
-
-    if correlation_id:
-        processing_data.correlation_id = correlation_id
-    processing_data.attempts.append(
-        ProcessingAttemptSchema(
-            correlation_id=correlation_id,
-            attempt_id=attempt_id,
-            timestamp=timestamp,
-        )
+) -> ProcessingDataSchema:
+    return ProcessingDataSchema(
+        client_id=rp_client_id,
+        retry_count=retry_count,
+        timestamp=timestamp,
+        first_attempt_timestamp=first_attempt_timestamp,
+        last_attempt_timestamp=timestamp,
+        correlation_id=correlation_id,
+        attempt_id=attempt_id,
     )
-    processing_data.attempts = processing_data.attempts[-MAX_PROCESSING_ATTEMPTS:]
+
+
+def _upsert_client_record(
+    records: List[TClientRecord],
+    record_to_upsert: TClientRecord,
+) -> List[TClientRecord]:
+    for index, record in enumerate(records):
+        if record.client_id == record_to_upsert.client_id:
+            records[index] = record_to_upsert
+            return records
+
+    records.append(record_to_upsert)
+    return records
+
+
+def _dedupe_client_records(
+    records: List[TClientRecord],
+) -> List[TClientRecord]:
+    records_by_client_id: dict[str, TClientRecord] = {}
+
+    for record in records:
+        records_by_client_id[record.client_id] = record
+
+    return list(records_by_client_id.values())
+
+
+def _dedupe_matching_legacy_pai_records(
+    records: List[LegacyPaiDataSchema],
+) -> tuple[List[LegacyPaiDataSchema], bool]:
+    records_by_client_id: dict[str, List[LegacyPaiDataSchema]] = {}
+
+    for record in records:
+        records_by_client_id.setdefault(record.client_id, []).append(record)
+
+    deduped_records = []
+    for client_records in records_by_client_id.values():
+        pai_values = {record.pai for record in client_records}
+        if len(pai_values) == 1:
+            deduped_records.append(client_records[-1])
+        else:
+            deduped_records.extend(client_records)
+
+    return deduped_records, len(deduped_records) != len(records)
 
 
 def patching_payload(
@@ -183,7 +346,7 @@ async def patch_processing_data(
     global_http_client: AsyncClient,
     ibm_id: str,
     rp_client_id: str,
-    custom_attributes: str,
+    custom_attributes: List[CustomAttribute] | None,
     correlation_id: str | None = None,
     attempt_id: str | None = None,
 ):
@@ -203,37 +366,57 @@ async def patch_processing_data(
                 ProcessingDataSchema(**json.loads(item))
                 for item in processing_data_array
             ]
+            processing_data_array_parsed = _summarize_processing_data_records(
+                processing_data_array_parsed
+            )
 
-        exsists = False
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        retry_count = _get_next_processing_retry_count(
+            processing_data_array_parsed, rp_client_id
+        )
+        existing_processing_data = next(
+            (
+                item
+                for item in processing_data_array_parsed
+                if item.client_id == rp_client_id
+            ),
+            None,
+        )
+        first_attempt_timestamp = (
+            _get_first_attempt_timestamp(existing_processing_data)
+            if existing_processing_data
+            else timestamp
+        )
+        existing_correlation_id = (
+            existing_processing_data.correlation_id
+            if existing_processing_data
+            else None
+        )
+        effective_correlation_id = (
+            correlation_id if correlation_id is not None else existing_correlation_id
+        )
+        existing_attempt_id = (
+            existing_processing_data.attempt_id if existing_processing_data else None
+        )
+        effective_attempt_id = (
+            attempt_id if attempt_id is not None else existing_attempt_id
+        )
 
-        # Check if Exsists for current rp_client_id
-        for i in processing_data_array_parsed:
-            if i.client_id == rp_client_id:
-                _normalize_retry_count(i)
-                i.retry_count += 1
-                i.timestamp = timestamp
-                _append_processing_attempt(i, correlation_id, attempt_id, timestamp)
-                exsists = True
-                break
-
-        if not exsists:
-            # Append Data
-            data_to_append = ProcessingDataSchema(
-                client_id=rp_client_id,
-                retry_count=0,
+        processing_data_array_parsed = _upsert_client_record(
+            processing_data_array_parsed,
+            _build_processing_summary_record(
+                rp_client_id=rp_client_id,
+                retry_count=retry_count,
                 timestamp=timestamp,
-                correlation_id=correlation_id,
-            )
-            _append_processing_attempt(
-                data_to_append, correlation_id, attempt_id, timestamp
-            )
-            processing_data_array_parsed.append(data_to_append)
+                first_attempt_timestamp=first_attempt_timestamp,
+                correlation_id=effective_correlation_id,
+                attempt_id=effective_attempt_id,
+            ),
+        )
 
         # Stringify
         processing_data_array_stringified = [
-            json.dumps(item.model_dump(exclude_none=True))
-            for item in processing_data_array_parsed
+            _dump_processing_data_record(item) for item in processing_data_array_parsed
         ]
 
         # Build Payload for patch
@@ -268,7 +451,7 @@ async def patch_legacy_pai(
     global_http_client: AsyncClient,
     ibm_id: str,
     rp_client_id: str,
-    custom_attributes: List[CustomAttribute],
+    custom_attributes: List[CustomAttribute] | None,
     legacy_pai: str,
     target_rp_client_ids: List[str] | None = None,
     correlation_id: str | None = None,
@@ -282,6 +465,7 @@ async def patch_legacy_pai(
         )
 
         # Parse into Pydantic model
+        did_change = False
         if not legacy_pai_array:
             legacy_pai_array_parsed = []
 
@@ -289,6 +473,10 @@ async def patch_legacy_pai(
             legacy_pai_array_parsed = [
                 LegacyPaiDataSchema(**json.loads(item)) for item in legacy_pai_array
             ]
+            (
+                legacy_pai_array_parsed,
+                did_change,
+            ) = _dedupe_matching_legacy_pai_records(legacy_pai_array_parsed)
 
         if target_rp_client_ids:
             # Preserve order while removing duplicates from config.
@@ -296,15 +484,17 @@ async def patch_legacy_pai(
         else:
             candidate_client_ids = [rp_client_id]
 
-        existing_by_client_id = {
-            item.client_id: item for item in legacy_pai_array_parsed
-        }
-        did_change = False
+        existing_by_client_id = {}
+        for item in legacy_pai_array_parsed:
+            existing_by_client_id.setdefault(item.client_id, []).append(item)
 
         for client_id in candidate_client_ids:
-            existing_value = existing_by_client_id.get(client_id)
-            if existing_value:
-                if existing_value.pai != legacy_pai:
+            existing_values = existing_by_client_id.get(client_id)
+            if existing_values:
+                if any(
+                    existing_value.pai != legacy_pai
+                    for existing_value in existing_values
+                ):
                     # Defensive fallback for unexpected data inconsistencies.
                     logger.warning(
                         "Skipping legacy PAI update due to conflicting existing value"
@@ -318,7 +508,7 @@ async def patch_legacy_pai(
                 attempt_id=attempt_id,
             )
             legacy_pai_array_parsed.append(data_to_append)
-            existing_by_client_id[client_id] = data_to_append
+            existing_by_client_id[client_id] = [data_to_append]
             did_change = True
 
         # No-op success when all target client_ids already had values or were skipped due to conflicts.
@@ -363,7 +553,7 @@ async def patch_audit_data(
     global_http_client: AsyncClient,
     ibm_id: str,
     rp_client_id: str,
-    custom_attributes: str,
+    custom_attributes: List[CustomAttribute] | None,
     status: str,
     correlation_id: str | None = None,
     attempt_id: str | None = None,
@@ -383,21 +573,43 @@ async def patch_audit_data(
             audit_data_array_parsed = [
                 AuditDataSchema(**json.loads(item)) for item in audit_data_array
             ]
+            audit_data_array_parsed = _dedupe_client_records(audit_data_array_parsed)
 
         legacy_idp = ""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        existing_audit_data = next(
+            (
+                item
+                for item in audit_data_array_parsed
+                if item.client_id == rp_client_id
+            ),
+            None,
+        )
+        existing_correlation_id = (
+            existing_audit_data.correlation_id if existing_audit_data else None
+        )
+        effective_correlation_id = (
+            correlation_id if correlation_id is not None else existing_correlation_id
+        )
+        existing_attempt_id = (
+            existing_audit_data.attempt_id if existing_audit_data else None
+        )
+        effective_attempt_id = (
+            attempt_id if attempt_id is not None else existing_attempt_id
+        )
 
         data_to_append = AuditDataSchema(
             client_id=rp_client_id,
             legacy_idp=legacy_idp,
             timestamp=timestamp,
             status=status,
-            correlation_id=correlation_id,
-            attempt_id=attempt_id,
+            correlation_id=effective_correlation_id,
+            attempt_id=effective_attempt_id,
         )
 
-        # Append Data
-        audit_data_array_parsed.append(data_to_append)
+        audit_data_array_parsed = _upsert_client_record(
+            audit_data_array_parsed, data_to_append
+        )
 
         # Stringify
         audit_data_array_stringified = [
