@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.11.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.16...v1.11.0) (2026-04-30)
+
+
+### Features
+
+* Implement load test system in CI, disabled for now ([#283](https://github.com/cds-snc/gc-sign-in-migration/issues/283)) ([32db907](https://github.com/cds-snc/gc-sign-in-migration/commit/32db907aa9b373a64a88928f6ff3624059f17837))
+
+
+### Bug Fixes
+
+* **staging:** deploy ([#280](https://github.com/cds-snc/gc-sign-in-migration/issues/280)) ([636fe8d](https://github.com/cds-snc/gc-sign-in-migration/commit/636fe8de1b2537c936438967c6fc5feed4fd682d))
+
 ## [1.10.16](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.15...v1.10.16) (2026-04-28)
 
 
