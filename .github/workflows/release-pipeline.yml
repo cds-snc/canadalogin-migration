@@ -340,7 +340,6 @@ jobs:
   # This runs on every workflow run so the load test image always reflects
   # the staging-deployed version of the code.
   build-load-test:
-    if: false
     runs-on: ubuntu-latest
     environment: staging
     needs: [release-please]
