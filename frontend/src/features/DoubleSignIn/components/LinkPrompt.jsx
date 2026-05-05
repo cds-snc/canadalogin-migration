@@ -10,7 +10,11 @@ import {
 import { getPageContent } from "../../../utils/functions.jsx";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
-import { getLocalizedRpName, replaceRpName } from "../utils/relyingParty.js";
+import {
+  getLocalizedRpName,
+  getRpAnalyticsParams,
+  replaceRpName,
+} from "../utils/relyingParty.js";
 import { useParams } from "react-router";
 import { MigrationStepper } from "./MigrationStepper.jsx";
 import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
@@ -21,7 +25,9 @@ import {
   GA_LABELS,
   GA_CATEGORIES,
   GA_EVENTS,
+  GA_FORM_EVENTS,
   GA_STEPS,
+  MIGRATION_ANALYTICS,
 } from "../../../utils/constants.jsx";
 
 export default function LinkPrompt() {
@@ -68,6 +74,7 @@ export default function LinkPrompt() {
   const errorMessage = errorPageJson[serverErrorMessage] || "";
   const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
   const rpName = getLocalizedRpName(rpData, language);
+  const rpAnalyticsParams = getRpAnalyticsParams(rpData);
   const linkButtonText = isGcKeyOnly
     ? pageContentJson["btn_1_gckey_only"] || pageContentJson["btn_1"]
     : pageContentJson["btn_1"];
@@ -99,6 +106,7 @@ export default function LinkPrompt() {
             action: GA_EVENTS.click,
             label: `${GA_LABELS.button}_StartMigration`,
             step: GA_STEPS.step1,
+            ...rpAnalyticsParams,
           });
         }}
       >
@@ -132,6 +140,17 @@ export default function LinkPrompt() {
               action: GA_EVENTS.click,
               label: `${GA_LABELS.link}_SkipMigration`,
               step: GA_STEPS.step1,
+              ...rpAnalyticsParams,
+            });
+            trackEvent({
+              category: GA_CATEGORIES.formSubmit,
+              action: GA_FORM_EVENTS.formSubmitComplete,
+              label: `${GA_LABELS.link}_MigrationComplete`,
+              form_id: MIGRATION_ANALYTICS.flowId,
+              step: MIGRATION_ANALYTICS.steps.complete,
+              type: MIGRATION_ANALYTICS.completionTypes.skipped,
+              status: "success",
+              ...rpAnalyticsParams,
             });
           }}
         >

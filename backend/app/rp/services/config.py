@@ -290,6 +290,7 @@ async def get_rp_config_details(
             "rp_redirect_url": append_customparameters_to_url(
                 resolve_rp_redirect_uri(rp, language), custom_parameters
             ),
+            "rp_client_id": rp.rp_client_id,
             "rp_client_name": rp.rp_client_name,
             "rp_client_name_en": rp.rp_client_name_en,
             "rp_client_name_fr": rp.rp_client_name_fr,
