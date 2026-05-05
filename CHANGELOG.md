@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.11.0...v1.11.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* **GA:** added support to pass rp name and client id and also trigger completi… ([#285](https://github.com/cds-snc/gc-sign-in-migration/issues/285)) ([5422e47](https://github.com/cds-snc/gc-sign-in-migration/commit/5422e474ec275ca6309c0e7961a777205586ed3d))
+
 ## [1.11.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.16...v1.11.0) (2026-04-30)
 
 
