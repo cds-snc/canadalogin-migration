@@ -28,3 +28,12 @@ export function replaceRpName(text, rpData, language) {
 
   return text.replace(RP_NAME_TOKEN, getLocalizedRpName(rpData, language));
 }
+
+export function getRpAnalyticsParams(rpData) {
+  return {
+    rp_client_id: rpData?.rp_client_id,
+    rp_client_name_en: isPresent(rpData?.rp_client_name_en)
+      ? rpData.rp_client_name_en.trim()
+      : undefined,
+  };
+}

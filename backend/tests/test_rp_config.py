@@ -109,6 +109,7 @@ async def test_get_rp_config_details_marks_gckey_only_when_configured(monkeypatc
     with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
         details = await get_rp_config_details("rp-123")
 
+    assert details["rp_client_id"] == "rp-123"
     assert details["acr_values"] == "gckey, MFA"
     assert details["is_gckey_only"] is True
 

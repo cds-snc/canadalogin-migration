@@ -3,6 +3,16 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
 import LinkSuccess from "../LinkSuccess.jsx";
+import {
+  GA_CATEGORIES,
+  GA_EVENTS,
+  GA_FORM_EVENTS,
+  GA_LABELS,
+  GA_STEPS,
+  MIGRATION_ANALYTICS,
+} from "../../../../utils/constants.jsx";
+
+const mockTrackEvent = vi.hoisted(() => vi.fn());
 
 vi.mock("@gcds-core/components-react", () => ({
   GcdsContainer: ({ children }) => <div>{children}</div>,
@@ -47,6 +57,11 @@ vi.mock("../MigrationStepper.jsx", () => ({
   MigrationStepper: () => <div data-testid="migration-stepper" />,
 }));
 
+vi.mock("../../../../utils/gatag.jsx", () => ({
+  useTrackPage: vi.fn(),
+  useTrackEvent: () => mockTrackEvent,
+}));
+
 vi.mock("../../api/UpdateLinkState.jsx", () => ({
   updateLinkStateAPI: {
     getRPAuthUrl: vi.fn(),
@@ -61,6 +76,7 @@ describe("LinkSuccess", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
+      rp_client_id: "rp-123",
       rp_client_name_en: "Example RP",
       rp_redirect_url: "https://rp.example.test/continue",
     });
@@ -88,6 +104,25 @@ describe("LinkSuccess", () => {
     expect(screen.getByText("You linked Example RP")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Continue"));
+    expect(mockTrackEvent).toHaveBeenNthCalledWith(1, {
+      category: GA_CATEGORIES.formSubmit,
+      action: GA_EVENTS.click,
+      label: `${GA_LABELS.button}_MigrationConfirmation`,
+      step: GA_STEPS.step2,
+      rp_client_id: "rp-123",
+      rp_client_name_en: "Example RP",
+    });
+    expect(mockTrackEvent).toHaveBeenNthCalledWith(2, {
+      category: GA_CATEGORIES.formSubmit,
+      action: GA_FORM_EVENTS.formSubmitComplete,
+      label: `${GA_LABELS.button}_MigrationComplete`,
+      form_id: MIGRATION_ANALYTICS.flowId,
+      step: MIGRATION_ANALYTICS.steps.complete,
+      type: MIGRATION_ANALYTICS.completionTypes.linked,
+      status: "success",
+      rp_client_id: "rp-123",
+      rp_client_name_en: "Example RP",
+    });
     expect(window.location.replace).toHaveBeenCalledWith(
       "https://rp.example.test/continue",
     );

@@ -149,10 +149,25 @@ export const GA_EVENTS = {
   click: "click",
 };
 
+export const GA_FORM_EVENTS = {
+  formSubmitComplete: "form_submit_complete",
+};
+
 export const GA_STEPS = {
   step1: "1",
   step2: "2",
   step3: "3",
+};
+
+export const MIGRATION_ANALYTICS = {
+  flowId: "migration",
+  steps: {
+    complete: "migration_complete",
+  },
+  completionTypes: {
+    linked: "linked",
+    skipped: "skipped",
+  },
 };
 
 export const countryMapping = {

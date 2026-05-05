@@ -1,11 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
 import LinkPrompt from "../LinkPrompt.jsx";
-import { MIGRATION_END_POINTS } from "../../../../utils/constants.jsx";
+import {
+  GA_CATEGORIES,
+  GA_EVENTS,
+  GA_FORM_EVENTS,
+  GA_LABELS,
+  GA_STEPS,
+  MIGRATION_ANALYTICS,
+  MIGRATION_END_POINTS,
+} from "../../../../utils/constants.jsx";
 
 let mockLanguage = "en";
+const mockTrackEvent = vi.hoisted(() => vi.fn());
 const localizedHelpLinks = {
   en: "https://example.test/en/sign-in-method",
   fr: "https://example.test/fr/methode-connexion",
@@ -17,10 +26,30 @@ vi.mock("@gcds-core/components-react", () => ({
   GcdsDetails: ({ children }) => <div>{children}</div>,
   GcdsInput: ({ children }) => <div>{children}</div>,
   GcdsStepper: ({ children }) => <div>{children}</div>,
-  GcdsLink: ({ children, href }) => <a href={href}>{children}</a>,
+  GcdsLink: ({ children, href, onGcdsClick }) => (
+    <a
+      href={href}
+      onClick={(event) => {
+        event.preventDefault();
+        onGcdsClick?.(event);
+      }}
+    >
+      {children}
+    </a>
+  ),
   GcdsCheckboxes: ({ children }) => <div>{children}</div>,
   GcdsGrid: ({ children }) => <div>{children}</div>,
-  GcdsButton: ({ children, href }) => <a href={href}>{children}</a>,
+  GcdsButton: ({ children, href, onGcdsClick }) => (
+    <a
+      href={href}
+      onClick={(event) => {
+        event.preventDefault();
+        onGcdsClick?.(event);
+      }}
+    >
+      {children}
+    </a>
+  ),
   GcdsHeading: ({ children }) => <h1>{children}</h1>,
   GcdsIcon: () => <div />,
   GcdsNotice: ({ children }) => <div>{children}</div>,
@@ -57,6 +86,11 @@ vi.mock("../MigrationStepper.jsx", () => ({
   MigrationStepper: () => <div data-testid="migration-stepper" />,
 }));
 
+vi.mock("../../../../utils/gatag.jsx", () => ({
+  useTrackPage: vi.fn(),
+  useTrackEvent: () => mockTrackEvent,
+}));
+
 vi.mock("../../api/UpdateLinkState.jsx", () => ({
   updateLinkStateAPI: {
     getRPAuthUrl: vi.fn(),
@@ -70,6 +104,7 @@ describe("LinkPrompt", () => {
     vi.clearAllMocks();
     mockLanguage = "en";
     updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
+      rp_client_id: "rp-123",
       rp_client_name_en: "Example RP",
       rp_client_name_fr: "Exemple RP",
     });
@@ -93,6 +128,55 @@ describe("LinkPrompt", () => {
 
     const skipLink = screen.getByText("Skip for now");
     expect(skipLink).toHaveAttribute("href", MIGRATION_END_POINTS.skip);
+  });
+
+  it("adds RP analytics to the start migration click", async () => {
+    render(<LinkPrompt />);
+
+    await waitFor(() => {
+      expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByText("Link now"));
+
+    expect(mockTrackEvent).toHaveBeenCalledWith({
+      category: GA_CATEGORIES.formSubmit,
+      action: GA_EVENTS.click,
+      label: `${GA_LABELS.button}_StartMigration`,
+      step: GA_STEPS.step1,
+      rp_client_id: "rp-123",
+      rp_client_name_en: "Example RP",
+    });
+  });
+
+  it("tracks skipped migration completion with RP analytics", async () => {
+    render(<LinkPrompt />);
+
+    await waitFor(() => {
+      expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByText("Skip for now"));
+
+    expect(mockTrackEvent).toHaveBeenNthCalledWith(1, {
+      category: GA_CATEGORIES.formSubmit,
+      action: GA_EVENTS.click,
+      label: `${GA_LABELS.link}_SkipMigration`,
+      step: GA_STEPS.step1,
+      rp_client_id: "rp-123",
+      rp_client_name_en: "Example RP",
+    });
+    expect(mockTrackEvent).toHaveBeenNthCalledWith(2, {
+      category: GA_CATEGORIES.formSubmit,
+      action: GA_FORM_EVENTS.formSubmitComplete,
+      label: `${GA_LABELS.link}_MigrationComplete`,
+      form_id: MIGRATION_ANALYTICS.flowId,
+      step: MIGRATION_ANALYTICS.steps.complete,
+      type: MIGRATION_ANALYTICS.completionTypes.skipped,
+      status: "success",
+      rp_client_id: "rp-123",
+      rp_client_name_en: "Example RP",
+    });
   });
 
   it("links the info notice to the English sign-in method help page", async () => {

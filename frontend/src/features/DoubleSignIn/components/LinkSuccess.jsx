@@ -12,13 +12,19 @@ import {
   GA_LABELS,
   GA_CATEGORIES,
   GA_EVENTS,
+  GA_FORM_EVENTS,
   GA_STEPS,
+  MIGRATION_ANALYTICS,
 } from "../../../utils/constants.jsx";
 
 import { useParams } from "react-router";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
-import { getLocalizedRpName, replaceRpName } from "../utils/relyingParty.js";
+import {
+  getLocalizedRpName,
+  getRpAnalyticsParams,
+  replaceRpName,
+} from "../utils/relyingParty.js";
 import { MigrationStepper } from "./MigrationStepper.jsx";
 import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
 
@@ -58,6 +64,7 @@ export default function LinkSuccess() {
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
   const rpName = getLocalizedRpName(rpData, language);
+  const rpAnalyticsParams = getRpAnalyticsParams(rpData);
 
   return (
     <GcdsContainer>
@@ -86,6 +93,17 @@ export default function LinkSuccess() {
               action: GA_EVENTS.click,
               label: `${GA_LABELS.button}_MigrationConfirmation`,
               step: GA_STEPS.step2,
+              ...rpAnalyticsParams,
+            });
+            trackEvent({
+              category: GA_CATEGORIES.formSubmit,
+              action: GA_FORM_EVENTS.formSubmitComplete,
+              label: `${GA_LABELS.button}_MigrationComplete`,
+              form_id: MIGRATION_ANALYTICS.flowId,
+              step: MIGRATION_ANALYTICS.steps.complete,
+              type: MIGRATION_ANALYTICS.completionTypes.linked,
+              status: "success",
+              ...rpAnalyticsParams,
             });
             continueToRP();
           }}
