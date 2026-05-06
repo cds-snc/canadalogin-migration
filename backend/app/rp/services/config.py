@@ -91,7 +91,7 @@ def resolve_rp_redirect_uri(rp: object, language: str | None = None) -> str:
 
 # load the legacy idp config, from wherever it is stored
 async def get_config_json() -> list:
-    global _CONFIG_JSON_CACHE
+    global _CONFIG_JSON_CACHE  # nosemgrep: no-mutable-module-global - per-process cache of immutable config loaded from environment variables; safe across instances
 
     try:
         # In-process cache (per worker process)

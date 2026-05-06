@@ -1,4 +1,4 @@
-.PHONY: install-dev-python install-python fmt-ci-python fmt-python lint-python run-tests generate-openapi check-openapi install-precommit run-precommit
+.PHONY: install-dev-python install-python fmt-ci-python fmt-python lint-python run-tests generate-openapi check-openapi install-precommit run-precommit check-local-state
 
 install-python: 
 	@pip install -r ./backend/requirements.txt
@@ -23,6 +23,9 @@ fmt-ci-python:
 
 lint-python:
 	flake8 .
+
+check-local-state:
+	semgrep --config .semgrep/no-local-state.yml --error backend/app/
 
 run-pytest:
 	pytest
