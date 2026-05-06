@@ -7,3 +7,4 @@ black==25.12.0
 pytest-asyncio==0.26.0
 respx==0.22.0
 pre-commit==4.5.1
+semgrep==1.161.0
