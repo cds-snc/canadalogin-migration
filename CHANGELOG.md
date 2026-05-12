@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.11.1...v1.12.0) (2026-05-12)
+
+
+### Features
+
+* Add semgrep linter to catch local container state ([#288](https://github.com/cds-snc/gc-sign-in-migration/issues/288)) ([8a8d0c1](https://github.com/cds-snc/gc-sign-in-migration/commit/8a8d0c12e5ea31ac1de1782fe76423b390728950))
+
+
+### Bug Fixes
+
+* **deploy:** forceDeployToTest ([#291](https://github.com/cds-snc/gc-sign-in-migration/issues/291)) ([f75a787](https://github.com/cds-snc/gc-sign-in-migration/commit/f75a787dfb9850020d50540b308b3acf7e6604ec))
+
 ## [1.11.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.11.0...v1.11.1) (2026-05-05)
 
 
