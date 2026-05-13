@@ -105,6 +105,7 @@ export default function LinkPrompt() {
             category: GA_CATEGORIES.formSubmit,
             action: GA_EVENTS.click,
             label: `${GA_LABELS.button}_StartMigration`,
+            form_id: MIGRATION_ANALYTICS.flowId,
             step: GA_STEPS.step1,
             ...rpAnalyticsParams,
           });
@@ -139,6 +140,7 @@ export default function LinkPrompt() {
               category: GA_CATEGORIES.formSubmit,
               action: GA_EVENTS.click,
               label: `${GA_LABELS.link}_SkipMigration`,
+              form_id: MIGRATION_ANALYTICS.flowId,
               step: GA_STEPS.step1,
               ...rpAnalyticsParams,
             });

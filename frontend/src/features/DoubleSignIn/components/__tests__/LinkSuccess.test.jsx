@@ -108,9 +108,10 @@ describe("LinkSuccess", () => {
       category: GA_CATEGORIES.formSubmit,
       action: GA_EVENTS.click,
       label: `${GA_LABELS.button}_MigrationConfirmation`,
+      form_id: MIGRATION_ANALYTICS.flowId,
       step: GA_STEPS.step2,
-      rp_client_id: "rp-123",
-      rp_client_name_en: "Example RP",
+      rp_id: "rp-123",
+      rp_name: "Example RP",
     });
     expect(mockTrackEvent).toHaveBeenNthCalledWith(2, {
       category: GA_CATEGORIES.formSubmit,
@@ -120,8 +121,8 @@ describe("LinkSuccess", () => {
       step: MIGRATION_ANALYTICS.steps.complete,
       type: MIGRATION_ANALYTICS.completionTypes.linked,
       status: "success",
-      rp_client_id: "rp-123",
-      rp_client_name_en: "Example RP",
+      rp_id: "rp-123",
+      rp_name: "Example RP",
     });
     expect(window.location.replace).toHaveBeenCalledWith(
       "https://rp.example.test/continue",
