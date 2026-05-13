@@ -92,6 +92,7 @@ export default function LinkSuccess() {
               category: GA_CATEGORIES.formSubmit,
               action: GA_EVENTS.click,
               label: `${GA_LABELS.button}_MigrationConfirmation`,
+              form_id: MIGRATION_ANALYTICS.flowId,
               step: GA_STEPS.step2,
               ...rpAnalyticsParams,
             });

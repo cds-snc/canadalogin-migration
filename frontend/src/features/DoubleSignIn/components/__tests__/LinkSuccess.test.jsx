@@ -108,6 +108,7 @@ describe("LinkSuccess", () => {
       category: GA_CATEGORIES.formSubmit,
       action: GA_EVENTS.click,
       label: `${GA_LABELS.button}_MigrationConfirmation`,
+      form_id: MIGRATION_ANALYTICS.flowId,
       step: GA_STEPS.step2,
       rp_id: "rp-123",
       rp_name: "Example RP",
