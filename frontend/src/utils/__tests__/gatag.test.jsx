@@ -28,8 +28,8 @@ describe("useTrackEvent", () => {
         action: "form_submit_complete",
         label: "Button_MigrationComplete",
         form_id: "migration",
-        rp_client_id: "rp-123",
-        rp_client_name_en: "Example RP",
+        rp_id: "rp-123",
+        rp_name: "Example RP",
       });
     });
 
@@ -38,8 +38,8 @@ describe("useTrackEvent", () => {
       transport_type: "beacon",
       event_label: "Button_MigrationComplete",
       form_id: "migration",
-      rp_client_id: "rp-123",
-      rp_client_name_en: "Example RP",
+      rp_id: "rp-123",
+      rp_name: "Example RP",
       page: "/test-path",
     });
   });

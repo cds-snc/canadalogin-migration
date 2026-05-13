@@ -144,8 +144,8 @@ describe("LinkPrompt", () => {
       action: GA_EVENTS.click,
       label: `${GA_LABELS.button}_StartMigration`,
       step: GA_STEPS.step1,
-      rp_client_id: "rp-123",
-      rp_client_name_en: "Example RP",
+      rp_id: "rp-123",
+      rp_name: "Example RP",
     });
   });
 
@@ -163,8 +163,8 @@ describe("LinkPrompt", () => {
       action: GA_EVENTS.click,
       label: `${GA_LABELS.link}_SkipMigration`,
       step: GA_STEPS.step1,
-      rp_client_id: "rp-123",
-      rp_client_name_en: "Example RP",
+      rp_id: "rp-123",
+      rp_name: "Example RP",
     });
     expect(mockTrackEvent).toHaveBeenNthCalledWith(2, {
       category: GA_CATEGORIES.formSubmit,
@@ -174,8 +174,8 @@ describe("LinkPrompt", () => {
       step: MIGRATION_ANALYTICS.steps.complete,
       type: MIGRATION_ANALYTICS.completionTypes.skipped,
       status: "success",
-      rp_client_id: "rp-123",
-      rp_client_name_en: "Example RP",
+      rp_id: "rp-123",
+      rp_name: "Example RP",
     });
   });
 
