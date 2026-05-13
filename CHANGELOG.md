@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.0...v1.12.1) (2026-05-13)
+
+
+### Bug Fixes
+
+* **GA:** added some GA enhancements and alignments ([#293](https://github.com/cds-snc/gc-sign-in-migration/issues/293)) ([3ae1325](https://github.com/cds-snc/gc-sign-in-migration/commit/3ae1325695b932d08c9ce141821f3534f0279a8f))
+
 ## [1.12.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.11.1...v1.12.0) (2026-05-12)
 
 
