@@ -5,10 +5,7 @@ import "@testing-library/jest-dom/vitest";
 import LinkPrompt from "../LinkPrompt.jsx";
 import {
   GA_CATEGORIES,
-  GA_EVENTS,
   GA_FORM_EVENTS,
-  GA_LABELS,
-  GA_STEPS,
   MIGRATION_ANALYTICS,
   MIGRATION_END_POINTS,
 } from "../../../../utils/constants.jsx";
@@ -141,11 +138,12 @@ describe("LinkPrompt", () => {
 
     expect(mockTrackEvent).toHaveBeenCalledWith({
       category: GA_CATEGORIES.formSubmit,
-      action: GA_EVENTS.click,
-      label: `${GA_LABELS.button}_StartMigration`,
+      action: GA_FORM_EVENTS.formSubmitComplete,
+      label: MIGRATION_ANALYTICS.eventLabels.startedLinking,
       form_id: MIGRATION_ANALYTICS.flowId,
-      step: GA_STEPS.step1,
-      rp_id: "rp-123",
+      type: MIGRATION_ANALYTICS.types.startedLinking,
+      status: "success",
+      rp_client_id: "rp-123",
       rp_name: "Example RP",
     });
   });
@@ -159,24 +157,15 @@ describe("LinkPrompt", () => {
 
     fireEvent.click(screen.getByText("Skip for now"));
 
-    expect(mockTrackEvent).toHaveBeenNthCalledWith(1, {
-      category: GA_CATEGORIES.formSubmit,
-      action: GA_EVENTS.click,
-      label: `${GA_LABELS.link}_SkipMigration`,
-      form_id: MIGRATION_ANALYTICS.flowId,
-      step: GA_STEPS.step1,
-      rp_id: "rp-123",
-      rp_name: "Example RP",
-    });
-    expect(mockTrackEvent).toHaveBeenNthCalledWith(2, {
+    expect(mockTrackEvent).toHaveBeenCalledTimes(1);
+    expect(mockTrackEvent).toHaveBeenCalledWith({
       category: GA_CATEGORIES.formSubmit,
       action: GA_FORM_EVENTS.formSubmitComplete,
-      label: `${GA_LABELS.link}_MigrationComplete`,
+      label: MIGRATION_ANALYTICS.eventLabels.skippedLinking,
       form_id: MIGRATION_ANALYTICS.flowId,
-      step: MIGRATION_ANALYTICS.steps.complete,
-      type: MIGRATION_ANALYTICS.completionTypes.skipped,
+      type: MIGRATION_ANALYTICS.types.skippedLinking,
       status: "success",
-      rp_id: "rp-123",
+      rp_client_id: "rp-123",
       rp_name: "Example RP",
     });
   });

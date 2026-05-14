@@ -26,9 +26,11 @@ describe("useTrackEvent", () => {
       result.current({
         category: "form_submit",
         action: "form_submit_complete",
-        label: "Button_MigrationComplete",
+        label: "Completed linking from confirmation",
         form_id: "migration",
-        rp_id: "rp-123",
+        type: "completed linking",
+        status: "success",
+        rp_client_id: "rp-123",
         rp_name: "Example RP",
       });
     });
@@ -36,9 +38,11 @@ describe("useTrackEvent", () => {
     expect(ReactGA.event).toHaveBeenCalledWith("form_submit_complete", {
       event_category: "form_submit",
       transport_type: "beacon",
-      event_label: "Button_MigrationComplete",
+      event_label: "Completed linking from confirmation",
       form_id: "migration",
-      rp_id: "rp-123",
+      type: "completed linking",
+      status: "success",
+      rp_client_id: "rp-123",
       rp_name: "Example RP",
       page: "/test-path",
     });
