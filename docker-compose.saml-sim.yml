@@ -1,0 +1,39 @@
+name: gc-sign-in-saml-sim
+
+x-saml-idp-entrypoint: &saml-idp-entrypoint
+  - sh
+  - -c
+  - |
+    grep -q '^Mutex posixsem$' /etc/apache2/apache2.conf || echo 'Mutex posixsem' >> /etc/apache2/apache2.conf
+    exec sh /app/.docker/entrypoint.sh
+
+services:
+  saml-gckey-idp:
+    image: ghcr.io/pfrest/mock-saml2-idp:latest
+    platform: linux/amd64
+    container_name: saml-gckey-idp
+    entrypoint: *saml-idp-entrypoint
+    ports:
+      - "9080:8080"
+      - "9443:8443"
+    env_file:
+      - ./gckey-simulator/idp.env
+    environment:
+      SP_ENTITY_ID: "${SAML_SP_ENTITY_ID:-http://localhost:8000/v1/auth/legacy/saml/metadata}"
+      SP_ACS_LOCATION: "${SAML_SP_ACS_URL:-http://localhost:8000/v1/auth/legacy/saml/acs}"
+      SP_ACS_BINDING: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+
+  saml-cbs-idp:
+    image: ghcr.io/pfrest/mock-saml2-idp:latest
+    platform: linux/amd64
+    container_name: saml-cbs-idp
+    entrypoint: *saml-idp-entrypoint
+    ports:
+      - "9081:8080"
+      - "9444:8443"
+    env_file:
+      - ./interac-simulator/idp.env
+    environment:
+      SP_ENTITY_ID: "${SAML_SP_ENTITY_ID:-http://localhost:8000/v1/auth/legacy/saml/metadata}"
+      SP_ACS_LOCATION: "${SAML_SP_ACS_URL:-http://localhost:8000/v1/auth/legacy/saml/acs}"
+      SP_ACS_BINDING: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"

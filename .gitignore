@@ -5,6 +5,7 @@ backend/.env
 node_modules/
 .terraform.lock.hcl
 .env
+.env.saml-sim
 .DS_Store
 */.DS_Store
 backend/tests/__pycache__
