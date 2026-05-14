@@ -167,9 +167,9 @@ export const MIGRATION_ANALYTICS = {
     completedLinking: "Completed linking from confirmation",
   },
   types: {
-    startedLinking: "started linking",
-    skippedLinking: "skipped linking",
-    completedLinking: "completed linking",
+    startedLinking: "migration_started",
+    skippedLinking: "migration_skipped",
+    completedLinking: "migration_complete",
   },
 };
 
