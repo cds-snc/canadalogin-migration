@@ -23,10 +23,10 @@ services:
       SP_ACS_LOCATION: "${SAML_SP_ACS_URL:-http://localhost:8000/v1/auth/legacy/saml/acs}"
       SP_ACS_BINDING: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
 
-  saml-cbs-idp:
+  saml-interac-idp:
     image: ghcr.io/pfrest/mock-saml2-idp:latest
     platform: linux/amd64
-    container_name: saml-cbs-idp
+    container_name: saml-interac-idp
     entrypoint: *saml-idp-entrypoint
     ports:
       - "9081:8080"

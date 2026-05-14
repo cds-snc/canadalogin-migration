@@ -1,7 +1,7 @@
-# Local SAML Simulator Build Spec for GCCF / GCKey / CBS Migration
+# Local SAML Simulator Build Spec for GCCF / GCKey / Interac Migration
 
 Version: 3  
-Updated focus: closer public-profile match for legacy GCKey / Credential Broker Service style SAML flows, informed by the public Sign In Canada Acceptance Platform repository.
+Updated focus: closer public-profile match for legacy GCKey / Interac style SAML flows, informed by the public Sign In Canada Acceptance Platform repository.
 
 ## Purpose
 
@@ -9,9 +9,9 @@ This document defines a local SAML simulator harness for testing a migration sol
 
 - **GCCF consolidator** using OIDC
 - **GCKey** using SAML
-- **Credential Broker Service (CBS) / Interac sign-in style flow** using SAML-like legacy broker behaviour
+- **Interac sign-in style flow** using SAML-like legacy broker behaviour
 
-The goal is to test migration logic before coordinated GCKey / CBS / Interac partner testing is available.
+The goal is to test migration logic before coordinated GCKey / Interac partner testing is available.
 
 Use [`pfrest/mock-saml2-idp`](https://github.com/pfrest/mock-saml2-idp) as the local simulator.
 
@@ -23,11 +23,11 @@ Do **not** rely on hosted public SAML test services for the first version.
 
 ## Public research basis and constraints
 
-Public documentation did **not** expose a complete partner-facing GCKey or CBS SAML integration guide with production/test metadata, signing certificates, attributes, onboarding steps, or official end-to-end test instructions.
+Public documentation did **not** expose a complete partner-facing GCKey or Interac SAML integration guide with production/test metadata, signing certificates, attributes, onboarding steps, or official end-to-end test instructions.
 
 The closest public material is the Sign In Canada / GC Federation documentation describing pairwise identifier auto-collection from legacy **GCKey** and **Credential Broker Service** systems. That documentation describes the migration/coexistence pattern: Sign In Canada sends SAML authentication requests to legacy credential service providers, receives SAML assertions, and collects pairwise identifier mappings so relying party enrolments are not broken during migration.
 
-The public Sign In Canada Acceptance Platform repository is also useful as an implementation reference, even though it uses different technologies. It models the legacy first-factor providers as separate SAML providers with provider IDs `gckey` and `cbs`, persistent `NameID`, LOA2 `RequestedAuthnContext`, SHA-256 signing, SAML logout endpoints, and explicit provider certificates. This simulator should use `cbs`/`cbs-sim` as the technical name for the legacy broker provider and reserve `Interac` for user-facing wording.
+The public Sign In Canada Acceptance Platform repository is also useful as an implementation reference, even though it uses different technologies. It models the legacy first-factor providers as separate SAML providers with provider IDs `gckey` and `cbs`, persistent `NameID`, LOA2 `RequestedAuthnContext`, SHA-256 signing, SAML logout endpoints, and explicit provider certificates. This repo should use `interac-sim` as the local technical provider key because the migration team refers to this provider as Interac; keep Acceptance Platform's `cbs` naming as reference context only.
 
 The public GC Federation SAML deployment profile also gives useful profile-close behaviour:
 
@@ -39,7 +39,7 @@ The public GC Federation SAML deployment profile also gives useful profile-close
 - SP deployments must support persistent `NameID` for subject identification.
 - Assertions should contain an `AuthnContext` specifying the Level of Assurance.
 
-Public Interac documentation does not provide a legacy CBS SAML integration guide. It does, however, describe the sign-in service as a broker between government services and sign-in partners, and says the only value supplied by a Sign-In Partner is a randomly generated number created on first use and returned on subsequent uses. For local simulation, model this as a **persistent pairwise identifier** exposed as the SAML persistent `NameID`.
+Public Interac documentation does not provide a legacy Interac SAML integration guide. It does, however, describe the sign-in service as a broker between government services and sign-in partners, and says the only value supplied by a Sign-In Partner is a randomly generated number created on first use and returned on subsequent uses. For local simulation, model this as a **persistent pairwise identifier** exposed as the SAML persistent `NameID`.
 
 Current Interac Hub public integration documentation is for OAuth 2.0 / OIDC Authorization Code Grant, so it should not be treated as the legacy Interac SAML integration guide.
 
@@ -73,7 +73,7 @@ The migration app should then save the extracted `NameID` value to IBM Verify us
 
 ## Target SAML subject contract
 
-For the default GCKey/CBS simulator path, model the legacy IdP assertion subject as the source of truth:
+For the default GCKey/Interac simulator path, model the legacy IdP assertion subject as the source of truth:
 
 ```xml
 <saml:NameID
@@ -92,7 +92,7 @@ Implementation requirements:
 - Validate/use `NameQualifier` and `SPNameQualifier` when the SAML library and simulator expose them, but do not merge qualifiers into the saved `pai` value unless partner documentation later requires that exact composite format.
 - Keep `legacy_provider` as a provider-confirmation attribute only. It is not the identifier.
 
-The `pfrest/mock-saml2-idp` image may not expose every qualifier exactly like a real GCKey/CBS IdP. Where the image cannot model a subject detail, cover that detail with unit tests at the parsed assertion seam and keep the end-to-end simulator focused on persistent `NameID` value extraction and IBM Verify patching.
+The `pfrest/mock-saml2-idp` image may not expose every qualifier exactly like a real GCKey/Interac IdP. Where the image cannot model a subject detail, cover that detail with unit tests at the parsed assertion seam and keep the end-to-end simulator focused on persistent `NameID` value extraction and IBM Verify patching.
 
 ---
 
@@ -111,7 +111,7 @@ This remains the simplest useful option because it is:
 - intended for SAML Service Provider testing
 - configurable with custom user attributes
 - configurable for persistent `NameID`
-- suitable for running two separate simulated legacy IdPs: one for GCKey and one for CBS / Interac sign-in
+- suitable for running two separate simulated legacy IdPs: one for GCKey and one for Interac sign-in
 
 ---
 
@@ -138,10 +138,10 @@ GCKey simulator HTTPS port:
 GCKey simulator HTTP port:
 9080
 
-CBS / Interac simulator HTTPS port:
+Interac simulator HTTPS port:
 9444
 
-CBS / Interac simulator HTTP port:
+Interac simulator HTTP port:
 9081
 
 SAML NameID format:
@@ -271,14 +271,14 @@ GCKey custom attributes:
 }
 ```
 
-### CBS / Interac simulator
+### Interac simulator
 
 ```text
 Service name:
-saml-cbs-idp
+saml-interac-idp
 
 Container name:
-saml-cbs-idp
+saml-interac-idp
 
 Image:
 ghcr.io/pfrest/mock-saml2-idp:latest
@@ -290,7 +290,7 @@ Host HTTPS port:
 9444
 
 IdP entity ID:
-local-cbs-saml-idp
+local-interac-saml-idp
 
 Auth mode:
 auto
@@ -302,17 +302,17 @@ NameID source:
 uid
 
 Test UID / persistent NameID value to save as legacy PAI:
-cbs-pai-67890
+interac-pai-67890
 ```
 
-CBS / Interac custom attributes:
+Interac custom attributes:
 
 ```json
 {
-  "legacy_provider": "CBS",
-  "credential_service_provider": "CBS",
+  "legacy_provider": "Interac",
+  "credential_service_provider": "Interac",
   "loa": "urn:gc-ca:cyber-auth:assurance:loa2",
-  "credential_type": "CBS"
+  "credential_type": "Interac"
 }
 ```
 
@@ -342,9 +342,9 @@ services:
       IDP_USER_CUSTOM_ATTRIBUTES: >-
         {"legacy_provider":"GCKey","credential_service_provider":"GCKey","loa":"urn:gc-ca:cyber-auth:assurance:loa2","credential_type":"GCKey"}
 
-  saml-cbs-idp:
+  saml-interac-idp:
     image: ghcr.io/pfrest/mock-saml2-idp:latest
-    container_name: saml-cbs-idp
+    container_name: saml-interac-idp
     ports:
       - "9081:8080"
       - "9444:8443"
@@ -352,20 +352,20 @@ services:
       SP_ENTITY_ID: "${SAML_SP_ENTITY_ID:-http://localhost:8000/v1/auth/legacy/saml/metadata}"
       SP_ACS_LOCATION: "${SAML_SP_ACS_URL:-http://localhost:8000/v1/auth/legacy/saml/acs}"
       SP_ACS_BINDING: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
-      IDP_ENTITY_ID: "local-cbs-saml-idp"
+      IDP_ENTITY_ID: "local-interac-saml-idp"
       IDP_AUTH_MODE: "auto"
       IDP_NAMEID_FORMAT: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
       IDP_NAMEID_ATTRIBUTE: "uid"
-      IDP_USER_NAME: "cbs-user"
-      IDP_USER_UID: "cbs-pai-67890"
-      IDP_USER_EMAIL: "cbs.user@example.com"
+      IDP_USER_NAME: "interac-user"
+      IDP_USER_UID: "interac-pai-67890"
+      IDP_USER_EMAIL: "interac.user@example.com"
       IDP_USER_CUSTOM_ATTRIBUTES: >-
-        {"legacy_provider":"CBS","credential_service_provider":"CBS","loa":"urn:gc-ca:cyber-auth:assurance:loa2","credential_type":"CBS"}
+        {"legacy_provider":"Interac","credential_service_provider":"Interac","loa":"urn:gc-ca:cyber-auth:assurance:loa2","credential_type":"Interac"}
 ```
 
 ### Simulator limitations
 
-`mock-saml2-idp` is good enough for this stage, but it will not perfectly emulate GCKey or CBS / Interac sign-in.
+`mock-saml2-idp` is good enough for this stage, but it will not perfectly emulate GCKey or Interac sign-in.
 
 Known limitations to document:
 
@@ -374,7 +374,7 @@ Known limitations to document:
 - It may not force the exact real `AuthnContextClassRef` in the SAML assertion.
 - It may not emit encrypted assertions exactly as a production GC Federation deployment would.
 - It does not emulate the real Interac financial institution picker.
-- It does not provide real GCKey / CBS partner metadata, certificates, entity IDs, or endpoint behaviour.
+- It does not provide real GCKey / Interac partner metadata, certificates, entity IDs, or endpoint behaviour.
 - It may not emit `NameID` `NameQualifier` and `SPNameQualifier` exactly like the Acceptance Platform's Shibboleth-based flow. Cover qualifier handling with unit tests at the parsed assertion seam.
 - It should be treated as a local migration-logic simulator, not a conformance test suite.
 
@@ -389,8 +389,8 @@ Use the public Sign In Canada Acceptance Platform repository to inform local nam
 Important simulator choices:
 
 - Use provider key `gckey-sim` for the local GCKey simulator.
-- Use provider key `cbs-sim` for the local Credential Broker Service / Interac sign-in simulator.
-- Use display text `Interac / Credential Broker Service Simulator` where user-facing text is needed.
+- Use provider key `interac-sim` for the local Interac sign-in simulator.
+- Use display text `Interac Simulator` where user-facing text is needed.
 - Model the source for the normalized legacy PAI as SAML persistent `NameID`.
 - Configure the simulator so the `NameID` itself carries the provider-shaped value that the app should save to IBM Verify.
 - Parse and store SAML `SessionIndex` from the first assertion even if true two-step PAI collection is deferred.
@@ -409,7 +409,7 @@ When running the migration app directly on the Mac host:
 GCKey metadata:
 https://localhost:9443/sso/saml2/idp/metadata.php
 
-CBS / Interac metadata:
+Interac metadata:
 https://localhost:9444/sso/saml2/idp/metadata.php
 ```
 
@@ -419,7 +419,7 @@ When running the migration app inside a Dev Container:
 GCKey metadata:
 https://host.docker.internal:9443/sso/saml2/idp/metadata.php
 
-CBS / Interac metadata:
+Interac metadata:
 https://host.docker.internal:9444/sso/saml2/idp/metadata.php
 ```
 
@@ -441,11 +441,11 @@ SAML_SP_ACS_URL=http://localhost:8000/v1/auth/legacy/saml/acs
 
 # Use these when the migration app runs directly on the Mac host.
 SAML_GCKEY_SIM_METADATA_URL=https://localhost:9443/sso/saml2/idp/metadata.php
-SAML_CBS_SIM_METADATA_URL=https://localhost:9444/sso/saml2/idp/metadata.php
+SAML_INTERAC_SIM_METADATA_URL=https://localhost:9444/sso/saml2/idp/metadata.php
 
 # Use these instead when the migration app runs inside a Docker Dev Container.
 # SAML_GCKEY_SIM_METADATA_URL=https://host.docker.internal:9443/sso/saml2/idp/metadata.php
-# SAML_CBS_SIM_METADATA_URL=https://host.docker.internal:9444/sso/saml2/idp/metadata.php
+# SAML_INTERAC_SIM_METADATA_URL=https://host.docker.internal:9444/sso/saml2/idp/metadata.php
 
 SAML_NAMEID_FORMAT=urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
 SAML_REQUESTED_AUTHN_CONTEXT=urn:gc-ca:cyber-auth:assurance:loa2
@@ -561,23 +561,23 @@ Requested AuthnContext comparison:
 exact
 ```
 
-### CBS / Interac simulator provider
+### Interac simulator provider
 
 ```text
 Provider key:
-cbs-sim
+interac-sim
 
 Display name:
-Interac / Credential Broker Service Simulator
+Interac Simulator
 
 IdP entity ID:
-local-cbs-saml-idp
+local-interac-saml-idp
 
 Metadata URL:
-from SAML_CBS_SIM_METADATA_URL
+from SAML_INTERAC_SIM_METADATA_URL
 
 Expected legacy_provider attribute:
-CBS
+Interac
 
 Primary source for normalized legacy PAI:
 persistent SAML NameID
@@ -608,7 +608,7 @@ Requirements:
 - Do not globally disable certificate validation.
 - If self-signed metadata or certificates require a development-only exception, make that exception explicit and local-only.
 - Do not modify production deployment files unless necessary.
-- Real GCKey and CBS metadata should remain TODOs until partner-provided metadata is available.
+- Real GCKey and Interac metadata should remain TODOs until partner-provided metadata is available.
 - Do not emit `legacy_pai` or `pairwise_id` SAML attributes in the default simulator config; they are not real partner contract assumptions.
 - Prefer SAML persistent `NameID` as the source for normalized legacy PAI unless partner documentation later says otherwise.
 
@@ -622,7 +622,7 @@ Target flow:
 OIDC app starts migration
 → migration app creates migration transaction / RelayState
 → migration app redirects to simulated SAML IdP
-→ fake GCKey or CBS assertion comes back by HTTP-POST to ACS
+→ fake GCKey or Interac assertion comes back by HTTP-POST to ACS
 → migration app validates signature and assertion conditions
 → migration app verifies RelayState / transaction state
 → migration app derives normalized legacy PAI from persistent NameID
@@ -655,21 +655,21 @@ Expected result:
 migration logic extracts provider GCKey and derives normalized legacy PAI gckey-pai-12345 from NameID
 ```
 
-### 2. Persistent NameID extraction — CBS / Interac
+### 2. Persistent NameID extraction — Interac
 
 Input:
 
 ```text
-provider = cbs-sim
+provider = interac-sim
 NameID format = urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
-NameID value = cbs-pai-67890
-legacy_provider = CBS
+NameID value = interac-pai-67890
+legacy_provider = Interac
 ```
 
 Expected result:
 
 ```text
-migration logic extracts provider CBS and derives normalized legacy PAI cbs-pai-67890 from NameID
+migration logic extracts provider Interac and derives normalized legacy PAI interac-pai-67890 from NameID
 ```
 
 ### 3. Provider mismatch
@@ -678,7 +678,7 @@ Input:
 
 ```text
 transaction expects GCKey
-assertion says legacy_provider = CBS
+assertion says legacy_provider = Interac
 ```
 
 Expected result:
@@ -780,13 +780,13 @@ Goal: create a stable local test target without changing production runtime beha
 
 Tasks:
 
-- Add `docker-compose.saml-sim.yml` with `saml-gckey-idp` and `saml-cbs-idp`.
+- Add `docker-compose.saml-sim.yml` with `saml-gckey-idp` and `saml-interac-idp`.
 - Add deterministic local dev certificates for the simulator IdPs, or document why the first pass uses generated certs and cannot support stable metadata snapshots.
 - Add `.env.saml-sim.example` using backend SP defaults:
   - `SAML_SP_ENTITY_ID=http://localhost:8000/v1/auth/legacy/saml/metadata`
   - `SAML_SP_ACS_URL=http://localhost:8000/v1/auth/legacy/saml/acs`
   - `SAML_GCKEY_SIM_METADATA_URL=https://localhost:9443/sso/saml2/idp/metadata.php`
-  - `SAML_CBS_SIM_METADATA_URL=https://localhost:9444/sso/saml2/idp/metadata.php`
+  - `SAML_INTERAC_SIM_METADATA_URL=https://localhost:9444/sso/saml2/idp/metadata.php`
 - Add `scripts/saml-sim-up.sh`, `scripts/saml-sim-down.sh`, and `scripts/saml-sim-check.sh`.
 - Add `docs/saml-simulator.md` with exact start/check/stop commands and known limitations.
 
@@ -806,7 +806,7 @@ Tasks:
 
 - Add a protocol discriminator to legacy IdP config, for example `protocol: "oidc" | "saml"`, while keeping current OIDC config backward-compatible.
 - Add SAML provider config fields for provider key, display name, entity ID, metadata URL, expected `legacy_provider`, expected `NameID` format, requested authn context, ACS URL, SP entity ID, logout URL, and development-only metadata TLS behaviour.
-- Add config tests for `gckey-sim` and `cbs-sim`.
+- Add config tests for `gckey-sim` and `interac-sim`.
 - Do not enable simulator providers by default in production.
 
 Validation:
@@ -845,8 +845,8 @@ Goal: reuse existing migration side effects after the legacy identity is resolve
 Tasks:
 
 - Extract the common "resolved legacy identity" callback work from the current OIDC callback path: get IBM ID, fetch custom attributes, call `patch_legacy_pai` with the resolved legacy PAI, patch audit status, clear transaction state, and redirect to post-link flow.
-- For SIC, the resolved legacy PAI remains the OIDC `sub`; for GCKey/CBS SAML, the resolved legacy PAI is the persistent `NameID` value.
-- Route both OIDC/SIC and SAML/GCKey/CBS through that shared function.
+- For SIC, the resolved legacy PAI remains the OIDC `sub`; for GCKey/Interac SAML, the resolved legacy PAI is the persistent `NameID` value.
+- Route both OIDC/SIC and SAML/GCKey/Interac through that shared function.
 - Preserve existing logging fields and add provider key / protocol fields where useful.
 - Add regression tests to ensure existing OIDC/SIC behaviour is unchanged.
 
@@ -862,9 +862,9 @@ Goal: make local provider selection explicit and compatible with existing RP set
 
 Tasks:
 
-- Decide whether the first local UI uses a backend provider-selection page, a query param on the legacy login endpoint, or frontend buttons for `gckey-sim` and `cbs-sim`.
+- Decide whether the first local UI uses a backend provider-selection page, a query param on the legacy login endpoint, or frontend buttons for `gckey-sim` and `interac-sim`.
 - Keep production provider choice aligned with RP config and `acr_values`; do not expose simulator providers outside local/dev.
-- Ensure GCKey-only RP config cannot accidentally start CBS.
+- Ensure GCKey-only RP config cannot accidentally start Interac.
 
 Validation:
 
@@ -920,11 +920,11 @@ scripts/saml-sim-e2e-check.sh
 Add a local SAML simulator harness for this repo.
 
 Context:
-- This project is a migration solution for GCCF consolidator, GCKey, and CBS / Interac sign-in.
+- This project is a migration solution for GCCF consolidator, GCKey, and Interac sign-in.
 - GCCF is OIDC.
-- GCKey and legacy Credential Broker Service / Interac sign-in style login are SAML.
-- We need a simple local SAML IdP simulator so we can test migration logic before real GCKey/CBS partner testing is available.
-- The public Sign In Canada Acceptance Platform uses SAML provider IDs `gckey` and `cbs`; use `cbs-sim` as the technical local provider key and Interac only in user-facing text.
+- GCKey and legacy Interac sign-in style login are SAML.
+- We need a simple local SAML IdP simulator so we can test migration logic before real GCKey/Interac partner testing is available.
+- The public Sign In Canada Acceptance Platform uses SAML provider IDs `gckey` and `cbs`; use `interac-sim` as the technical local provider key in this repo because the migration team refers to this provider as Interac.
 - Use the Docker image ghcr.io/pfrest/mock-saml2-idp:latest.
 - Do not build a custom SAML IdP from scratch.
 - Do not introduce Keycloak.
@@ -985,8 +985,8 @@ Service 1:
   - IDP_USER_CUSTOM_ATTRIBUTES={"legacy_provider":"GCKey","credential_service_provider":"GCKey","loa":"urn:gc-ca:cyber-auth:assurance:loa2","credential_type":"GCKey"}
 
 Service 2:
-- service name: saml-cbs-idp
-- container name: saml-cbs-idp
+- service name: saml-interac-idp
+- container name: saml-interac-idp
 - image: ghcr.io/pfrest/mock-saml2-idp:latest
 - ports:
   - 9081:8080
@@ -995,29 +995,29 @@ Service 2:
   - SP_ENTITY_ID=${SAML_SP_ENTITY_ID:-http://localhost:8000/v1/auth/legacy/saml/metadata}
   - SP_ACS_LOCATION=${SAML_SP_ACS_URL:-http://localhost:8000/v1/auth/legacy/saml/acs}
   - SP_ACS_BINDING=urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST
-  - IDP_ENTITY_ID=local-cbs-saml-idp
+  - IDP_ENTITY_ID=local-interac-saml-idp
   - IDP_AUTH_MODE=auto
   - IDP_NAMEID_FORMAT=urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
   - IDP_NAMEID_ATTRIBUTE=uid
-  - IDP_USER_NAME=cbs-user
-  - IDP_USER_UID=cbs-pai-67890
-  - IDP_USER_EMAIL=cbs.user@example.com
-  - IDP_USER_CUSTOM_ATTRIBUTES={"legacy_provider":"CBS","credential_service_provider":"CBS","loa":"urn:gc-ca:cyber-auth:assurance:loa2","credential_type":"CBS"}
+  - IDP_USER_NAME=interac-user
+  - IDP_USER_UID=interac-pai-67890
+  - IDP_USER_EMAIL=interac.user@example.com
+  - IDP_USER_CUSTOM_ATTRIBUTES={"legacy_provider":"Interac","credential_service_provider":"Interac","loa":"urn:gc-ca:cyber-auth:assurance:loa2","credential_type":"Interac"}
 
 The docs/saml-simulator.md file should explain:
 - What the simulator is for
 - How to start it
 - How to stop it
 - How to check it
-- The GCKey and CBS metadata URLs
+- The GCKey and Interac metadata URLs
 - The difference between using localhost from the Mac host and host.docker.internal from inside a Dev Container
 - Which SAML NameID and attributes are emitted
 - That persistent NameID is the primary source for normalized legacy PAI
 - That the simulator does not emit legacy_pai or pairwise_id attributes in the default path
 - That the migration app saves the persistent NameID value through the existing IBM Verify `patch_legacy_pai` path
 - That this is for local development/testing only, not production
-- That it does not perfectly emulate real GCKey or CBS / Interac sign-in
-- That no complete public partner-facing GCKey/CBS SAML integration guide was found
+- That it does not perfectly emulate real GCKey or Interac sign-in
+- That no complete public partner-facing GCKey/Interac SAML integration guide was found
 - That local HTTPS should be used later for profile-close testing
 
 The scripts should:
@@ -1057,7 +1057,7 @@ Wire the migration app configuration to support the local SAML simulator added i
 Context:
 - We now have two local SAML IdP simulators:
   - GCKey simulator: local-gckey-saml-idp
-  - CBS / Interac simulator: local-cbs-saml-idp
+  - Interac simulator: local-interac-saml-idp
 - When the app runs directly on the Mac, metadata URLs are:
   - https://localhost:9443/sso/saml2/idp/metadata.php
   - https://localhost:9444/sso/saml2/idp/metadata.php
@@ -1082,11 +1082,11 @@ Requirements:
    - requested AuthnContext comparison: exact
 
 2. Add local-development config for:
-   - provider key: cbs-sim
-   - provider display name: Interac / Credential Broker Service Simulator
-   - entity ID: local-cbs-saml-idp
-   - metadata URL: configurable by environment variable SAML_CBS_SIM_METADATA_URL
-   - expected legacy_provider attribute: CBS
+   - provider key: interac-sim
+   - provider display name: Interac Simulator
+   - entity ID: local-interac-saml-idp
+   - metadata URL: configurable by environment variable SAML_INTERAC_SIM_METADATA_URL
+   - expected legacy_provider attribute: Interac
    - primary source for normalized legacy PAI: persistent NameID
    - expected NameID format: urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
    - local fallback source attribute: disabled by default
@@ -1095,7 +1095,7 @@ Requirements:
 
 3. Add or update .env.saml-sim.example with variables such as:
    - SAML_GCKEY_SIM_METADATA_URL=https://localhost:9443/sso/saml2/idp/metadata.php
-   - SAML_CBS_SIM_METADATA_URL=https://localhost:9444/sso/saml2/idp/metadata.php
+   - SAML_INTERAC_SIM_METADATA_URL=https://localhost:9444/sso/saml2/idp/metadata.php
    - SAML_SP_ENTITY_ID=http://localhost:8000/v1/auth/legacy/saml/metadata
    - SAML_SP_ACS_URL=http://localhost:8000/v1/auth/legacy/saml/acs
    - SAML_NAMEID_FORMAT=urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
@@ -1113,7 +1113,7 @@ Requirements:
 5. If the app does not yet have SAML provider config:
    - add a clearly isolated local config module or config section
    - do not implement the whole SAML stack unless necessary
-   - leave clear TODOs for real GCKey/CBS metadata
+   - leave clear TODOs for real GCKey/Interac metadata
 
 6. Ensure the migration logic distinguishes the two providers using:
    - provider key from the migration transaction, or
@@ -1140,12 +1140,12 @@ Keep changes minimal and production-safe.
 ## Prompt 3 — add migration-flow tests around persistent NameID and profile-close SAML behaviour
 
 ```text
-Add focused tests for the SAML migration flow using the GCKey and CBS / Interac simulator assumptions.
+Add focused tests for the SAML migration flow using the GCKey and Interac simulator assumptions.
 
 Context:
 - The local simulator emits persistent NameID as the primary source for normalized legacy PAI.
 - The GCKey simulator uses NameID value gckey-pai-12345.
-- The CBS simulator uses NameID value cbs-pai-67890.
+- The Interac simulator uses NameID value interac-pai-67890.
 - The local simulator does not emit legacy_pai or pairwise_id SAML attributes in the default path.
 - After resolving the SAML NameID, the app should save that value with the existing IBM Verify `patch_legacy_pai` flow used by SIC migration.
 - RelayState or equivalent transaction state must be preserved across the SAML redirect/POST flow.
@@ -1162,11 +1162,11 @@ Test scenarios:
    - migration logic derives normalized legacy PAI from NameID
    - migration logic records or returns the correct provider and normalized legacy PAI
 
-2. CBS / Interac successful migration from persistent NameID:
-   - provider is cbs-sim
+2. Interac successful migration from persistent NameID:
+   - provider is interac-sim
    - NameID format is urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
-   - NameID value is cbs-pai-67890
-   - SAML attributes contain legacy_provider=CBS
+   - NameID value is interac-pai-67890
+   - SAML attributes contain legacy_provider=Interac
    - migration logic derives normalized legacy PAI from NameID
    - migration logic records or returns the correct provider and normalized legacy PAI
 
@@ -1178,7 +1178,7 @@ Test scenarios:
 
 4. Provider mismatch:
    - transaction expects GCKey
-   - assertion says legacy_provider=CBS
+   - assertion says legacy_provider=Interac
    - migration should reject or fail safely
 
 5. Missing identifier:
@@ -1243,7 +1243,7 @@ Requirements:
 3. Do not add heavy browser automation unless the repo already uses Playwright, Cypress, or similar.
 4. Do not make this part of normal CI by default.
 5. Document it in docs/saml-simulator.md.
-6. Mention that this smoke test does not prove real GCKey/CBS compatibility.
+6. Mention that this smoke test does not prove real GCKey/Interac compatibility.
 
 Validation:
 - Run the script if Docker and the app are available.
@@ -1292,7 +1292,7 @@ Then configure the migration app to use:
 
 ```text
 gckey-sim -> local-gckey-saml-idp
-cbs-sim   -> local-cbs-saml-idp
+interac-sim   -> local-interac-saml-idp
 ```
 
 The primary source for normalized legacy PAI should be:

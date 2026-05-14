@@ -12,7 +12,7 @@ if [[ -f "${LOCAL_ENV_FILE}" ]]; then
 fi
 COMPOSE_ARGS+=(-f "${COMPOSE_FILE}")
 
-docker compose "${COMPOSE_ARGS[@]}" up -d
+docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans
 
 cat <<'EOF'
 Local SAML simulators are starting.
@@ -20,7 +20,7 @@ Local SAML simulators are starting.
 GCKey metadata:
   https://localhost:9443/sso/saml2/idp/metadata.php
 
-Interac / CBS metadata:
+Interac metadata:
   https://localhost:9444/sso/saml2/idp/metadata.php
 
 Run scripts/saml-sim-check.sh to verify readiness.

@@ -12,4 +12,4 @@ if [[ -f "${LOCAL_ENV_FILE}" ]]; then
 fi
 COMPOSE_ARGS+=(-f "${COMPOSE_FILE}")
 
-docker compose "${COMPOSE_ARGS[@]}" down
+docker compose "${COMPOSE_ARGS[@]}" down --remove-orphans

@@ -32,6 +32,8 @@ def test_rp_schema_parses():
         IDP=[legacy_idp],
     )
     assert rp.IDP[0].client_name == "SIC"
+    assert rp.IDP[0].protocol == "oidc"
+    assert rp.IDP[0].provider_key == "sic"
     assert rp.dependent_client_ids == []
 
 
@@ -83,6 +85,47 @@ def test_rp_schema_defaults_blank_acr_values():
         IDP=[legacy_idp],
     )
     assert rp.acr_values == ""
+
+
+def test_rp_schema_parses_saml_legacy_idp():
+    legacy_idp = LegacyIdpSchema(
+        client_name="GCKey",
+        protocol="saml",
+        provider_key="gckey-sim",
+        display_name="GCKey Simulator",
+        entity_id="local-gckey-saml-idp",
+        metadata_url="https://localhost:9443/sso/saml2/idp/metadata.php",
+        metadata_tls_verify=False,
+        expected_legacy_provider="GCKey",
+        expected_nameid_format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+        requested_authn_context="urn:gc-ca:cyber-auth:assurance:loa2",
+        sp_entity_id="http://localhost:8000/v1/auth/legacy/saml/metadata",
+        acs_url="http://localhost:8000/v1/auth/legacy/saml/acs",
+    )
+    rp = RPSchema(
+        rp_client_id="rp-1",
+        rp_client_name="RP",
+        rp_client_name_en="RP EN",
+        rp_client_name_fr="RP FR",
+        rp_redirect_uri="https://rp.example.test",
+        IDP=[legacy_idp],
+    )
+
+    assert rp.IDP[0].protocol == "saml"
+    assert rp.IDP[0].provider_key == "gckey-sim"
+    assert rp.IDP[0].client_id is None
+    assert rp.IDP[0].metadata_tls_verify is False
+    assert rp.IDP[0].metadata_url == "https://localhost:9443/sso/saml2/idp/metadata.php"
+
+
+def test_saml_legacy_idp_requires_saml_fields():
+    with pytest.raises(ValueError, match="SAML legacy IDP configuration"):
+        LegacyIdpSchema(
+            client_name="GCKey",
+            protocol="saml",
+            provider_key="gckey-sim",
+            entity_id="local-gckey-saml-idp",
+        )
 
 
 def test_rp_schema_accepts_language_specific_redirect_uris():

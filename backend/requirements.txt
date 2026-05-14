@@ -17,3 +17,5 @@ itsdangerous==2.2.0
 starsessions==2.2.1
 PyJWT==2.12.1
 redis==6.4.0
+defusedxml==0.7.1
+python3-saml==1.16.0

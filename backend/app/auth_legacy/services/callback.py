@@ -9,7 +9,17 @@ from urllib.parse import quote
 
 from app.config import get_configuration
 from app.auth.services.auth import get_base_profile_management_url
-from app.auth_legacy.services.session_state import clear_legacy_oidc_session
+from app.auth_legacy.services.session_state import (
+    LEGACY_CLIENT_NAME_SESSION_KEY,
+    LEGACY_PROVIDER_KEY_SESSION_KEY,
+    LEGACY_PROVIDER_SESSION_KEY,
+    LEGACY_SAML_RELAY_STATE_SESSION_KEY,
+    LEGACY_SAML_REQUEST_ID_SESSION_KEY,
+    LEGACY_SAML_SESSION_INDEX_SESSION_KEY,
+    clear_legacy_oidc_session,
+)
+from app.auth_legacy.services.login import select_legacy_idp
+from app.auth_legacy.services.saml import resolve_saml_identity
 from app.constants.session_keys import SessionKeys
 from app.constants.audit_status_keys import AuditStatusKeys
 from app.rp.services.config import get_config
@@ -226,6 +236,149 @@ async def _parse_legacy_id_token(
     return user, state
 
 
+def _resolve_rp_client_id_from_session(request: Request, rp_client_id: str) -> str:
+    session_rp_client_id = request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+    if session_rp_client_id:
+        return session_rp_client_id
+    if not rp_client_id:
+        raise HTTPException(status_code=400, detail="Missing RP client id")
+    return rp_client_id
+
+
+def _selected_provider_from_session(request: Request) -> str | None:
+    return request.session.get(LEGACY_PROVIDER_KEY_SESSION_KEY) or request.session.get(
+        LEGACY_PROVIDER_SESSION_KEY
+    )
+
+
+def _legacy_idp_protocol(legacy_idp) -> str:
+    protocol = getattr(legacy_idp, "protocol", "oidc") or "oidc"
+    return protocol.strip().lower() if isinstance(protocol, str) else "oidc"
+
+
+async def _complete_legacy_linking(
+    request: Request,
+    *,
+    user_access_token: str,
+    session_user_token: str,
+    rp_client_id: str,
+    rp,
+    legacy_idp,
+    legacy_pai: str,
+    logout_context: dict | None = None,
+):
+    correlation_id = ensure_session_correlation_id(request)
+    attempt_id = ensure_linking_attempt_id(request)
+    global_http_client = request.app.state.request_client
+    ibm_id = get_ibm_id(session_user_token)
+    log_auth_flow_event(
+        logger,
+        flow="migration",
+        step="legacy_identity_resolved",
+        outcome="succeeded",
+        rp_client_id=rp_client_id,
+        user_id=ibm_id,
+        legacy_provider=legacy_idp.client_name,
+    )
+
+    custom_attributes = await get_user_custom_attributes(
+        global_http_client, user_access_token
+    )
+    target_rp_client_ids = get_target_rp_client_ids(
+        rp_client_id,
+        rp.dependent_client_ids,
+    )
+    patch_legacy_pai_response = await patch_legacy_pai(
+        global_http_client=global_http_client,
+        ibm_id=ibm_id,
+        rp_client_id=rp_client_id,
+        custom_attributes=custom_attributes,
+        legacy_pai=legacy_pai,
+        target_rp_client_ids=target_rp_client_ids,
+        correlation_id=correlation_id,
+        attempt_id=attempt_id,
+    )
+    _raise_for_failed_patch_response(
+        patch_legacy_pai_response, operation_name="patch_legacy_pai"
+    )
+    log_auth_flow_event(
+        logger,
+        flow="migration",
+        step="legacy_pai_patch",
+        outcome="succeeded",
+        rp_client_id=rp_client_id,
+        user_id=ibm_id,
+        legacy_provider=legacy_idp.client_name,
+        target_rp_client_count=len(target_rp_client_ids),
+    )
+
+    patch_audit_data_response = await patch_audit_data(
+        global_http_client=global_http_client,
+        ibm_id=ibm_id,
+        rp_client_id=rp_client_id,
+        custom_attributes=custom_attributes,
+        status=AuditStatusKeys.LINKED_KEY.value,
+        correlation_id=correlation_id,
+        attempt_id=attempt_id,
+    )
+    _raise_for_failed_patch_response(
+        patch_audit_data_response, operation_name="patch_audit_data"
+    )
+    log_auth_flow_event(
+        logger,
+        flow="migration",
+        step="audit_patch",
+        outcome="succeeded",
+        rp_client_id=rp_client_id,
+        user_id=ibm_id,
+        audit_status=AuditStatusKeys.LINKED_KEY.value,
+        legacy_provider=legacy_idp.client_name,
+    )
+
+    if not logout_context or not config.LEGACY_IDP_LOGOUT_ENABLED:
+        logger.info("Legacy IdP logout disabled; skipping end-session redirect.")
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_logout_redirect",
+            outcome="skipped",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+        )
+        return await legacy_post_logout_callback(request)
+
+    idp_metadata = logout_context["idp_metadata"]
+    token = logout_context["token"]
+    state = logout_context["state"]
+    end_session_endpoint = idp_metadata["server_metadata"].get("end_session_endpoint")
+
+    post_logout_redirect_uri = request.url_for("handle_legacy_post_logout_callback")
+    if config.ENVIRONMENT != "local":
+        post_logout_redirect_uri = str(post_logout_redirect_uri).replace(
+            "http://", "https://"
+        )
+
+    encoded_post_logout_redirect_uri = quote(str(post_logout_redirect_uri), safe="")
+    logout_url = (
+        f"{end_session_endpoint}"
+        f"?id_token_hint={token['id_token']}"
+        f"&post_logout_redirect_uri={encoded_post_logout_redirect_uri}"
+        f"&state={state}"
+        f"&client_id=e1a58c16-a649-45e1-b80c-3cd3daaeea0d"
+    )
+    log_auth_flow_event(
+        logger,
+        flow="migration",
+        step="legacy_logout_redirect",
+        outcome="succeeded",
+        rp_client_id=rp_client_id,
+        user_id=ibm_id,
+        legacy_provider=legacy_idp.client_name,
+    )
+    return RedirectResponse(url=logout_url)
+
+
 async def legacy_callback(
     request: Request,
     user_access_token: str,
@@ -233,13 +386,7 @@ async def legacy_callback(
     rp_client_id: str,
 ):
     try:
-        correlation_id = ensure_session_correlation_id(request)
-        attempt_id = ensure_linking_attempt_id(request)
-        session_rp_client_id = request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
-        if session_rp_client_id:
-            rp_client_id = session_rp_client_id
-        elif not rp_client_id:
-            raise HTTPException(status_code=400, detail="Missing RP client id")
+        rp_client_id = _resolve_rp_client_id_from_session(request, rp_client_id)
         log_auth_flow_event(
             logger,
             flow="migration",
@@ -248,9 +395,13 @@ async def legacy_callback(
             rp_client_id=rp_client_id,
         )
 
-        # RP with SIC only has 1 IDP
         rp = await get_config(rp_client_id)
-        legacy_idp = rp.IDP[0]
+        legacy_idp = select_legacy_idp(rp, _selected_provider_from_session(request))
+        if _legacy_idp_protocol(legacy_idp) != "oidc":
+            raise HTTPException(
+                status_code=400,
+                detail="Selected legacy IDP is not configured for OIDC callback",
+            )
 
         # Unique for RP / IDP combo
         client_name = f"{rp.rp_client_name}_{legacy_idp.client_name}"
@@ -272,126 +423,20 @@ async def legacy_callback(
             legacy_provider=legacy_idp.client_name,
         )
         legacy_pai = user["sub"]
-
-        global_http_client = request.app.state.request_client
-
-        # Return IBM Id
-        ibm_id = get_ibm_id(session_user_token)
-        log_auth_flow_event(
-            logger,
-            flow="migration",
-            step="legacy_identity_resolved",
-            outcome="succeeded",
+        return await _complete_legacy_linking(
+            request,
+            user_access_token=user_access_token,
+            session_user_token=session_user_token,
             rp_client_id=rp_client_id,
-            user_id=ibm_id,
-            legacy_provider=legacy_idp.client_name,
-        )
-
-        # Get Users Custom Attributes
-        custom_attributes = await get_user_custom_attributes(
-            global_http_client, user_access_token
-        )
-
-        # LEGACY_PAI LOGIC + PATCH
-        target_rp_client_ids = get_target_rp_client_ids(
-            rp_client_id,
-            rp.dependent_client_ids,
-        )
-        patch_legacy_pai_response = await patch_legacy_pai(
-            global_http_client=global_http_client,
-            ibm_id=ibm_id,
-            rp_client_id=rp_client_id,
-            custom_attributes=custom_attributes,
+            rp=rp,
+            legacy_idp=legacy_idp,
             legacy_pai=legacy_pai,
-            target_rp_client_ids=target_rp_client_ids,
-            correlation_id=correlation_id,
-            attempt_id=attempt_id,
+            logout_context={
+                "idp_metadata": client.server_metadata,
+                "token": token,
+                "state": state,
+            },
         )
-        _raise_for_failed_patch_response(
-            patch_legacy_pai_response, operation_name="patch_legacy_pai"
-        )
-        log_auth_flow_event(
-            logger,
-            flow="migration",
-            step="legacy_pai_patch",
-            outcome="succeeded",
-            rp_client_id=rp_client_id,
-            user_id=ibm_id,
-            legacy_provider=legacy_idp.client_name,
-            target_rp_client_count=len(target_rp_client_ids),
-        )
-
-        # AUDIT DATA LOGIC + PATCH
-        patch_audit_data_response = await patch_audit_data(
-            global_http_client=global_http_client,
-            ibm_id=ibm_id,
-            rp_client_id=rp_client_id,
-            custom_attributes=custom_attributes,
-            status=AuditStatusKeys.LINKED_KEY.value,
-            correlation_id=correlation_id,
-            attempt_id=attempt_id,
-        )
-        _raise_for_failed_patch_response(
-            patch_audit_data_response, operation_name="patch_audit_data"
-        )
-        log_auth_flow_event(
-            logger,
-            flow="migration",
-            step="audit_patch",
-            outcome="succeeded",
-            rp_client_id=rp_client_id,
-            user_id=ibm_id,
-            audit_status=AuditStatusKeys.LINKED_KEY.value,
-            legacy_provider=legacy_idp.client_name,
-        )
-
-        # The discovery metadata is stored here:
-        idp_metadata = client.server_metadata
-        if not config.LEGACY_IDP_LOGOUT_ENABLED:
-            logger.info("Legacy IdP logout disabled; skipping end-session redirect.")
-            log_auth_flow_event(
-                logger,
-                flow="migration",
-                step="legacy_logout_redirect",
-                outcome="skipped",
-                rp_client_id=rp_client_id,
-                user_id=ibm_id,
-                legacy_provider=legacy_idp.client_name,
-            )
-            return await legacy_post_logout_callback(request)
-
-        # Grab the logout endpoint
-        end_session_endpoint = idp_metadata["server_metadata"].get(
-            "end_session_endpoint"
-        )
-
-        post_logout_redirect_uri = request.url_for("handle_legacy_post_logout_callback")
-        if config.ENVIRONMENT != "local":
-            post_logout_redirect_uri = str(post_logout_redirect_uri).replace(
-                "http://", "https://"
-            )
-
-        encoded_post_logout_redirect_uri = quote(str(post_logout_redirect_uri), safe="")
-
-        # Build the logout url for the Legacy IDP
-        logout_url = (
-            f"{end_session_endpoint}"
-            f"?id_token_hint={token['id_token']}"
-            f"&post_logout_redirect_uri={encoded_post_logout_redirect_uri}"
-            f"&state={state}"
-            f"&client_id=e1a58c16-a649-45e1-b80c-3cd3daaeea0d"
-        )
-        log_auth_flow_event(
-            logger,
-            flow="migration",
-            step="legacy_logout_redirect",
-            outcome="succeeded",
-            rp_client_id=rp_client_id,
-            user_id=ibm_id,
-            legacy_provider=legacy_idp.client_name,
-        )
-
-        return RedirectResponse(url=logout_url)
 
     except httpx.HTTPStatusError as e:
         status_code = e.response.status_code if e.response else 502
@@ -414,6 +459,86 @@ async def legacy_callback(
     except Exception as e:
         logger.exception("Unexpected error during legacy callback")
         RequestErrorHandler.handle(e, context="Unexpected error during legacy callback")
+
+
+async def legacy_saml_acs(
+    request: Request,
+    user_access_token: str,
+    session_user_token: str,
+    rp_client_id: str,
+    saml_response: str,
+    relay_state: str | None,
+):
+    try:
+        rp_client_id = _resolve_rp_client_id_from_session(request, rp_client_id)
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_saml_acs",
+            outcome="started",
+            rp_client_id=rp_client_id,
+        )
+
+        rp = await get_config(rp_client_id)
+        legacy_idp = select_legacy_idp(rp, _selected_provider_from_session(request))
+        if _legacy_idp_protocol(legacy_idp) != "saml":
+            raise HTTPException(
+                status_code=400,
+                detail="Selected legacy IDP is not configured for SAML ACS",
+            )
+        client_name = request.session.get(LEGACY_CLIENT_NAME_SESSION_KEY) or (
+            f"{rp.rp_client_name}_{legacy_idp.client_name}"
+        )
+
+        expected_relay_state = request.session.get(LEGACY_SAML_RELAY_STATE_SESSION_KEY)
+        request_id = request.session.get(LEGACY_SAML_REQUEST_ID_SESSION_KEY)
+        if not expected_relay_state or not request_id:
+            _reject_legacy_callback(
+                request,
+                rp_client_id=rp_client_id,
+                step="legacy_saml_relay_state",
+                reason="missing_saml_transaction",
+                client_name=client_name,
+                legacy_provider=legacy_idp.client_name,
+            )
+        if relay_state != expected_relay_state:
+            _reject_legacy_callback(
+                request,
+                rp_client_id=rp_client_id,
+                step="legacy_saml_relay_state",
+                reason="mismatched_relay_state",
+                client_name=client_name,
+                legacy_provider=legacy_idp.client_name,
+            )
+
+        identity = await resolve_saml_identity(
+            request,
+            legacy_idp=legacy_idp,
+            saml_response=saml_response,
+            relay_state=relay_state,
+            request_id=request_id,
+        )
+
+        clear_legacy_oidc_session(request, client_name=client_name)
+        if identity.session_index:
+            request.session[LEGACY_SAML_SESSION_INDEX_SESSION_KEY] = (
+                identity.session_index
+            )
+        return await _complete_legacy_linking(
+            request,
+            user_access_token=user_access_token,
+            session_user_token=session_user_token,
+            rp_client_id=rp_client_id,
+            rp=rp,
+            legacy_idp=legacy_idp,
+            legacy_pai=identity.legacy_pai,
+        )
+
+    except OAuthError as e:
+        raise e
+    except Exception as e:
+        logger.exception("Unexpected error during legacy SAML ACS")
+        RequestErrorHandler.handle(e, context="Unexpected error during legacy SAML ACS")
 
 
 async def legacy_post_logout_callback(request: Request):

@@ -3,7 +3,7 @@
 This harness runs two local SAML IdP simulators for migration development:
 
 - GCKey simulator, configured from `gckey-simulator/idp.env`
-- Interac / Credential Broker Service simulator, configured from `interac-simulator/idp.env`
+- Interac simulator, configured from `interac-simulator/idp.env`
 
 Both simulators use `ghcr.io/pfrest/mock-saml2-idp:latest` and are intended for local development only.
 
@@ -39,7 +39,7 @@ From the Mac host:
 GCKey metadata:
 https://localhost:9443/sso/saml2/idp/metadata.php
 
-Interac / CBS metadata:
+Interac metadata:
 https://localhost:9444/sso/saml2/idp/metadata.php
 ```
 
@@ -49,7 +49,7 @@ From a Docker Dev Container:
 GCKey metadata:
 https://host.docker.internal:9443/sso/saml2/idp/metadata.php
 
-Interac / CBS metadata:
+Interac metadata:
 https://host.docker.internal:9444/sso/saml2/idp/metadata.php
 ```
 
@@ -64,6 +64,27 @@ SAML_SP_ACS_URL=http://localhost:8000/v1/auth/legacy/saml/acs
 
 To override them, copy `.env.saml-sim.example` to `.env.saml-sim` and edit the values. The scripts automatically load `.env.saml-sim` when it exists.
 
+## Backend Routes
+
+The migration backend exposes these SAML endpoints:
+
+```text
+GET  /v1/auth/legacy/saml/metadata
+GET  /v1/auth/legacy/saml/login/{provider_key}
+POST /v1/auth/legacy/saml/acs
+```
+
+The regular legacy login endpoint also accepts `provider`, so local flows can use either:
+
+```text
+/v1/auth/legacy/login?provider=gckey-sim
+/v1/auth/legacy/login?provider=interac-sim
+```
+
+For local simulator config, set `metadata_tls_verify` to `false` on the SAML provider entries because the simulator publishes HTTPS metadata with a local/self-signed certificate. The backend only allows that setting for local simulator hosts in `ENVIRONMENT=local`.
+
+The backend uses `python3-saml` for SAML response validation. The backend Docker image installs the required XMLSec libraries; a direct local virtualenv may need equivalent system packages before installing `backend/requirements.txt`.
+
 ## Identity Values
 
 The simulator returns the legacy PAI source as persistent SAML `NameID`.
@@ -72,8 +93,8 @@ The simulator returns the legacy PAI source as persistent SAML `NameID`.
 GCKey NameID:
 gckey-pai-12345
 
-Interac / CBS NameID:
-cbs-pai-67890
+Interac NameID:
+interac-pai-67890
 ```
 
 The normal simulator path does not emit `legacy_pai` or `pairwise_id` SAML attributes. The migration app should save the persistent `NameID` value through the existing IBM Verify `patch_legacy_pai` flow used by SIC migration.
@@ -87,15 +108,15 @@ credential_service_provider=GCKey
 loa=urn:gc-ca:cyber-auth:assurance:loa2
 credential_type=GCKey
 
-Interac / CBS:
-legacy_provider=CBS
-credential_service_provider=CBS
+Interac:
+legacy_provider=Interac
+credential_service_provider=Interac
 loa=urn:gc-ca:cyber-auth:assurance:loa2
-credential_type=CBS
+credential_type=Interac
 ```
 
 ## Limits
 
-This harness does not perfectly emulate real GCKey or Interac/CBS. In particular, `mock-saml2-idp` may not expose `NameQualifier`, `SPNameQualifier`, SAML logout, or partner-specific error behaviour exactly like production providers.
+This harness does not perfectly emulate real GCKey or Interac. In particular, `mock-saml2-idp` may not expose `NameQualifier`, `SPNameQualifier`, SAML logout, or partner-specific error behaviour exactly like production providers.
 
-Keep partner-specific parsing and validation covered with backend unit tests at the parsed assertion seam. Treat real GCKey/CBS metadata, certificates, and final attribute contracts as TODOs until partner-provided metadata is available.
+Keep partner-specific parsing and validation covered with backend unit tests at the parsed assertion seam. Treat real GCKey/Interac metadata, certificates, and final attribute contracts as TODOs until partner-provided metadata is available.

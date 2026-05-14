@@ -1,6 +1,30 @@
 {
   "components": {
     "schemas": {
+      "Body_handle_legacy_saml_acs_v1_auth_legacy_saml_acs_post": {
+        "properties": {
+          "RelayState": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relaystate"
+          },
+          "SAMLResponse": {
+            "title": "Samlresponse",
+            "type": "string"
+          }
+        },
+        "required": [
+          "SAMLResponse"
+        ],
+        "title": "Body_handle_legacy_saml_acs_v1_auth_legacy_saml_acs_post",
+        "type": "object"
+      },
       "EmailItem": {
         "properties": {
           "type": {
@@ -526,6 +550,24 @@
               "title": "Lang",
               "type": "string"
             }
+          },
+          {
+            "description": "Optional legacy IDP provider key, such as sic, gccf, gckey-sim, or interac-sim.",
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional legacy IDP provider key, such as sic, gccf, gckey-sim, or interac-sim.",
+              "title": "Provider"
+            }
           }
         ],
         "responses": {
@@ -569,6 +611,117 @@
           }
         },
         "summary": "Legacy IDP Logout Callabck Endpoint",
+        "tags": [
+          "Legacy Auth"
+        ]
+      }
+    },
+    "/v1/auth/legacy/saml/acs": {
+      "post": {
+        "description": "Handles SAML HTTP-POST responses from configured legacy IDPs.",
+        "operationId": "handle_legacy_saml_acs_v1_auth_legacy_saml_acs_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_handle_legacy_saml_acs_v1_auth_legacy_saml_acs_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "SAML Assertion Consumer Service",
+        "tags": [
+          "Legacy Auth"
+        ]
+      }
+    },
+    "/v1/auth/legacy/saml/login/{provider_key}": {
+      "get": {
+        "description": "Initiates a SAML authentication request to a configured legacy IDP.",
+        "operationId": "handle_legacy_saml_login_v1_auth_legacy_saml_login__provider_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_key",
+            "required": true,
+            "schema": {
+              "title": "Provider Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "en",
+              "title": "Lang",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Starts SAML linking flow",
+        "tags": [
+          "Legacy Auth"
+        ]
+      }
+    },
+    "/v1/auth/legacy/saml/metadata": {
+      "get": {
+        "description": "Returns local SAML service provider metadata for legacy IDP simulators.",
+        "operationId": "handle_legacy_saml_metadata_v1_auth_legacy_saml_metadata_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "SAML SP Metadata",
         "tags": [
           "Legacy Auth"
         ]

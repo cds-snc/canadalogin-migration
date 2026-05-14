@@ -13,6 +13,8 @@
       {
         "client_id": "your-legacy-idp-client-id",
         "client_name": "SIC",
+        "protocol": "oidc",
+        "provider_key": "sic",
         "openid_configuration": "https://te-auth.id.tbs-sct.gc.ca/oxauth/.well-known/openid-configuration",
         "redirect_uris": [
           "http://localhost:8000/v1/auth/legacy/callback"
@@ -21,6 +23,52 @@
         "max_age": 3600,
         "code_challenge_method": "S256",
         "token_endpoint_auth_method": "client_secret_basic"
+      },
+      {
+        "client_id": "your-gccf-client-id",
+        "client_name": "GCCF",
+        "protocol": "oidc",
+        "provider_key": "gccf",
+        "openid_configuration": "https://gccf.example.test/.well-known/openid-configuration",
+        "redirect_uris": [
+          "http://localhost:8000/v1/auth/legacy/callback"
+        ],
+        "scope": "openid profile email",
+        "max_age": 3600,
+        "code_challenge_method": "S256",
+        "token_endpoint_auth_method": "client_secret_basic"
+      },
+      {
+        "client_name": "GCKey",
+        "protocol": "saml",
+        "provider_key": "gckey-sim",
+        "display_name": "GCKey Simulator",
+        "entity_id": "local-gckey-saml-idp",
+        "metadata_url": "https://localhost:9443/sso/saml2/idp/metadata.php",
+        "expected_legacy_provider": "GCKey",
+        "expected_nameid_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+        "requested_authn_context": "urn:gc-ca:cyber-auth:assurance:loa2",
+        "requested_authn_context_comparison": "exact",
+        "sp_entity_id": "http://localhost:8000/v1/auth/legacy/saml/metadata",
+        "acs_url": "http://localhost:8000/v1/auth/legacy/saml/acs",
+        "allow_local_fallback_identifier": false,
+        "metadata_tls_verify": false
+      },
+      {
+        "client_name": "Interac",
+        "protocol": "saml",
+        "provider_key": "interac-sim",
+        "display_name": "Interac Simulator",
+        "entity_id": "local-interac-saml-idp",
+        "metadata_url": "https://localhost:9444/sso/saml2/idp/metadata.php",
+        "expected_legacy_provider": "Interac",
+        "expected_nameid_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+        "requested_authn_context": "urn:gc-ca:cyber-auth:assurance:loa2",
+        "requested_authn_context_comparison": "exact",
+        "sp_entity_id": "http://localhost:8000/v1/auth/legacy/saml/metadata",
+        "acs_url": "http://localhost:8000/v1/auth/legacy/saml/acs",
+        "allow_local_fallback_identifier": false,
+        "metadata_tls_verify": false
       }
     ]
   }

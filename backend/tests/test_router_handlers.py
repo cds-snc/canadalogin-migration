@@ -135,6 +135,75 @@ async def test_legacy_login_normalizes_lang_and_calls_service():
 
 
 @pytest.mark.asyncio
+async def test_legacy_saml_login_calls_service_with_provider_key():
+    request = MagicMock()
+    request.session = {
+        SessionKeys.SESSION_USER_TOKEN.value: "token",
+        SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1",
+    }
+
+    with patch(
+        "app.auth_legacy.v1_router.legacy_login",
+        new=AsyncMock(return_value="saml"),
+    ) as mocked:
+        result = await legacy_router.handle_legacy_saml_login(
+            "gckey-sim",
+            request,
+            lang="FR",
+            user_access_token="user-token",
+        )
+
+    assert result == "saml"
+    mocked.assert_awaited_once_with(
+        request,
+        "user-token",
+        "token",
+        rp_client_id="rp-1",
+        lang="fr",
+        provider="gckey-sim",
+    )
+
+
+@pytest.mark.asyncio
+async def test_legacy_saml_metadata_returns_xml():
+    response = await legacy_router.handle_legacy_saml_metadata()
+
+    assert response.media_type == "application/samlmetadata+xml"
+    assert b"EntityDescriptor" in response.body
+    assert b"AssertionConsumerService" in response.body
+
+
+@pytest.mark.asyncio
+async def test_legacy_saml_acs_calls_service():
+    request = MagicMock()
+    request.session = {
+        SessionKeys.SESSION_USER_TOKEN.value: "token",
+        SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1",
+    }
+
+    with patch(
+        "app.auth_legacy.v1_router.legacy_saml_acs",
+        new=AsyncMock(return_value="acs"),
+    ) as mocked:
+        result = await legacy_router.handle_legacy_saml_acs(
+            request,
+            saml_response="saml-response",
+            relay_state="relay-state",
+            user_access_token="user-token",
+        )
+
+    assert result == "acs"
+    mocked.assert_awaited_once_with(
+        request,
+        "user-token",
+        "token",
+        rp_client_id="rp-1",
+        saml_response="saml-response",
+        relay_state="relay-state",
+    )
+
+
+@pytest.mark.asyncio
 async def test_legacy_callback_calls_service():
     request = MagicMock()
     request.session = {

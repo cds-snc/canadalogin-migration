@@ -44,6 +44,55 @@ def _sample_rp_secrets():
     return [{"client_id": "cid", "client_secret": "secret"}]
 
 
+def _sample_mixed_protocol_rp_config():
+    config = _sample_rp_config(include_inline_secret=True)
+    config[0]["IDP"].extend(
+        [
+            {
+                "client_name": "GCCF",
+                "protocol": "oidc",
+                "provider_key": "gccf",
+                "client_id": "gccf-client",
+                "client_secret": "gccf-secret",
+                "openid_configuration": "https://gccf.example.test/.well-known/openid-configuration",
+                "redirect_uris": ["https://rp.example.test/gccf/callback"],
+                "scope": "openid profile email",
+                "max_age": 3600,
+                "code_challenge_method": "S256",
+            },
+            {
+                "client_name": "GCKey",
+                "protocol": "saml",
+                "provider_key": "gckey-sim",
+                "display_name": "GCKey Simulator",
+                "entity_id": "local-gckey-saml-idp",
+                "metadata_url": "https://localhost:9443/sso/saml2/idp/metadata.php",
+                "metadata_tls_verify": False,
+                "expected_legacy_provider": "GCKey",
+                "expected_nameid_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+                "requested_authn_context": "urn:gc-ca:cyber-auth:assurance:loa2",
+                "sp_entity_id": "http://localhost:8000/v1/auth/legacy/saml/metadata",
+                "acs_url": "http://localhost:8000/v1/auth/legacy/saml/acs",
+            },
+            {
+                "client_name": "Interac",
+                "protocol": "saml",
+                "provider_key": "interac-sim",
+                "display_name": "Interac Simulator",
+                "entity_id": "local-interac-saml-idp",
+                "metadata_url": "https://localhost:9444/sso/saml2/idp/metadata.php",
+                "metadata_tls_verify": False,
+                "expected_legacy_provider": "Interac",
+                "expected_nameid_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+                "requested_authn_context": "urn:gc-ca:cyber-auth:assurance:loa2",
+                "sp_entity_id": "http://localhost:8000/v1/auth/legacy/saml/metadata",
+                "acs_url": "http://localhost:8000/v1/auth/legacy/saml/acs",
+            },
+        ]
+    )
+    return config
+
+
 @pytest.mark.asyncio
 async def test_get_config_returns_matching_rp(monkeypatch):
     monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
@@ -178,7 +227,30 @@ async def test_get_config_allows_missing_secret_for_client_id(monkeypatch):
         rp = await get_config("rp-123")
 
     assert rp.IDP[0].client_id == "cid"
-    assert rp.IDP[0].client_secret is None
+
+
+@pytest.mark.asyncio
+async def test_get_config_allows_mixed_oidc_and_saml_idps_without_saml_secrets(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "RP_MIGRATION_CONFIG", json.dumps(_sample_mixed_protocol_rp_config())
+    )
+    monkeypatch.delenv("RP_MIGRATION_CONFIG_SECRETS", raising=False)
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        rp = await get_config("rp-123")
+
+    assert [idp.provider_key for idp in rp.IDP] == [
+        "sic",
+        "gccf",
+        "gckey-sim",
+        "interac-sim",
+    ]
+    assert rp.IDP[2].protocol == "saml"
+    assert rp.IDP[2].client_secret is None
+    assert rp.IDP[2].metadata_tls_verify is False
+    assert rp.IDP[3].metadata_url == "https://localhost:9444/sso/saml2/idp/metadata.php"
 
 
 @pytest.mark.asyncio

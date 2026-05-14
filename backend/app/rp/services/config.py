@@ -209,13 +209,14 @@ def _merge_config_with_secrets(
         for idp in rp_copy.get("IDP", []):
             idp_copy = dict(idp)
             client_id = idp_copy.get("client_id")
+            protocol = (idp_copy.get("protocol") or "oidc").lower()
 
             if client_id:
                 secret_from_env = secrets_by_client_id.get(client_id)
                 if secret_from_env:
                     idp_copy["client_secret"] = secret_from_env
 
-            if not idp_copy.get("client_secret"):
+            if protocol == "oidc" and not idp_copy.get("client_secret"):
                 missing_secret_client_ids.add(client_id or "<missing-client-id>")
 
             merged_idps.append(idp_copy)

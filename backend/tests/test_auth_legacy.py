@@ -9,12 +9,22 @@ from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuthError
 
-from app.auth_legacy.services.login import legacy_login, SIC_legacy_login_auth
+from app.auth_legacy.services.login import (
+    SAML_legacy_login_auth,
+    legacy_login,
+    SIC_legacy_login_auth,
+)
 from app.auth_legacy.services.skip import skip_account_linking
 from app.auth_legacy.services.callback import (
     get_target_rp_client_ids,
     legacy_callback,
     legacy_post_logout_callback,
+    legacy_saml_acs,
+)
+from app.auth_legacy.services.saml import SamlIdentity
+from app.auth_legacy.services.session_state import (
+    LEGACY_SAML_RELAY_STATE_SESSION_KEY,
+    LEGACY_SAML_REQUEST_ID_SESSION_KEY,
 )
 from app.constants.session_keys import SessionKeys
 from app.constants.audit_status_keys import AuditStatusKeys
@@ -25,6 +35,7 @@ def build_request():
     request = MagicMock()
     request.session = {}
     request.query_params = {}
+    request.state = SimpleNamespace()
     request.app = MagicMock()
     request.app.state = MagicMock()
     request.app.state.request_client = AsyncMock()
@@ -35,11 +46,14 @@ def seed_legacy_session(
     request,
     *,
     client_name: str = "rpname_SIC",
+    provider: str = "SIC",
+    provider_key: str = "sic",
     state: str = "state",
     nonce: str = "nonce",
     verifier: str = "verifier",
 ):
-    request.session["legacy_provider"] = "SIC"
+    request.session["legacy_provider"] = provider
+    request.session["legacy_provider_key"] = provider_key
     request.session["legacy_client_name"] = client_name
     request.session[f"{client_name}_code_verifier"] = verifier
     request.session[f"{client_name}_nonce"] = nonce
@@ -79,6 +93,154 @@ async def test_legacy_login_routes_to_sic_handler():
         )
         assert result == "ok"
         mock_sic.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_legacy_login_selects_provider_from_query_param():
+    request = build_request()
+    user_access_token = "user-at"
+    session_user_token = "user-token"
+    rp_client_id = "rp-123"
+
+    sic_idp = SimpleNamespace(
+        client_name="SIC", protocol="oidc", provider_key="sic", client_id="sic-client"
+    )
+    gccf_idp = SimpleNamespace(
+        client_name="GCCF",
+        protocol="oidc",
+        provider_key="gccf",
+        client_id="gccf-client",
+    )
+    rp = SimpleNamespace(IDP=[sic_idp, gccf_idp], acr_values="", rp_client_name="rpname")
+
+    with (
+        patch(
+            "app.auth_legacy.services.login.get_config", new=AsyncMock(return_value=rp)
+        ),
+        patch(
+            "app.auth_legacy.services.login.SIC_legacy_login_auth",
+            new=AsyncMock(return_value="ok"),
+        ) as mock_oidc,
+    ):
+        result = await legacy_login(
+            request,
+            user_access_token,
+            session_user_token,
+            rp_client_id,
+            lang="en",
+            provider="gccf",
+        )
+
+    assert result == "ok"
+    assert mock_oidc.await_args.kwargs["legacy_idp"] is gccf_idp
+
+
+@pytest.mark.asyncio
+async def test_legacy_login_requires_provider_when_multiple_idps_without_hint():
+    request = build_request()
+    rp = SimpleNamespace(
+        IDP=[
+            SimpleNamespace(client_name="SIC", protocol="oidc", provider_key="sic"),
+            SimpleNamespace(
+                client_name="GCCF", protocol="oidc", provider_key="gccf"
+            ),
+        ],
+        acr_values="",
+    )
+
+    with patch(
+        "app.auth_legacy.services.login.get_config", new=AsyncMock(return_value=rp)
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await legacy_login(request, "user-at", "user-token", "rp-123", lang="en")
+
+    assert raised.value.status_code == 400
+    assert "selection is required" in raised.value.detail
+
+
+@pytest.mark.asyncio
+async def test_legacy_login_selects_gckey_from_acr_hint():
+    request = build_request()
+    gckey_idp = SimpleNamespace(
+        client_name="GCKey", protocol="saml", provider_key="gckey-sim"
+    )
+    rp = SimpleNamespace(
+        IDP=[
+            SimpleNamespace(client_name="SIC", protocol="oidc", provider_key="sic"),
+            gckey_idp,
+        ],
+        acr_values="gckey, mfa",
+        rp_client_name="rpname",
+    )
+
+    with (
+        patch(
+            "app.auth_legacy.services.login.get_config", new=AsyncMock(return_value=rp)
+        ),
+        patch(
+            "app.auth_legacy.services.login.SAML_legacy_login_auth",
+            new=AsyncMock(return_value="saml"),
+        ) as mock_saml,
+    ):
+        result = await legacy_login(request, "user-at", "user-token", "rp-123")
+
+    assert result == "saml"
+    assert mock_saml.await_args.kwargs["legacy_idp"] is gckey_idp
+
+
+@pytest.mark.asyncio
+async def test_saml_legacy_login_redirects_and_records_transaction():
+    request = build_request()
+    rp = SimpleNamespace(rp_client_name="rpname")
+    legacy_idp = SimpleNamespace(
+        client_name="GCKey", protocol="saml", provider_key="gckey-sim"
+    )
+
+    with (
+        patch(
+            "app.auth_legacy.services.login.generate_secure_token",
+            side_effect=["request-token", "relay-token"],
+        ),
+        patch(
+            "app.auth_legacy.services.login.get_ibm_id",
+            new=MagicMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.login.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.login.patch_processing_data",
+            new=AsyncMock(return_value=MagicMock(status_code=204)),
+        ) as mock_patch_processing_data,
+        patch(
+            "app.auth_legacy.services.login.build_saml_login_redirect_url",
+            new=AsyncMock(return_value="https://localhost:9443/sso?SAMLRequest=x"),
+        ) as mock_build_redirect,
+    ):
+        response = await SAML_legacy_login_auth(
+            request,
+            "user-at",
+            "user-token",
+            "rp-123",
+            "en",
+            rp=rp,
+            legacy_idp=legacy_idp,
+        )
+
+    assert isinstance(response, RedirectResponse)
+    assert response.headers["location"] == "https://localhost:9443/sso?SAMLRequest=x"
+    assert request.session["legacy_provider"] == "GCKey"
+    assert request.session["legacy_provider_key"] == "gckey-sim"
+    assert request.session[LEGACY_SAML_REQUEST_ID_SESSION_KEY] == "_request-token"
+    assert request.session[LEGACY_SAML_RELAY_STATE_SESSION_KEY] == "relay-token"
+    mock_build_redirect.assert_awaited_once_with(
+        legacy_idp,
+        request_id="_request-token",
+        relay_state="relay-token",
+    )
+    assert mock_patch_processing_data.await_args.kwargs["correlation_id"]
+    assert mock_patch_processing_data.await_args.kwargs["attempt_id"]
 
 
 @pytest.mark.asyncio
@@ -225,6 +387,7 @@ async def test_skip_account_linking_redirects_to_rp():
         assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
         assert "legacy_client_name" not in request.session
         assert "legacy_provider" not in request.session
+        assert "legacy_provider_key" not in request.session
         assert "rpname_SIC_code_verifier" not in request.session
         assert "rpname_SIC_nonce" not in request.session
         assert "rpname_SIC_state" not in request.session
@@ -500,10 +663,152 @@ async def test_legacy_callback_patches_audit_with_linked_status():
     assert request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] == "attempt-123"
     assert "legacy_client_name" not in request.session
     assert "legacy_provider" not in request.session
+    assert "legacy_provider_key" not in request.session
     assert "rpname_SIC_code_verifier" not in request.session
     assert "rpname_SIC_nonce" not in request.session
     assert "rpname_SIC_state" not in request.session
     assert "_state_rpname_SIC_state" not in request.session
+
+
+@pytest.mark.asyncio
+async def test_legacy_callback_uses_selected_oidc_provider_from_session():
+    request = build_request()
+    request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    seed_legacy_session(
+        request,
+        client_name="rpname_GCCF",
+        provider="GCCF",
+        provider_key="gccf",
+    )
+    client = MagicMock()
+    client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
+    client.parse_id_token = AsyncMock(return_value={"sub": "gccf-sub"})
+    client.server_metadata = {
+        "server_metadata": {"end_session_endpoint": "https://gccf/logout"}
+    }
+    sic_idp = SimpleNamespace(client_name="SIC", provider_key="sic")
+    gccf_idp = SimpleNamespace(client_name="GCCF", provider_key="gccf")
+    rp = SimpleNamespace(
+        IDP=[sic_idp, gccf_idp], rp_client_name="rpname", dependent_client_ids=[]
+    )
+    ok_response = MagicMock(status_code=204)
+
+    with (
+        patch(
+            "app.auth_legacy.services.callback.config",
+            new=SimpleNamespace(LEGACY_IDP_LOGOUT_ENABLED=True, ENVIRONMENT="local"),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.create_client",
+            new=AsyncMock(return_value=client),
+        ) as mock_create_client,
+        patch(
+            "app.auth_legacy.services.callback.get_ibm_id",
+            new=MagicMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_legacy_pai",
+            new=AsyncMock(return_value=ok_response),
+        ) as mock_patch_legacy_pai,
+        patch(
+            "app.auth_legacy.services.callback.patch_audit_data",
+            new=AsyncMock(return_value=ok_response),
+        ),
+    ):
+        await legacy_callback(request, "user-at", "user-token", "rp-123")
+
+    mock_create_client.assert_awaited_once_with("rpname_GCCF")
+    assert mock_patch_legacy_pai.await_args.kwargs["legacy_pai"] == "gccf-sub"
+
+
+@pytest.mark.asyncio
+async def test_legacy_saml_acs_patches_nameid_as_legacy_pai():
+    request = build_request()
+    request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = "rp-123"
+    request.session[SessionKeys.CURRENT_LANGUAGE.value] = "en"
+    request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    request.session["legacy_provider"] = "GCKey"
+    request.session["legacy_provider_key"] = "gckey-sim"
+    request.session["legacy_client_name"] = "rpname_GCKey"
+    request.session[LEGACY_SAML_REQUEST_ID_SESSION_KEY] = "_request-123"
+    request.session[LEGACY_SAML_RELAY_STATE_SESSION_KEY] = "relay-123"
+
+    legacy_idp = SimpleNamespace(
+        client_name="GCKey",
+        protocol="saml",
+        provider_key="gckey-sim",
+    )
+    rp = SimpleNamespace(
+        IDP=[legacy_idp],
+        rp_client_name="rpname",
+        dependent_client_ids=["rp-456"],
+    )
+    identity = SamlIdentity(
+        provider_key="gckey-sim",
+        provider_name="GCKey",
+        legacy_pai="gckey-pai-12345",
+        nameid_format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+        session_index="_session-123",
+        attributes={"legacy_provider": ["GCKey"]},
+    )
+    ok_response = MagicMock(status_code=204)
+
+    with (
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.resolve_saml_identity",
+            new=AsyncMock(return_value=identity),
+        ) as mock_resolve_saml_identity,
+        patch(
+            "app.auth_legacy.services.callback.get_ibm_id",
+            new=MagicMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_legacy_pai",
+            new=AsyncMock(return_value=ok_response),
+        ) as mock_patch_legacy_pai,
+        patch(
+            "app.auth_legacy.services.callback.patch_audit_data",
+            new=AsyncMock(return_value=ok_response),
+        ),
+    ):
+        response = await legacy_saml_acs(
+            request,
+            "user-at",
+            "user-token",
+            "rp-ignored",
+            saml_response="encoded-response",
+            relay_state="relay-123",
+        )
+
+    assert isinstance(response, RedirectResponse)
+    assert response.headers["location"].endswith("/en/link/lang-sync")
+    mock_resolve_saml_identity.assert_awaited_once()
+    assert mock_resolve_saml_identity.await_args.kwargs["request_id"] == "_request-123"
+    assert mock_patch_legacy_pai.await_args.kwargs["legacy_pai"] == "gckey-pai-12345"
+    assert mock_patch_legacy_pai.await_args.kwargs["target_rp_client_ids"] == [
+        "rp-123",
+        "rp-456",
+    ]
+    assert "legacy_provider" not in request.session
+    assert LEGACY_SAML_RELAY_STATE_SESSION_KEY not in request.session
 
 
 @pytest.mark.asyncio
@@ -774,6 +1079,7 @@ async def test_sic_legacy_login_auth_sets_session_and_state():
     assert result == "ok"
     assert request.session[SessionKeys.CURRENT_LANGUAGE.value] == "en"
     assert request.session["legacy_provider"] == "SIC"
+    assert request.session["legacy_provider_key"] == "sic"
     assert request.session["legacy_client_name"] == "rpname_SIC"
     assert request.session["rpname_SIC_code_verifier"] == "verifier-token"
     assert request.session["rpname_SIC_state"] == "state-token"

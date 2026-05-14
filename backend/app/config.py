@@ -52,6 +52,14 @@ class Configuration(BaseSettings):
         default=False,
         description="Toggle legacy IdP logout redirect (e.g., SIC).",
     )
+    SAML_SP_ENTITY_ID: str = Field(
+        default="http://localhost:8000/v1/auth/legacy/saml/metadata",
+        description="Default SAML service provider entity ID for local metadata.",
+    )
+    SAML_SP_ACS_URL: str = Field(
+        default="http://localhost:8000/v1/auth/legacy/saml/acs",
+        description="Default SAML assertion consumer service URL for local metadata.",
+    )
 
     CORS_ORIGINS: str = Field(
         default="localhost:3000,localhost:8000",

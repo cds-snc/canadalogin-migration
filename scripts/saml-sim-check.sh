@@ -33,8 +33,8 @@ docker compose "${COMPOSE_ARGS[@]}" config >/dev/null
 
 check_url "GCKey settings" "https://localhost:9443/api/settings.php"
 check_url "GCKey metadata" "https://localhost:9443/sso/saml2/idp/metadata.php"
-check_url "Interac / CBS settings" "https://localhost:9444/api/settings.php"
-check_url "Interac / CBS metadata" "https://localhost:9444/sso/saml2/idp/metadata.php"
+check_url "Interac settings" "https://localhost:9444/api/settings.php"
+check_url "Interac metadata" "https://localhost:9444/sso/saml2/idp/metadata.php"
 
 docker compose "${COMPOSE_ARGS[@]}" ps
 

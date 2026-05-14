@@ -3,8 +3,17 @@ from fastapi import Request
 from app.utils.correlation_id import clear_linking_attempt_id
 
 LEGACY_PROVIDER_SESSION_KEY = "legacy_provider"
+LEGACY_PROVIDER_KEY_SESSION_KEY = "legacy_provider_key"
 LEGACY_CLIENT_NAME_SESSION_KEY = "legacy_client_name"
 LEGACY_OIDC_SESSION_SUFFIXES = ("code_verifier", "state", "nonce")
+LEGACY_SAML_REQUEST_ID_SESSION_KEY = "legacy_saml_request_id"
+LEGACY_SAML_RELAY_STATE_SESSION_KEY = "legacy_saml_relay_state"
+LEGACY_SAML_SESSION_INDEX_SESSION_KEY = "legacy_saml_session_index"
+LEGACY_SAML_SESSION_KEYS = (
+    LEGACY_SAML_REQUEST_ID_SESSION_KEY,
+    LEGACY_SAML_RELAY_STATE_SESSION_KEY,
+    LEGACY_SAML_SESSION_INDEX_SESSION_KEY,
+)
 
 
 def get_legacy_client_name(request: Request) -> str | None:
@@ -34,7 +43,10 @@ def clear_legacy_oidc_session(
             request.session.pop(f"_state_{client_name}_{state_value}", None)
 
     request.session.pop(LEGACY_PROVIDER_SESSION_KEY, None)
+    request.session.pop(LEGACY_PROVIDER_KEY_SESSION_KEY, None)
     request.session.pop(LEGACY_CLIENT_NAME_SESSION_KEY, None)
+    for session_key in LEGACY_SAML_SESSION_KEYS:
+        request.session.pop(session_key, None)
 
     if clear_attempt_id:
         clear_linking_attempt_id(request)
