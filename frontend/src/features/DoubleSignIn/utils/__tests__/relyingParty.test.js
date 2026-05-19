@@ -46,7 +46,7 @@ describe("relyingParty utils", () => {
         rp_client_name_fr: "Régime canadien de soins dentaires",
       }),
     ).toEqual({
-      rp_id: "rp-123",
+      rp_client_id: "rp-123",
       rp_name: "Canadian Dental Care Plan",
     });
   });

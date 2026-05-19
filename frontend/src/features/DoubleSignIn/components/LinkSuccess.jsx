@@ -9,11 +9,8 @@ import { getPageContent } from "../../../utils/functions.jsx";
 
 import {
   PAGES,
-  GA_LABELS,
   GA_CATEGORIES,
-  GA_EVENTS,
   GA_FORM_EVENTS,
-  GA_STEPS,
   MIGRATION_ANALYTICS,
 } from "../../../utils/constants.jsx";
 
@@ -90,19 +87,10 @@ export default function LinkSuccess() {
             ev.preventDefault();
             trackEvent({
               category: GA_CATEGORIES.formSubmit,
-              action: GA_EVENTS.click,
-              label: `${GA_LABELS.button}_MigrationConfirmation`,
-              form_id: MIGRATION_ANALYTICS.flowId,
-              step: GA_STEPS.step2,
-              ...rpAnalyticsParams,
-            });
-            trackEvent({
-              category: GA_CATEGORIES.formSubmit,
               action: GA_FORM_EVENTS.formSubmitComplete,
-              label: `${GA_LABELS.button}_MigrationComplete`,
+              label: MIGRATION_ANALYTICS.eventLabels.completedLinking,
               form_id: MIGRATION_ANALYTICS.flowId,
-              step: MIGRATION_ANALYTICS.steps.complete,
-              type: MIGRATION_ANALYTICS.completionTypes.linked,
+              type: MIGRATION_ANALYTICS.types.completedLinking,
               status: "success",
               ...rpAnalyticsParams,
             });

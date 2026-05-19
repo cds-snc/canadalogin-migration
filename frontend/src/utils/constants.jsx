@@ -161,12 +161,15 @@ export const GA_STEPS = {
 
 export const MIGRATION_ANALYTICS = {
   flowId: "migration",
-  steps: {
-    complete: "migration_complete",
+  eventLabels: {
+    startedLinking: "Started linking from migration prompt",
+    skippedLinking: "Skipped linking from migration prompt",
+    completedLinking: "Completed linking from confirmation",
   },
-  completionTypes: {
-    linked: "linked",
-    skipped: "skipped",
+  types: {
+    startedLinking: "migration_started",
+    skippedLinking: "migration_skipped",
+    completedLinking: "migration_complete",
   },
 };
 
