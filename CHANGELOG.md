@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.2](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.1...v1.12.2) (2026-05-19)
+
+
+### Bug Fixes
+
+* **GA:** removed some rxtra events and aligned parameters ([#296](https://github.com/cds-snc/gc-sign-in-migration/issues/296)) ([f64c306](https://github.com/cds-snc/gc-sign-in-migration/commit/f64c3069d9a4dc681bde4e485458ba54d22eaf25))
+
 ## [1.12.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.0...v1.12.1) (2026-05-13)
 
 
