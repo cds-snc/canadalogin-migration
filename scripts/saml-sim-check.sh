@@ -31,10 +31,12 @@ check_url() {
 
 docker compose "${COMPOSE_ARGS[@]}" config >/dev/null
 
-check_url "GCKey settings" "https://localhost:9443/api/settings.php"
-check_url "GCKey metadata" "https://localhost:9443/sso/saml2/idp/metadata.php"
-check_url "Interac settings" "https://localhost:9444/api/settings.php"
-check_url "Interac metadata" "https://localhost:9444/sso/saml2/idp/metadata.php"
+check_url "GCKey settings" "http://localhost:9080/api/settings.php"
+check_url "GCKey metadata" "http://localhost:9080/sso/saml2/idp/metadata.php"
+check_url "GCKey simulator screen" "http://localhost:9080/sim/index.php"
+check_url "Interac settings" "http://localhost:9081/api/settings.php"
+check_url "Interac metadata" "http://localhost:9081/sso/saml2/idp/metadata.php"
+check_url "Interac simulator screen" "http://localhost:9081/sim/index.php"
 
 docker compose "${COMPOSE_ARGS[@]}" ps
 

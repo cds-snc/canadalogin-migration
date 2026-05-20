@@ -1,9 +1,13 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  getLegacyIdpOptions,
+  getLegacyProviderDisplayName,
+  getLegacyProviderType,
   getLocalizedRpName,
   getRpAnalyticsParams,
   replaceRpName,
+  replaceProviderName,
 } from "../relyingParty.js";
 
 describe("relyingParty utils", () => {
@@ -49,5 +53,53 @@ describe("relyingParty utils", () => {
       rp_id: "rp-123",
       rp_name: "Canadian Dental Care Plan",
     });
+  });
+
+  it("normalizes known legacy provider types", () => {
+    expect(getLegacyProviderType({ provider_key: "gckey-sim" })).toBe("gckey");
+    expect(getLegacyProviderType({ provider_key: "interac-sim" })).toBe(
+      "interac",
+    );
+    expect(getLegacyProviderType({ provider_key: "cbs-sim" })).toBe("interac");
+  });
+
+  it("returns localized provider display names for known providers", () => {
+    expect(
+      getLegacyProviderDisplayName({ provider_key: "gckey-sim" }, "fr"),
+    ).toBe("CléGC");
+    expect(
+      getLegacyProviderDisplayName({ provider_key: "interac-sim" }, "en"),
+    ).toBe("Interac sign-in partner");
+  });
+
+  it("falls back to configured display name for unknown providers", () => {
+    expect(
+      getLegacyProviderDisplayName(
+        { provider_key: "gccf-custom", display_name: "GCCF Custom" },
+        "en",
+      ),
+    ).toBe("GCCF Custom");
+  });
+
+  it("deduplicates configured provider choices by provider key", () => {
+    expect(
+      getLegacyIdpOptions({
+        legacy_idps: [
+          { provider_key: "gckey-sim" },
+          { provider_key: "gckey-sim" },
+          { provider_key: "interac-sim" },
+        ],
+      }),
+    ).toEqual([{ provider_key: "gckey-sim" }, { provider_key: "interac-sim" }]);
+  });
+
+  it("replaces the provider token with the localized provider name", () => {
+    expect(
+      replaceProviderName(
+        "Sign in with {provider_name}",
+        { provider_key: "gckey-sim" },
+        "en",
+      ),
+    ).toBe("Sign in with GCKey");
   });
 });

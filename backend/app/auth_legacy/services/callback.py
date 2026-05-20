@@ -1,4 +1,5 @@
 import logging
+import hashlib
 import httpx
 
 from fastapi import HTTPException, Request
@@ -17,6 +18,8 @@ from app.auth_legacy.services.session_state import (
     LEGACY_SAML_REQUEST_ID_SESSION_KEY,
     LEGACY_SAML_SESSION_INDEX_SESSION_KEY,
     clear_legacy_oidc_session,
+    hydrate_legacy_saml_transaction_session,
+    pop_legacy_saml_transaction,
 )
 from app.auth_legacy.services.login import select_legacy_idp
 from app.auth_legacy.services.saml import resolve_saml_identity
@@ -38,6 +41,12 @@ from app.utils.request_error_handler import RequestErrorHandler
 
 config = get_configuration()
 logger = logging.getLogger(__name__)
+
+
+def _trace_hash(value: str | None) -> str | None:
+    if not value:
+        return None
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _extract_error_detail(response: httpx.Response) -> str:
@@ -463,13 +472,31 @@ async def legacy_callback(
 
 async def legacy_saml_acs(
     request: Request,
-    user_access_token: str,
-    session_user_token: str,
-    rp_client_id: str,
+    user_access_token: str | None,
+    session_user_token: object | None,
+    rp_client_id: str | None,
     saml_response: str,
     relay_state: str | None,
 ):
     try:
+        transaction = await pop_legacy_saml_transaction(request, relay_state)
+        hydrate_legacy_saml_transaction_session(request, transaction)
+        logger.info(
+            "Legacy SAML ACS trace: relay_state_sha256=%s; "
+            "transaction_loaded=%s; transaction_provider_key=%s; "
+            "transaction_request_id=%s; transaction_has_rp_client_id=%s; "
+            "transaction_has_user_access_token=%s; "
+            "transaction_has_session_user_token=%s; session_has_rp_client_id=%s",
+            _trace_hash(relay_state),
+            transaction is not None,
+            (transaction or {}).get("provider_key"),
+            (transaction or {}).get("request_id"),
+            bool((transaction or {}).get("rp_client_id")),
+            bool((transaction or {}).get("user_access_token")),
+            bool((transaction or {}).get("session_user_token")),
+            bool(request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)),
+        )
+
         rp_client_id = _resolve_rp_client_id_from_session(request, rp_client_id)
         log_auth_flow_event(
             logger,
@@ -487,11 +514,17 @@ async def legacy_saml_acs(
                 detail="Selected legacy IDP is not configured for SAML ACS",
             )
         client_name = request.session.get(LEGACY_CLIENT_NAME_SESSION_KEY) or (
+            (transaction or {}).get("client_name")
+        ) or (
             f"{rp.rp_client_name}_{legacy_idp.client_name}"
         )
 
-        expected_relay_state = request.session.get(LEGACY_SAML_RELAY_STATE_SESSION_KEY)
-        request_id = request.session.get(LEGACY_SAML_REQUEST_ID_SESSION_KEY)
+        expected_relay_state = request.session.get(
+            LEGACY_SAML_RELAY_STATE_SESSION_KEY
+        ) or (transaction or {}).get("relay_state")
+        request_id = request.session.get(LEGACY_SAML_REQUEST_ID_SESSION_KEY) or (
+            transaction or {}
+        ).get("request_id")
         if not expected_relay_state or not request_id:
             _reject_legacy_callback(
                 request,
@@ -507,6 +540,26 @@ async def legacy_saml_acs(
                 rp_client_id=rp_client_id,
                 step="legacy_saml_relay_state",
                 reason="mismatched_relay_state",
+                client_name=client_name,
+                legacy_provider=legacy_idp.client_name,
+            )
+
+        user_access_token = (
+            user_access_token
+            or request.session.get(SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value)
+            or (transaction or {}).get("user_access_token")
+        )
+        session_user_token = (
+            session_user_token
+            or request.session.get(SessionKeys.SESSION_USER_TOKEN.value)
+            or (transaction or {}).get("session_user_token")
+        )
+        if not user_access_token or not session_user_token:
+            _reject_legacy_callback(
+                request,
+                rp_client_id=rp_client_id,
+                step="legacy_saml_user_session",
+                reason="missing_user_session",
                 client_name=client_name,
                 legacy_provider=legacy_idp.client_name,
             )

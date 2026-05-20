@@ -75,7 +75,9 @@ vi.mock("../../../../utils/functions.jsx", () => ({
         subtitle: "Skip linking {RP_Name}",
         text_4: "You can skip.",
         text_4_gckey_only: "You can skip if you did not use GCKey.",
+        text_4_interac_only: "You can skip if you did not use Interac.",
         link_2: "Skip for now",
+        btn_provider: "Sign in with {provider_name}",
       };
     }
     return {};
@@ -214,6 +216,100 @@ describe("LinkPrompt", () => {
     expect(screen.getByText("Link with GCKey")).toBeInTheDocument();
     expect(
       screen.getByText("You can skip if you did not use GCKey."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps GCKey-only text for older broker configs without a GCKey provider key", async () => {
+    updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
+      rp_client_name_en: "Example RP",
+      is_gckey_only: true,
+      legacy_idps: [{ provider_key: "sic", display_name: "SIC" }],
+    });
+
+    render(<LinkPrompt />);
+
+    await waitFor(() => {
+      expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("Link with GCKey")).toHaveAttribute(
+      "href",
+      `${MIGRATION_END_POINTS.login}?lang=en`,
+    );
+  });
+
+  it("renders provider-specific links when multiple legacy IDPs are available", async () => {
+    updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
+      rp_client_name_en: "Example RP",
+      legacy_idps: [
+        { provider_key: "gckey-sim", display_name: "GCKey Simulator" },
+        { provider_key: "interac-sim", display_name: "Interac Simulator" },
+      ],
+    });
+
+    render(<LinkPrompt />);
+
+    await waitFor(() => {
+      expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText("Sign in with GCKey")).toHaveAttribute(
+      "href",
+      `${MIGRATION_END_POINTS.login}?lang=en&provider=gckey-sim`,
+    );
+    expect(
+      screen.getByText("Sign in with Interac sign-in partner"),
+    ).toHaveAttribute(
+      "href",
+      `${MIGRATION_END_POINTS.login}?lang=en&provider=interac-sim`,
+    );
+  });
+
+  it("uses the GCKey provider URL when a GCKey-only RP also has fallback IDPs", async () => {
+    updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
+      rp_client_name_en: "Example RP",
+      is_gckey_only: true,
+      legacy_idps: [
+        { provider_key: "sic", display_name: "SIC" },
+        { provider_key: "gckey-sim", display_name: "GCKey Simulator" },
+      ],
+    });
+
+    render(<LinkPrompt />);
+
+    await waitFor(() => {
+      expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByText("Sign in with SIC")).not.toBeInTheDocument();
+    expect(screen.getByText("Sign in with GCKey")).toHaveAttribute(
+      "href",
+      `${MIGRATION_END_POINTS.login}?lang=en&provider=gckey-sim`,
+    );
+  });
+
+  it("uses Interac-only skip text for an Interac-only provider", async () => {
+    updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
+      rp_client_name_en: "Example RP",
+      legacy_idps: [
+        { provider_key: "interac-sim", display_name: "Interac Simulator" },
+      ],
+    });
+
+    render(<LinkPrompt />);
+
+    await waitFor(() => {
+      expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
+    });
+
+    expect(
+      screen.getByText("Sign in with Interac sign-in partner"),
+    ).toHaveAttribute(
+      "href",
+      `${MIGRATION_END_POINTS.login}?lang=en&provider=interac-sim`,
+    );
+    expect(
+      screen.getByText("You can skip if you did not use Interac."),
     ).toBeInTheDocument();
   });
 });

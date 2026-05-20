@@ -100,13 +100,12 @@ async def handle_legacy_saml_acs(
     request: Request,
     saml_response: Annotated[str, Form(..., alias="SAMLResponse")],
     relay_state: Annotated[str | None, Form(alias="RelayState")] = None,
-    user_access_token: str = Depends(get_users_current_session),
 ):
     return await legacy_saml_acs(
         request,
-        user_access_token,
-        request.session[SessionKeys.SESSION_USER_TOKEN.value],
-        rp_client_id=request.session[SessionKeys.RP_CLIENT_ID_KEY.value],
+        request.session.get(SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value),
+        request.session.get(SessionKeys.SESSION_USER_TOKEN.value),
+        rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),
         saml_response=saml_response,
         relay_state=relay_state,
     )

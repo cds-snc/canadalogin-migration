@@ -39,6 +39,11 @@ def build_request():
     request.app = MagicMock()
     request.app.state = MagicMock()
     request.app.state.request_client = AsyncMock()
+    request.app.state.redis_client = SimpleNamespace(
+        get=AsyncMock(return_value=None),
+        set=AsyncMock(),
+        delete=AsyncMock(),
+    )
     return request
 
 
@@ -241,6 +246,14 @@ async def test_saml_legacy_login_redirects_and_records_transaction():
     )
     assert mock_patch_processing_data.await_args.kwargs["correlation_id"]
     assert mock_patch_processing_data.await_args.kwargs["attempt_id"]
+    request.app.state.redis_client.set.assert_awaited_once()
+    cache_key, payload = request.app.state.redis_client.set.await_args.args[:2]
+    assert cache_key == "legacy_saml_transaction:relay-token"
+    transaction = json.loads(payload)
+    assert transaction["request_id"] == "_request-token"
+    assert transaction["rp_client_id"] == "rp-123"
+    assert transaction["provider_key"] == "gckey-sim"
+    assert transaction["client_name"] == "rpname_GCKey"
 
 
 @pytest.mark.asyncio
@@ -809,6 +822,96 @@ async def test_legacy_saml_acs_patches_nameid_as_legacy_pai():
     ]
     assert "legacy_provider" not in request.session
     assert LEGACY_SAML_RELAY_STATE_SESSION_KEY not in request.session
+
+
+@pytest.mark.asyncio
+async def test_legacy_saml_acs_uses_relay_state_transaction_without_cookie():
+    request = build_request()
+    transaction = {
+        "relay_state": "relay-123",
+        "request_id": "_request-123",
+        "rp_client_id": "rp-123",
+        "user_access_token": "user-at",
+        "session_user_token": "user-token",
+        "provider_key": "gckey-sim",
+        "provider_name": "GCKey",
+        "client_name": "rpname_GCKey",
+        "lang": "en",
+        "correlation_id": "corr-123",
+        "attempt_id": "attempt-123",
+    }
+    request.app.state.redis_client.get.return_value = json.dumps(transaction).encode(
+        "utf-8"
+    )
+
+    legacy_idp = SimpleNamespace(
+        client_name="GCKey",
+        protocol="saml",
+        provider_key="gckey-sim",
+    )
+    rp = SimpleNamespace(
+        IDP=[legacy_idp],
+        rp_client_name="rpname",
+        dependent_client_ids=[],
+    )
+    identity = SamlIdentity(
+        provider_key="gckey-sim",
+        provider_name="GCKey",
+        legacy_pai="gckey-pai-12345",
+        nameid_format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+        session_index="_session-123",
+        attributes={},
+    )
+    ok_response = MagicMock(status_code=204)
+
+    with (
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.resolve_saml_identity",
+            new=AsyncMock(return_value=identity),
+        ) as mock_resolve_saml_identity,
+        patch(
+            "app.auth_legacy.services.callback.get_ibm_id",
+            new=MagicMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_legacy_pai",
+            new=AsyncMock(return_value=ok_response),
+        ) as mock_patch_legacy_pai,
+        patch(
+            "app.auth_legacy.services.callback.patch_audit_data",
+            new=AsyncMock(return_value=ok_response),
+        ),
+    ):
+        response = await legacy_saml_acs(
+            request,
+            None,
+            None,
+            None,
+            saml_response="encoded-response",
+            relay_state="relay-123",
+        )
+
+    assert isinstance(response, RedirectResponse)
+    assert response.headers["location"].endswith("/en/link/lang-sync")
+    request.app.state.redis_client.get.assert_awaited_once_with(
+        "legacy_saml_transaction:relay-123"
+    )
+    request.app.state.redis_client.delete.assert_awaited_once_with(
+        "legacy_saml_transaction:relay-123"
+    )
+    mock_resolve_saml_identity.assert_awaited_once()
+    assert mock_resolve_saml_identity.await_args.kwargs["request_id"] == "_request-123"
+    assert mock_patch_legacy_pai.await_args.kwargs["legacy_pai"] == "gckey-pai-12345"
+    assert request.session[SessionKeys.RP_CLIENT_ID_KEY.value] == "rp-123"
+    assert request.session[SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value] == "user-at"
 
 
 @pytest.mark.asyncio

@@ -16,12 +16,19 @@ services:
     ports:
       - "9080:8080"
       - "9443:8443"
+    volumes:
+      - ./saml-simulator-ui:/var/www/sim:ro
     env_file:
       - ./gckey-simulator/idp.env
     environment:
       SP_ENTITY_ID: "${SAML_SP_ENTITY_ID:-http://localhost:8000/v1/auth/legacy/saml/metadata}"
       SP_ACS_LOCATION: "${SAML_SP_ACS_URL:-http://localhost:8000/v1/auth/legacy/saml/acs}"
       SP_ACS_BINDING: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+      SIMULATOR_DISPLAY_NAME: "GCKey simulator"
+      SIMULATOR_PROVIDER_NAME: "GCKey"
+      SIMULATOR_PROVIDER_KEY: "gckey-sim"
+      SIMULATOR_CREDENTIAL_SERVICE_PROVIDER: "GCKey"
+      SIMULATOR_LOA: "urn:gc-ca:cyber-auth:assurance:loa2"
 
   saml-interac-idp:
     image: ghcr.io/pfrest/mock-saml2-idp:latest
@@ -31,9 +38,16 @@ services:
     ports:
       - "9081:8080"
       - "9444:8443"
+    volumes:
+      - ./saml-simulator-ui:/var/www/sim:ro
     env_file:
       - ./interac-simulator/idp.env
     environment:
       SP_ENTITY_ID: "${SAML_SP_ENTITY_ID:-http://localhost:8000/v1/auth/legacy/saml/metadata}"
       SP_ACS_LOCATION: "${SAML_SP_ACS_URL:-http://localhost:8000/v1/auth/legacy/saml/acs}"
       SP_ACS_BINDING: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+      SIMULATOR_DISPLAY_NAME: "Interac simulator"
+      SIMULATOR_PROVIDER_NAME: "Interac"
+      SIMULATOR_PROVIDER_KEY: "interac-sim"
+      SIMULATOR_CREDENTIAL_SERVICE_PROVIDER: "Interac"
+      SIMULATOR_LOA: "urn:gc-ca:cyber-auth:assurance:loa2"

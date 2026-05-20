@@ -272,6 +272,15 @@ async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 864
     return metadata
 
 
+def _legacy_idp_display_details(legacy_idp) -> dict[str, str]:
+    return {
+        "provider_key": legacy_idp.provider_key,
+        "client_name": legacy_idp.client_name,
+        "display_name": legacy_idp.display_name,
+        "protocol": legacy_idp.protocol,
+    }
+
+
 async def get_rp_config_details(
     rp_client_id: str,
     custom_parameters: dict[str, str] | None = None,
@@ -297,6 +306,9 @@ async def get_rp_config_details(
             "rp_client_name_fr": rp.rp_client_name_fr,
             "acr_values": rp.acr_values,
             "is_gckey_only": is_gckey_only,
+            "legacy_idps": [
+                _legacy_idp_display_details(legacy_idp) for legacy_idp in rp.IDP
+            ],
         }
 
         return rpConfig

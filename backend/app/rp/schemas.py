@@ -30,6 +30,7 @@ class LegacyIdpSchema(BaseModel):
     sp_entity_id: Optional[str] = None
     acs_url: Optional[str] = None
     logout_url: Optional[str] = None
+    simulator_login_url: Optional[str] = None
     metadata_tls_verify: bool = True
     allow_local_fallback_identifier: bool = False
     local_fallback_identifier_attribute: Optional[str] = None

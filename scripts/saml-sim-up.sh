@@ -18,10 +18,16 @@ cat <<'EOF'
 Local SAML simulators are starting.
 
 GCKey metadata:
-  https://localhost:9443/sso/saml2/idp/metadata.php
+  http://localhost:9080/sso/saml2/idp/metadata.php
+
+GCKey simulator screen:
+  http://localhost:9080/sim/index.php
 
 Interac metadata:
-  https://localhost:9444/sso/saml2/idp/metadata.php
+  http://localhost:9081/sso/saml2/idp/metadata.php
+
+Interac simulator screen:
+  http://localhost:9081/sim/index.php
 
 Run scripts/saml-sim-check.sh to verify readiness.
 EOF

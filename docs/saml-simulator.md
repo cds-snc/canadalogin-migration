@@ -37,21 +37,35 @@ From the Mac host:
 
 ```text
 GCKey metadata:
-https://localhost:9443/sso/saml2/idp/metadata.php
+http://localhost:9080/sso/saml2/idp/metadata.php
 
 Interac metadata:
-https://localhost:9444/sso/saml2/idp/metadata.php
+http://localhost:9081/sso/saml2/idp/metadata.php
 ```
 
-From a Docker Dev Container:
+From a backend container attached to the simulator Docker network:
 
 ```text
 GCKey metadata:
-https://host.docker.internal:9443/sso/saml2/idp/metadata.php
+http://saml-gckey-idp:8080/sso/saml2/idp/metadata.php
 
 Interac metadata:
-https://host.docker.internal:9444/sso/saml2/idp/metadata.php
+http://saml-interac-idp:8080/sso/saml2/idp/metadata.php
 ```
+
+When the backend is running in Docker, prefer the simulator service hostnames above and attach the backend container to `gc-sign-in-saml-sim_default`. The browser still uses the published localhost ports.
+
+The simulators also expose local interstitial screens that can be used as the SAML login target:
+
+```text
+GCKey simulator screen:
+http://localhost:9080/sim/index.php
+
+Interac simulator screen:
+http://localhost:9081/sim/index.php
+```
+
+These pages display the fake user, fake password, persistent `NameID`, provider metadata, and decoded SAML AuthnRequest details. They forward the original `SAMLRequest` and `RelayState` unchanged into SimpleSAMLphp, so the backend still validates a signed SAML response.
 
 ## SP Defaults
 
@@ -81,7 +95,17 @@ The regular legacy login endpoint also accepts `provider`, so local flows can us
 /v1/auth/legacy/login?provider=interac-sim
 ```
 
-For local simulator config, set `metadata_tls_verify` to `false` on the SAML provider entries because the simulator publishes HTTPS metadata with a local/self-signed certificate. The backend only allows that setting for local simulator hosts in `ENVIRONMENT=local`.
+For local simulator config, prefer the HTTP metadata URLs above. This avoids local TLS certificate friction while keeping SAML response signing and validation in place. If you intentionally use the HTTPS simulator ports, set `metadata_tls_verify` to `false` on the SAML provider entries because the simulator publishes HTTPS metadata with a local/self-signed certificate. The backend only allows that setting for local simulator hosts in `ENVIRONMENT=local`.
+
+Example local SAML IdP config values:
+
+```json
+{
+  "provider_key": "gckey-sim",
+  "metadata_url": "http://saml-gckey-idp:8080/sso/saml2/idp/metadata.php",
+  "simulator_login_url": "http://localhost:9080/sim/index.php"
+}
+```
 
 The backend uses `python3-saml` for SAML response validation. The backend Docker image installs the required XMLSec libraries; a direct local virtualenv may need equivalent system packages before installing `backend/requirements.txt`.
 
@@ -92,9 +116,13 @@ The simulator returns the legacy PAI source as persistent SAML `NameID`.
 ```text
 GCKey NameID:
 gckey-pai-12345
+GCKey fake username/password:
+gckey-user / gckey-password
 
 Interac NameID:
 interac-pai-67890
+Interac fake username/password:
+interac-user / interac-password
 ```
 
 The normal simulator path does not emit `legacy_pai` or `pairwise_id` SAML attributes. The migration app should save the persistent `NameID` value through the existing IBM Verify `patch_legacy_pai` flow used by SIC migration.

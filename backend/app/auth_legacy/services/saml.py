@@ -1,10 +1,11 @@
 import base64
+import hashlib
 import logging
 import zlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, urlparse, urlunparse
 from xml.sax.saxutils import escape
 
 import httpx
@@ -86,6 +87,50 @@ def _format_saml_time(value: datetime | None = None) -> str:
     return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _normalize_saml_response_b64(saml_response: str) -> str:
+    # Some local SAML POST flows arrive with base64 "+" decoded as spaces.
+    # Repair that before XML signature validation so the signed XML bytes survive.
+    repaired = saml_response.replace(" ", "+")
+    return "".join(repaired.split())
+
+
+def _trace_hash(value: str | bytes | None) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.encode("utf-8")
+    return hashlib.sha256(value).hexdigest()
+
+
+def _saml_response_transport_summary(saml_response: str) -> dict[str, Any]:
+    normalized = _normalize_saml_response_b64(saml_response)
+    return {
+        "raw_length": len(saml_response),
+        "normalized_length": len(normalized),
+        "space_count": saml_response.count(" "),
+        "plus_count": saml_response.count("+"),
+        "newline_count": saml_response.count("\n") + saml_response.count("\r"),
+        "tab_count": saml_response.count("\t"),
+        "normalized_changed": saml_response != normalized,
+        "raw_sha256": _trace_hash(saml_response),
+        "normalized_sha256": _trace_hash(normalized),
+    }
+
+
+def _cert_fingerprint(cert: str | None) -> str | None:
+    stripped = _strip_cert(cert)
+    if not stripped:
+        return None
+    try:
+        return _trace_hash(base64.b64decode(stripped))
+    except Exception:
+        return _trace_hash(stripped)
+
+
+def _unique_values(values: list[str | None]) -> list[str]:
+    return list(dict.fromkeys(value for value in values if value))
+
+
 def parse_saml_idp_metadata(
     metadata_xml: str,
     *,
@@ -164,12 +209,59 @@ def parse_saml_idp_metadata(
 def _ensure_unverified_metadata_tls_is_local(metadata_url: str) -> None:
     config = get_configuration()
     parsed = urlparse(metadata_url)
-    local_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
+    local_hosts = {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "host.docker.internal",
+        "saml-gckey-idp",
+        "saml-interac-idp",
+    }
     if config.ENVIRONMENT == "local" and parsed.hostname in local_hosts:
         return
     raise HTTPException(
         status_code=500,
         detail="Unverified SAML metadata TLS is only allowed for local simulators",
+    )
+
+
+def _ensure_simulator_login_url_is_local(simulator_login_url: str) -> None:
+    config = get_configuration()
+    parsed = urlparse(simulator_login_url)
+    local_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
+    if config.ENVIRONMENT == "local" and parsed.hostname in local_hosts:
+        return
+    raise HTTPException(
+        status_code=500,
+        detail="SAML simulator login URL is only allowed for local simulators",
+    )
+
+
+def _host_for_browser(url: str) -> str:
+    parsed = urlparse(url)
+    gckey_port = 9080 if parsed.scheme == "http" else 9443
+    interac_port = 9081 if parsed.scheme == "http" else 9444
+    simulator_browser_hosts = {
+        "host.docker.internal": parsed.port,
+        "saml-gckey-idp": gckey_port,
+        "saml-interac-idp": interac_port,
+    }
+    if parsed.hostname in simulator_browser_hosts:
+        browser_port = simulator_browser_hosts[parsed.hostname]
+        netloc = "localhost"
+        if browser_port:
+            netloc = f"{netloc}:{browser_port}"
+        return urlunparse(parsed._replace(netloc=netloc))
+    return url
+
+
+def _metadata_for_browser_redirects(metadata: SamlIdpMetadata) -> SamlIdpMetadata:
+    return SamlIdpMetadata(
+        entity_id=metadata.entity_id,
+        sso_url=_host_for_browser(metadata.sso_url),
+        sso_binding=metadata.sso_binding,
+        slo_url=_host_for_browser(metadata.slo_url) if metadata.slo_url else None,
+        x509cert=metadata.x509cert,
     )
 
 
@@ -192,10 +284,11 @@ async def load_saml_idp_metadata(legacy_idp: Any) -> SamlIdpMetadata:
             status_code=502, detail="Failed to load SAML IdP metadata"
         ) from exc
 
-    return parse_saml_idp_metadata(
+    metadata = parse_saml_idp_metadata(
         response.text,
         expected_entity_id=getattr(legacy_idp, "entity_id", None),
     )
+    return _metadata_for_browser_redirects(metadata)
 
 
 def build_saml_authn_request_xml(
@@ -276,8 +369,11 @@ async def build_saml_login_redirect_url(
         request_id=request_id,
         destination=metadata.sso_url,
     )
+    simulator_login_url = getattr(legacy_idp, "simulator_login_url", None)
+    if simulator_login_url:
+        _ensure_simulator_login_url_is_local(simulator_login_url)
     return build_saml_redirect_url(
-        sso_url=metadata.sso_url,
+        sso_url=simulator_login_url or metadata.sso_url,
         authn_request_xml=authn_request_xml,
         relay_state=relay_state,
     )
@@ -312,7 +408,7 @@ def build_sp_metadata_xml(
 
 
 def _decode_saml_response(saml_response: str) -> bytes:
-    compact = "".join(saml_response.split())
+    compact = _normalize_saml_response_b64(saml_response)
     try:
         return base64.b64decode(compact, validate=True)
     except Exception as exc:
@@ -423,6 +519,7 @@ def _build_onelogin_request_data(
     scheme = parsed.scheme or "http"
     port = parsed.port or (443 if scheme == "https" else 80)
     http_host = parsed.netloc or "localhost"
+    normalized_saml_response = _normalize_saml_response_b64(saml_response)
     return {
         "https": "on" if scheme == "https" else "off",
         "http_host": http_host,
@@ -430,7 +527,7 @@ def _build_onelogin_request_data(
         "script_name": parsed.path or "",
         "get_data": {},
         "post_data": {
-            "SAMLResponse": saml_response,
+            "SAMLResponse": normalized_saml_response,
             "RelayState": relay_state or "",
         },
     }
@@ -496,6 +593,125 @@ def _build_onelogin_settings(
     return settings
 
 
+def _saml_response_validation_summary(saml_response: str) -> dict[str, Any]:
+    try:
+        root = ET.fromstring(_decode_saml_response(saml_response))
+    except Exception:
+        return {"parseable": False}
+
+    assertion = root.find(".//saml:Assertion", NAMESPACES)
+    conditions = root.find(".//saml:Conditions", NAMESPACES)
+    confirmation_data = root.find(".//saml:SubjectConfirmationData", NAMESPACES)
+    audience = root.find(".//saml:Audience", NAMESPACES)
+    issuer = root.find("saml:Issuer", NAMESPACES)
+    response_signature = root.find("ds:Signature", NAMESPACES)
+    assertion_signature = (
+        assertion.find("ds:Signature", NAMESPACES) if assertion is not None else None
+    )
+    signatures = root.findall(".//ds:Signature", NAMESPACES)
+    references = root.findall(".//ds:Reference", NAMESPACES)
+    response_cert = (
+        _first_text(response_signature.find(".//ds:X509Certificate", NAMESPACES))
+        if response_signature is not None
+        else None
+    )
+    assertion_cert = (
+        _first_text(assertion_signature.find(".//ds:X509Certificate", NAMESPACES))
+        if assertion_signature is not None
+        else None
+    )
+
+    return {
+        "parseable": True,
+        "response_id": root.attrib.get("ID"),
+        "assertion_id": assertion.attrib.get("ID") if assertion is not None else None,
+        "issuer": _first_text(issuer),
+        "destination": root.attrib.get("Destination"),
+        "response_in_response_to": root.attrib.get("InResponseTo"),
+        "subject_recipient": (
+            confirmation_data.attrib.get("Recipient")
+            if confirmation_data is not None
+            else None
+        ),
+        "subject_in_response_to": (
+            confirmation_data.attrib.get("InResponseTo")
+            if confirmation_data is not None
+            else None
+        ),
+        "audience": _first_text(audience),
+        "conditions_not_before": (
+            conditions.attrib.get("NotBefore") if conditions is not None else None
+        ),
+        "conditions_not_on_or_after": (
+            conditions.attrib.get("NotOnOrAfter") if conditions is not None else None
+        ),
+        "response_signature_count": len(root.findall("ds:Signature", NAMESPACES)),
+        "assertion_signature_count": len(
+            root.findall(".//saml:Assertion/ds:Signature", NAMESPACES)
+        ),
+        "signature_methods": _unique_values(
+            [
+                element.attrib.get("Algorithm")
+                for signature in signatures
+                for element in signature.findall(".//ds:SignatureMethod", NAMESPACES)
+            ]
+        ),
+        "digest_methods": _unique_values(
+            [
+                element.attrib.get("Algorithm")
+                for signature in signatures
+                for element in signature.findall(".//ds:DigestMethod", NAMESPACES)
+            ]
+        ),
+        "canonicalization_methods": _unique_values(
+            [
+                element.attrib.get("Algorithm")
+                for signature in signatures
+                for element in signature.findall(
+                    ".//ds:CanonicalizationMethod", NAMESPACES
+                )
+            ]
+        ),
+        "transform_methods": _unique_values(
+            [
+                element.attrib.get("Algorithm")
+                for signature in signatures
+                for element in signature.findall(".//ds:Transform", NAMESPACES)
+            ]
+        ),
+        "reference_uris": _unique_values(
+            [reference.attrib.get("URI") for reference in references]
+        ),
+        "response_cert_sha256": _cert_fingerprint(response_cert),
+        "assertion_cert_sha256": _cert_fingerprint(assertion_cert),
+        "assertion_present": assertion is not None,
+    }
+
+
+def _saml_settings_trace_summary(
+    legacy_idp: Any,
+    metadata: SamlIdpMetadata,
+    settings: dict[str, Any],
+) -> dict[str, Any]:
+    security = settings.get("security", {})
+    return {
+        "strict": settings.get("strict"),
+        "sp_entity_id": getattr(legacy_idp, "sp_entity_id", None),
+        "sp_acs_url": getattr(legacy_idp, "acs_url", None),
+        "idp_entity_id": metadata.entity_id,
+        "idp_sso_url": metadata.sso_url,
+        "metadata_cert_sha256": _cert_fingerprint(metadata.x509cert),
+        "want_messages_signed": security.get("wantMessagesSigned"),
+        "want_assertions_signed": security.get("wantAssertionsSigned"),
+        "requested_authn_context": security.get("requestedAuthnContext"),
+        "requested_authn_context_comparison": security.get(
+            "requestedAuthnContextComparison"
+        ),
+        "signature_algorithm": security.get("signatureAlgorithm"),
+        "digest_algorithm": security.get("digestAlgorithm"),
+    }
+
+
 def validate_saml_response_with_onelogin(
     request: Request,
     *,
@@ -514,28 +730,83 @@ def validate_saml_response_with_onelogin(
         ) from exc
 
     try:
+        request_data = _build_onelogin_request_data(
+            request,
+            saml_response=saml_response,
+            relay_state=relay_state,
+        )
+        settings = _build_onelogin_settings(legacy_idp, metadata)
+        transport_summary = _saml_response_transport_summary(saml_response)
+        response_summary = _saml_response_validation_summary(saml_response)
+        settings_summary = _saml_settings_trace_summary(
+            legacy_idp, metadata, settings
+        )
+        logger.info(
+            "SAML validation trace started: request_url=%s; expected_request_id=%s; "
+            "relay_state_sha256=%s; transport=%s; response=%s; settings=%s",
+            str(getattr(request, "url", "") or ""),
+            request_id,
+            _trace_hash(relay_state),
+            transport_summary,
+            response_summary,
+            settings_summary,
+        )
         auth = OneLogin_Saml2_Auth(
-            _build_onelogin_request_data(
-                request,
-                saml_response=saml_response,
-                relay_state=relay_state,
-            ),
-            old_settings=_build_onelogin_settings(legacy_idp, metadata),
+            request_data,
+            old_settings=settings,
         )
         auth.process_response(request_id=request_id)
     except Exception as exc:
-        logger.error("SAML response validation failed", exc_info=True)
+        logger.error(
+            "SAML response validation raised exception: request_url=%s; "
+            "expected_request_id=%s; relay_state_sha256=%s; transport=%s; "
+            "response=%s; settings=%s",
+            str(getattr(request, "url", "") or ""),
+            request_id,
+            _trace_hash(relay_state),
+            _saml_response_transport_summary(saml_response),
+            _saml_response_validation_summary(saml_response),
+            _saml_settings_trace_summary(
+                legacy_idp,
+                metadata,
+                _build_onelogin_settings(legacy_idp, metadata),
+            ),
+            exc_info=True,
+        )
         raise HTTPException(status_code=400, detail="SAML response validation failed") from exc
 
     errors = auth.get_errors()
     if errors:
-        logger.error("SAML response validation errors: %s", errors)
+        logger.error(
+            "SAML response validation errors: %s; reason=%s; request_url=%s; "
+            "expected_request_id=%s; expected_acs_url=%s; relay_state_sha256=%s; "
+            "transport=%s; response=%s; settings=%s",
+            errors,
+            auth.get_last_error_reason(),
+            str(getattr(request, "url", "") or ""),
+            request_id,
+            getattr(legacy_idp, "acs_url", None),
+            _trace_hash(relay_state),
+            transport_summary,
+            response_summary,
+            settings_summary,
+        )
         raise HTTPException(
             status_code=400,
             detail=f"SAML response validation failed: {', '.join(errors)}",
         )
     if not auth.is_authenticated():
         raise HTTPException(status_code=400, detail="SAML response is not authenticated")
+    logger.info(
+        "SAML validation trace succeeded: request_url=%s; expected_request_id=%s; "
+        "relay_state_sha256=%s; transport=%s; response=%s; settings=%s",
+        str(getattr(request, "url", "") or ""),
+        request_id,
+        _trace_hash(relay_state),
+        transport_summary,
+        response_summary,
+        settings_summary,
+    )
 
 
 async def resolve_saml_identity(

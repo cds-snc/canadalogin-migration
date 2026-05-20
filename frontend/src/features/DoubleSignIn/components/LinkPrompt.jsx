@@ -11,9 +11,12 @@ import { getPageContent } from "../../../utils/functions.jsx";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
 import {
+  getLegacyIdpOptions,
+  getLegacyProviderType,
   getLocalizedRpName,
   getRpAnalyticsParams,
   replaceRpName,
+  replaceProviderName,
 } from "../utils/relyingParty.js";
 import { useParams } from "react-router";
 import { MigrationStepper } from "./MigrationStepper.jsx";
@@ -29,6 +32,24 @@ import {
   GA_STEPS,
   MIGRATION_ANALYTICS,
 } from "../../../utils/constants.jsx";
+
+function buildLegacyLoginLink(language, providerKey) {
+  const params = new URLSearchParams({ lang: language });
+
+  if (providerKey) {
+    params.set("provider", providerKey);
+  }
+
+  return `${MIGRATION_END_POINTS.login}?${params.toString()}`;
+}
+
+function getProviderButtonText(pageContentJson, provider, language) {
+  return replaceProviderName(
+    pageContentJson["btn_provider"] || "Sign in with {provider_name}",
+    provider,
+    language,
+  );
+}
 
 export default function LinkPrompt() {
   const { language } = useParams();
@@ -60,7 +81,7 @@ export default function LinkPrompt() {
     }
 
     try {
-      const LinkingLink = MIGRATION_END_POINTS.login + "?lang=" + language;
+      const LinkingLink = buildLegacyLoginLink(language);
       const SkipLink = MIGRATION_END_POINTS.skip;
 
       setLinks({ LinkingLink, SkipLink });
@@ -72,15 +93,65 @@ export default function LinkPrompt() {
   }, [language]);
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
-  const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
+  const legacyIdpOptions = getLegacyIdpOptions(rpData);
+  const gcKeyProviderOption = legacyIdpOptions.find(
+    (provider) => getLegacyProviderType(provider) === "gckey",
+  );
+  const isRpGcKeyOnly = rpData?.is_gckey_only === true;
+  const selectedLegacyIdpOptions = isRpGcKeyOnly
+    ? gcKeyProviderOption
+      ? [gcKeyProviderOption]
+      : []
+    : legacyIdpOptions;
+  const singleLegacyProvider =
+    selectedLegacyIdpOptions.length === 1 ? selectedLegacyIdpOptions[0] : null;
+  const singleLegacyProviderType = getLegacyProviderType(singleLegacyProvider);
+  const isGcKeyOnly = isRpGcKeyOnly || singleLegacyProviderType === "gckey";
+  const isInteracOnly = singleLegacyProviderType === "interac";
+  const showProviderButtons = selectedLegacyIdpOptions.length > 1;
   const rpName = getLocalizedRpName(rpData, language);
   const rpAnalyticsParams = getRpAnalyticsParams(rpData);
-  const linkButtonText = isGcKeyOnly
-    ? pageContentJson["btn_1_gckey_only"] || pageContentJson["btn_1"]
-    : pageContentJson["btn_1"];
+  const linkButtonText = singleLegacyProvider
+    ? getProviderButtonText(pageContentJson, singleLegacyProvider, language)
+    : isGcKeyOnly
+      ? pageContentJson["btn_1_gckey_only"] || pageContentJson["btn_1"]
+      : pageContentJson["btn_1"];
   const skipHelpText = isGcKeyOnly
     ? pageContentJson["text_4_gckey_only"] || pageContentJson["text_4"]
-    : pageContentJson["text_4"];
+    : isInteracOnly
+      ? pageContentJson["text_4_interac_only"] || pageContentJson["text_4"]
+      : pageContentJson["text_4"];
+
+  const renderMigrationButton = (provider) => {
+    const providerKey = provider?.provider_key;
+    const buttonText = provider
+      ? getProviderButtonText(pageContentJson, provider, language)
+      : linkButtonText;
+
+    return (
+      <GcdsButton
+        key={providerKey || "legacy-default"}
+        type="link"
+        href={
+          providerKey
+            ? buildLegacyLoginLink(language, providerKey)
+            : links.LinkingLink
+        }
+        onGcdsClick={() => {
+          trackEvent({
+            category: GA_CATEGORIES.formSubmit,
+            action: GA_EVENTS.click,
+            label: `${GA_LABELS.button}_StartMigration`,
+            form_id: MIGRATION_ANALYTICS.flowId,
+            step: GA_STEPS.step1,
+            ...rpAnalyticsParams,
+          });
+        }}
+      >
+        {buttonText}
+      </GcdsButton>
+    );
+  };
 
   return (
     <GcdsContainer>
@@ -97,22 +168,17 @@ export default function LinkPrompt() {
         </GcdsText>
       ) : null}
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
-      <GcdsButton
-        type="link"
-        href={links.LinkingLink}
-        onGcdsClick={() => {
-          trackEvent({
-            category: GA_CATEGORIES.formSubmit,
-            action: GA_EVENTS.click,
-            label: `${GA_LABELS.button}_StartMigration`,
-            form_id: MIGRATION_ANALYTICS.flowId,
-            step: GA_STEPS.step1,
-            ...rpAnalyticsParams,
-          });
-        }}
-      >
-        {linkButtonText}
-      </GcdsButton>
+      {showProviderButtons ? (
+        <div>
+          {selectedLegacyIdpOptions.map((provider) => (
+            <div className="mb-300" key={provider.provider_key}>
+              {renderMigrationButton(provider)}
+            </div>
+          ))}
+        </div>
+      ) : (
+        renderMigrationButton(singleLegacyProvider)
+      )}
 
       <div className="mt-500 mb-700">
         <GcdsNotice

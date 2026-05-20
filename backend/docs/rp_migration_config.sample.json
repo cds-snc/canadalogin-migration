@@ -44,7 +44,8 @@
         "provider_key": "gckey-sim",
         "display_name": "GCKey Simulator",
         "entity_id": "local-gckey-saml-idp",
-        "metadata_url": "https://localhost:9443/sso/saml2/idp/metadata.php",
+        "metadata_url": "http://saml-gckey-idp:8080/sso/saml2/idp/metadata.php",
+        "simulator_login_url": "http://localhost:9080/sim/index.php",
         "expected_legacy_provider": "GCKey",
         "expected_nameid_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
         "requested_authn_context": "urn:gc-ca:cyber-auth:assurance:loa2",
@@ -52,7 +53,7 @@
         "sp_entity_id": "http://localhost:8000/v1/auth/legacy/saml/metadata",
         "acs_url": "http://localhost:8000/v1/auth/legacy/saml/acs",
         "allow_local_fallback_identifier": false,
-        "metadata_tls_verify": false
+        "metadata_tls_verify": true
       },
       {
         "client_name": "Interac",
@@ -60,7 +61,8 @@
         "provider_key": "interac-sim",
         "display_name": "Interac Simulator",
         "entity_id": "local-interac-saml-idp",
-        "metadata_url": "https://localhost:9444/sso/saml2/idp/metadata.php",
+        "metadata_url": "http://saml-interac-idp:8080/sso/saml2/idp/metadata.php",
+        "simulator_login_url": "http://localhost:9081/sim/index.php",
         "expected_legacy_provider": "Interac",
         "expected_nameid_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
         "requested_authn_context": "urn:gc-ca:cyber-auth:assurance:loa2",
@@ -68,7 +70,7 @@
         "sp_entity_id": "http://localhost:8000/v1/auth/legacy/saml/metadata",
         "acs_url": "http://localhost:8000/v1/auth/legacy/saml/acs",
         "allow_local_fallback_identifier": false,
-        "metadata_tls_verify": false
+        "metadata_tls_verify": true
       }
     ]
   }

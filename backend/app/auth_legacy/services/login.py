@@ -11,6 +11,7 @@ from app.auth_legacy.services.session_state import (
     LEGACY_PROVIDER_SESSION_KEY,
     LEGACY_SAML_RELAY_STATE_SESSION_KEY,
     LEGACY_SAML_REQUEST_ID_SESSION_KEY,
+    store_legacy_saml_transaction,
 )
 from app.rp.services.config import get_config
 from app.constants.session_keys import SessionKeys
@@ -355,24 +356,39 @@ async def SAML_legacy_login_auth(
         if not rp_client_id:
             raise HTTPException(status_code=400, detail="Missing RP client id")
 
-        _store_selected_legacy_idp_session(
+        client_name = _store_selected_legacy_idp_session(
             request,
             rp=rp,
             legacy_idp=legacy_idp,
             lang=lang,
         )
+        provider_key = _legacy_provider_key(legacy_idp)
         request_id = f"_{generate_secure_token(18)}"
         relay_state = generate_secure_token()
         request.session[LEGACY_SAML_REQUEST_ID_SESSION_KEY] = request_id
         request.session[LEGACY_SAML_RELAY_STATE_SESSION_KEY] = relay_state
 
-        ibm_id, _, _ = await _start_legacy_linking(
+        ibm_id, correlation_id, attempt_id = await _start_legacy_linking(
             request,
             user_access_token=user_access_token,
             session_user_token=session_user_token,
             rp_client_id=rp_client_id,
             lang=lang,
             legacy_provider=legacy_idp.client_name,
+        )
+        await store_legacy_saml_transaction(
+            request,
+            relay_state=relay_state,
+            request_id=request_id,
+            rp_client_id=rp_client_id,
+            user_access_token=user_access_token,
+            session_user_token=session_user_token,
+            provider_key=provider_key,
+            provider_name=legacy_idp.client_name,
+            client_name=client_name,
+            lang=lang,
+            correlation_id=correlation_id,
+            attempt_id=attempt_id,
         )
 
         redirect_url = await build_saml_login_redirect_url(

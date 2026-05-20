@@ -9,8 +9,11 @@ from fastapi import HTTPException
 
 from app.auth_legacy.services.saml import (
     HTTP_REDIRECT_BINDING,
+    _normalize_saml_response_b64,
     build_saml_authn_request_xml,
+    build_saml_login_redirect_url,
     build_saml_redirect_url,
+    load_saml_idp_metadata,
     normalize_saml_identity,
     parse_saml_idp_metadata,
     parse_saml_response_payload,
@@ -64,6 +67,10 @@ def _encoded_response(
     return base64.b64encode(xml.encode("utf-8")).decode("ascii")
 
 
+def test_normalize_saml_response_repairs_form_decoded_plus():
+    assert _normalize_saml_response_b64("abc def\n\tghi") == "abc+defghi"
+
+
 def test_parse_saml_idp_metadata_prefers_redirect_sso_service():
     metadata = """<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
         xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
@@ -94,6 +101,160 @@ def test_parse_saml_idp_metadata_prefers_redirect_sso_service():
     assert result.x509cert == "abc"
 
 
+@pytest.mark.asyncio
+async def test_load_saml_idp_metadata_rewrites_simulator_container_host_for_browser(
+    monkeypatch,
+):
+    metadata = """<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+        entityID="local-gckey-saml-idp">
+      <md:IDPSSODescriptor>
+        <md:SingleSignOnService
+          Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+          Location="https://saml-gckey-idp:8443/sso"/>
+      </md:IDPSSODescriptor>
+    </md:EntityDescriptor>"""
+
+    class FakeResponse:
+        text = metadata
+
+        def raise_for_status(self):
+            return None
+
+    class FakeAsyncClient:
+        def __init__(self, *, verify, timeout):
+            self.verify = verify
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url):
+            assert url == "https://saml-gckey-idp:8443/metadata"
+            return FakeResponse()
+
+    monkeypatch.setattr(
+        "app.auth_legacy.services.saml.httpx.AsyncClient",
+        FakeAsyncClient,
+    )
+
+    legacy_idp = SimpleNamespace(
+        entity_id="local-gckey-saml-idp",
+        metadata_url="https://saml-gckey-idp:8443/metadata",
+        metadata_tls_verify=False,
+    )
+
+    result = await load_saml_idp_metadata(legacy_idp)
+
+    assert result.sso_url == "https://localhost:9443/sso"
+
+
+@pytest.mark.asyncio
+async def test_load_saml_idp_metadata_rewrites_http_simulator_port_for_browser(
+    monkeypatch,
+):
+    metadata = """<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+        entityID="local-gckey-saml-idp">
+      <md:IDPSSODescriptor>
+        <md:SingleSignOnService
+          Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+          Location="http://saml-gckey-idp:8080/sso"/>
+      </md:IDPSSODescriptor>
+    </md:EntityDescriptor>"""
+
+    class FakeResponse:
+        text = metadata
+
+        def raise_for_status(self):
+            return None
+
+    class FakeAsyncClient:
+        def __init__(self, *, verify, timeout):
+            self.verify = verify
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url):
+            assert url == "http://saml-gckey-idp:8080/metadata"
+            return FakeResponse()
+
+    monkeypatch.setattr(
+        "app.auth_legacy.services.saml.httpx.AsyncClient",
+        FakeAsyncClient,
+    )
+
+    legacy_idp = SimpleNamespace(
+        entity_id="local-gckey-saml-idp",
+        metadata_url="http://saml-gckey-idp:8080/metadata",
+        metadata_tls_verify=True,
+    )
+
+    result = await load_saml_idp_metadata(legacy_idp)
+
+    assert result.sso_url == "http://localhost:9080/sso"
+
+
+@pytest.mark.asyncio
+async def test_load_saml_idp_metadata_rewrites_docker_host_for_browser_redirects(
+    monkeypatch,
+):
+    metadata = """<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+        entityID="local-gckey-saml-idp">
+      <md:IDPSSODescriptor>
+        <md:SingleSignOnService
+          Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+          Location="https://host.docker.internal:9443/sso"/>
+        <md:SingleLogoutService
+          Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+          Location="https://host.docker.internal:9443/logout"/>
+      </md:IDPSSODescriptor>
+    </md:EntityDescriptor>"""
+
+    class FakeResponse:
+        text = metadata
+
+        def raise_for_status(self):
+            return None
+
+    class FakeAsyncClient:
+        def __init__(self, *, verify, timeout):
+            self.verify = verify
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url):
+            assert url == "https://host.docker.internal:9443/metadata"
+            return FakeResponse()
+
+    monkeypatch.setattr(
+        "app.auth_legacy.services.saml.httpx.AsyncClient",
+        FakeAsyncClient,
+    )
+
+    legacy_idp = SimpleNamespace(
+        entity_id="local-gckey-saml-idp",
+        metadata_url="https://host.docker.internal:9443/metadata",
+        metadata_tls_verify=False,
+    )
+
+    result = await load_saml_idp_metadata(legacy_idp)
+
+    assert result.sso_url == "https://localhost:9443/sso"
+    assert result.slo_url == "https://localhost:9443/logout"
+
+
 def test_build_saml_authn_request_includes_nameid_policy_and_authn_context():
     xml = build_saml_authn_request_xml(
         _saml_idp(),
@@ -108,6 +269,69 @@ def test_build_saml_authn_request_includes_nameid_policy_and_authn_context():
     assert 'AllowCreate="true"' in xml
     assert 'Comparison="exact"' in xml
     assert "urn:gc-ca:cyber-auth:assurance:loa2" in xml
+
+
+@pytest.mark.asyncio
+async def test_build_saml_login_redirect_url_can_use_local_simulator_page(
+    monkeypatch,
+):
+    metadata = """<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+        entityID="local-gckey-saml-idp">
+      <md:IDPSSODescriptor>
+        <md:SingleSignOnService
+          Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+          Location="http://saml-gckey-idp:8080/sso/module.php/saml/idp/singleSignOnService"/>
+      </md:IDPSSODescriptor>
+    </md:EntityDescriptor>"""
+
+    class FakeResponse:
+        text = metadata
+
+        def raise_for_status(self):
+            return None
+
+    class FakeAsyncClient:
+        def __init__(self, *, verify, timeout):
+            self.verify = verify
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url):
+            assert url == "http://saml-gckey-idp:8080/metadata"
+            return FakeResponse()
+
+    monkeypatch.setattr(
+        "app.auth_legacy.services.saml.httpx.AsyncClient",
+        FakeAsyncClient,
+    )
+    legacy_idp = _saml_idp()
+    legacy_idp.metadata_url = "http://saml-gckey-idp:8080/metadata"
+    legacy_idp.metadata_tls_verify = True
+    legacy_idp.simulator_login_url = "http://localhost:9080/sim/index.php"
+
+    redirect_url = await build_saml_login_redirect_url(
+        legacy_idp,
+        request_id="_request-123",
+        relay_state="relay-123",
+    )
+
+    parsed = urlparse(redirect_url)
+    query = parse_qs(parsed.query)
+    decoded = zlib.decompress(
+        base64.b64decode(query["SAMLRequest"][0]),
+        wbits=-15,
+    ).decode("utf-8")
+
+    assert parsed.scheme == "http"
+    assert parsed.netloc == "localhost:9080"
+    assert parsed.path == "/sim/index.php"
+    assert 'Destination="http://localhost:9080/sso/module.php/saml/idp/singleSignOnService"' in decoded
+    assert query["RelayState"] == ["relay-123"]
 
 
 def test_build_saml_redirect_url_uses_redirect_binding_deflate_encoding():

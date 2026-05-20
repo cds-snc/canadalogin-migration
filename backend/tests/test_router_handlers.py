@@ -119,6 +119,7 @@ async def test_auth_me_calls_service():
 async def test_legacy_login_normalizes_lang_and_calls_service():
     request = MagicMock()
     request.session = {
+        SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value: "user-token",
         SessionKeys.SESSION_USER_TOKEN.value: "token",
         SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1",
     }
@@ -138,6 +139,7 @@ async def test_legacy_login_normalizes_lang_and_calls_service():
 async def test_legacy_saml_login_calls_service_with_provider_key():
     request = MagicMock()
     request.session = {
+        SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value: "user-token",
         SessionKeys.SESSION_USER_TOKEN.value: "token",
         SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1",
     }
@@ -177,6 +179,7 @@ async def test_legacy_saml_metadata_returns_xml():
 async def test_legacy_saml_acs_calls_service():
     request = MagicMock()
     request.session = {
+        SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value: "user-token",
         SessionKeys.SESSION_USER_TOKEN.value: "token",
         SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1",
     }
@@ -189,7 +192,6 @@ async def test_legacy_saml_acs_calls_service():
             request,
             saml_response="saml-response",
             relay_state="relay-state",
-            user_access_token="user-token",
         )
 
     assert result == "acs"

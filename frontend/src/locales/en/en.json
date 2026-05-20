@@ -484,6 +484,8 @@
     "link_2": "Skip and create a new account",
     "btn_1": "Sign in with GCKey or Interac sign-in partner",
     "btn_1_gckey_only": "Sign in with GCKey",
+    "btn_provider": "Sign in with {provider_name}",
+    "text_4_interac_only": "If you have not signed in to this service with Interac sign-in partner in the past, you can skip this step.",
     "notice_title": "For more information"
   },
   "SkipLink": {

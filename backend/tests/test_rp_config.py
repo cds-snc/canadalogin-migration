@@ -176,6 +176,46 @@ async def test_get_rp_config_details_marks_not_gckey_only_when_blank(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_get_rp_config_details_returns_safe_legacy_provider_choices(monkeypatch):
+    monkeypatch.setenv(
+        "RP_MIGRATION_CONFIG", json.dumps(_sample_mixed_protocol_rp_config())
+    )
+    monkeypatch.delenv("RP_MIGRATION_CONFIG_SECRETS", raising=False)
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        details = await get_rp_config_details("rp-123")
+
+    assert details["legacy_idps"] == [
+        {
+            "provider_key": "sic",
+            "client_name": "SIC",
+            "display_name": "SIC",
+            "protocol": "oidc",
+        },
+        {
+            "provider_key": "gccf",
+            "client_name": "GCCF",
+            "display_name": "GCCF",
+            "protocol": "oidc",
+        },
+        {
+            "provider_key": "gckey-sim",
+            "client_name": "GCKey",
+            "display_name": "GCKey Simulator",
+            "protocol": "saml",
+        },
+        {
+            "provider_key": "interac-sim",
+            "client_name": "Interac",
+            "display_name": "Interac Simulator",
+            "protocol": "saml",
+        },
+    ]
+    assert "client_secret" not in details["legacy_idps"][0]
+    assert "metadata_url" not in details["legacy_idps"][2]
+
+
+@pytest.mark.asyncio
 async def test_get_rp_config_details_appends_custom_parameters(monkeypatch):
     monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
     monkeypatch.setenv("RP_MIGRATION_CONFIG_SECRETS", json.dumps(_sample_rp_secrets()))
