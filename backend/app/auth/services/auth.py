@@ -25,6 +25,8 @@ from app.utils.correlation_id import ensure_session_correlation_id
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_CALLBACK_LANGS = {"en", "fr"}
+
 
 async def get_http_client(request: Request) -> AsyncClient:
     return request.app.state.request_client
@@ -153,8 +155,10 @@ async def callback_handler(request: Request, lang: str):
             session_id_hash=hash_identifier(user_info.get("sid")),
         )
 
-        if lang:
+        if lang in ALLOWED_CALLBACK_LANGS:
             redirectValue = f"{redirectValue}/{lang}"
+        elif lang:
+            logger.warning("Ignoring unsupported lang value in callback: %s", lang)
 
         logger.info("Redirect to MIGRATION_SOLUTION_DOMAIN: %s", redirectValue)
         log_auth_flow_event(
