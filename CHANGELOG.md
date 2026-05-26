@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.3](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.2...v1.12.3) (2026-05-26)
+
+
+### Bug Fixes
+
+* **NVDA:** fix screen loading since NVDA cannot handle dyanmic page loading content ([#303](https://github.com/cds-snc/gc-sign-in-migration/issues/303)) ([81d356f](https://github.com/cds-snc/gc-sign-in-migration/commit/81d356f7a94020ff6e6622cdc0b0f145ef766e60))
+
 ## [1.12.2](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.1...v1.12.2) (2026-05-19)
 
 
