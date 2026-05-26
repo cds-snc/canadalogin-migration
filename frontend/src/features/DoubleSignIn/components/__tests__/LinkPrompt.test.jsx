@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
 import LinkPrompt from "../LinkPrompt.jsx";
@@ -100,11 +106,36 @@ describe("LinkPrompt", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockLanguage = "en";
+    document.title = "";
     updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
       rp_client_id: "rp-123",
       rp_client_name_en: "Example RP",
       rp_client_name_fr: "Exemple RP",
     });
+  });
+
+  it("waits for RP config before rendering the final page content", async () => {
+    let resolveRpData;
+    updateLinkStateAPI.getRPAuthUrl.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRpData = resolve;
+      }),
+    );
+
+    render(<LinkPrompt />);
+
+    expect(screen.queryByText("Link your account")).not.toBeInTheDocument();
+    expect(screen.queryByText("Link now")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveRpData({
+        rp_client_id: "rp-123",
+        rp_client_name_en: "Example RP",
+      });
+    });
+
+    expect(await screen.findByText("Link your account")).toBeInTheDocument();
+    expect(screen.getByText("Continue with Example RP")).toBeInTheDocument();
   });
 
   it("renders RP name and builds links", async () => {
@@ -114,8 +145,9 @@ describe("LinkPrompt", () => {
       expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
     });
 
-    expect(screen.getByText("Link your account")).toBeInTheDocument();
+    expect(await screen.findByText("Link your account")).toBeInTheDocument();
     expect(screen.getByText("Continue with Example RP")).toBeInTheDocument();
+    expect(document.title).toBe("Link your account - CanadaLogin");
 
     const linkNow = screen.getByText("Link now");
     expect(linkNow).toHaveAttribute(
@@ -134,7 +166,7 @@ describe("LinkPrompt", () => {
       expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByText("Link now"));
+    fireEvent.click(await screen.findByText("Link now"));
 
     expect(mockTrackEvent).toHaveBeenCalledWith({
       category: GA_CATEGORIES.formSubmit,
@@ -155,7 +187,7 @@ describe("LinkPrompt", () => {
       expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByText("Skip for now"));
+    fireEvent.click(await screen.findByText("Skip for now"));
 
     expect(mockTrackEvent).toHaveBeenCalledTimes(1);
     expect(mockTrackEvent).toHaveBeenCalledWith({
@@ -200,7 +232,7 @@ describe("LinkPrompt", () => {
       expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
     });
 
-    expect(screen.getByText("Link with GCKey")).toBeInTheDocument();
+    expect(await screen.findByText("Link with GCKey")).toBeInTheDocument();
     expect(
       screen.getByText("You can skip if you did not use GCKey."),
     ).toBeInTheDocument();

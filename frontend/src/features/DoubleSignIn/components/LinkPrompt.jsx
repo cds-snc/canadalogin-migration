@@ -33,41 +33,73 @@ export default function LinkPrompt() {
   const trackEvent = useTrackEvent();
 
   const [serverErrorMessage] = useState("");
+  const [rpLoadState, setRpLoadState] = useState({
+    language,
+    isLoading: true,
+    data: null,
+  });
 
   const pageContentJson = getPageContent(language, PAGES.LinkPrompt);
   const errorPageJson = getPageContent(language, PAGES.error);
+  const pageTitle = pageContentJson["title"];
+  const productTitle = language === "fr" ? "ConnexionCanada" : "CanadaLogin";
 
   useTrackPage("Migration - Legacy method prompt");
 
-  const [links, setLinks] = useState({
-    LinkingLink: "",
-    SkipLink: "",
-  });
-
-  const [rpData, setRpData] = useState(null);
+  const linkingLink = `${MIGRATION_END_POINTS.login}?lang=${language}`;
+  const skipLink = MIGRATION_END_POINTS.skip;
 
   useEffect(() => {
+    document.title = pageTitle
+      ? `${pageTitle} - ${productTitle}`
+      : productTitle;
+
+    return () => {
+      document.title = productTitle;
+    };
+  }, [pageTitle, productTitle]);
+
+  useEffect(() => {
+    let isCurrent = true;
+
     async function getRPData() {
+      setRpLoadState({
+        language,
+        isLoading: true,
+        data: null,
+      });
+
       try {
         const data = await updateLinkStateAPI.getRPAuthUrl();
-        setRpData(data);
+        if (isCurrent) {
+          setRpLoadState({
+            language,
+            isLoading: false,
+            data: data || {},
+          });
+        }
       } catch (e) {
         console.error("Failed loading RP data", e);
+        if (isCurrent) {
+          setRpLoadState({
+            language,
+            isLoading: false,
+            data: {},
+          });
+        }
       }
     }
 
-    try {
-      const LinkingLink = MIGRATION_END_POINTS.login + "?lang=" + language;
-      const SkipLink = MIGRATION_END_POINTS.skip;
-
-      setLinks({ LinkingLink, SkipLink });
-    } catch (e) {
-      console.error("Failed building links", e);
-    }
-
     getRPData();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [language]);
 
+  const isPageReady =
+    !rpLoadState.isLoading && rpLoadState.language === language;
+  const rpData = isPageReady ? rpLoadState.data : null;
   const errorMessage = errorPageJson[serverErrorMessage] || "";
   const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
   const rpName = getLocalizedRpName(rpData, language);
@@ -78,6 +110,10 @@ export default function LinkPrompt() {
   const skipHelpText = isGcKeyOnly
     ? pageContentJson["text_4_gckey_only"] || pageContentJson["text_4"]
     : pageContentJson["text_4"];
+
+  if (!isPageReady) {
+    return null;
+  }
 
   return (
     <GcdsContainer>
@@ -96,7 +132,7 @@ export default function LinkPrompt() {
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
       <GcdsButton
         type="link"
-        href={links.LinkingLink}
+        href={linkingLink}
         onGcdsClick={() => {
           trackEvent({
             category: GA_CATEGORIES.formSubmit,
@@ -132,7 +168,7 @@ export default function LinkPrompt() {
       <GcdsText>{skipHelpText}</GcdsText>
       <GcdsText>
         <GcdsLink
-          href={links.SkipLink}
+          href={skipLink}
           onGcdsClick={() => {
             trackEvent({
               category: GA_CATEGORIES.formSubmit,
