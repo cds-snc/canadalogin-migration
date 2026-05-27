@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.5](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.4...v1.12.5) (2026-05-27)
+
+
+### Bug Fixes
+
+* **nvda:** added ids ([#308](https://github.com/cds-snc/gc-sign-in-migration/issues/308)) ([3eb9645](https://github.com/cds-snc/gc-sign-in-migration/commit/3eb9645e6dbbbfd080cbdfa1593174cdbbc290e9))
+
+
+### Miscellaneous Chores
+
+* add LICENSE and SECURITY.md ([#301](https://github.com/cds-snc/gc-sign-in-migration/issues/301)) ([18e42da](https://github.com/cds-snc/gc-sign-in-migration/commit/18e42da04e3f68d139ee353ce3c181b899e0f943))
+
 ## [1.12.4](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.3...v1.12.4) (2026-05-27)
 
 
