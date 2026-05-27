@@ -64,7 +64,7 @@ export default function LinkSuccess() {
   const rpAnalyticsParams = getRpAnalyticsParams(rpData);
 
   return (
-    <GcdsContainer>
+    <GcdsContainer role="main">
       <MigrationStepper currentStep={3} />
       <GcdsHeading tag="h1" lang={language}>
         {pageContentJson["title"]}

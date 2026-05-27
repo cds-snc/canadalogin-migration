@@ -24,7 +24,7 @@ const localizedHelpLinks = {
 };
 
 vi.mock("@gcds-core/components-react", () => ({
-  GcdsContainer: ({ children }) => <div>{children}</div>,
+  GcdsContainer: ({ children, ...props }) => <div {...props}>{children}</div>,
   GcdsText: ({ children }) => <div>{children}</div>,
   GcdsDetails: ({ children }) => <div>{children}</div>,
   GcdsInput: ({ children }) => <div>{children}</div>,
@@ -135,6 +135,7 @@ describe("LinkPrompt", () => {
     });
 
     expect(await screen.findByText("Link your account")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByText("Continue with Example RP")).toBeInTheDocument();
   });
 
