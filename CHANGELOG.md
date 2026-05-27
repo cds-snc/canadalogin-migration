@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.4](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.3...v1.12.4) (2026-05-27)
+
+
+### Bug Fixes
+
+* **nvda:** add landmarks ([#305](https://github.com/cds-snc/gc-sign-in-migration/issues/305)) ([cabe022](https://github.com/cds-snc/gc-sign-in-migration/commit/cabe02215a7307c5d21a0b92d26de7057ccaf142))
+
 ## [1.12.3](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.2...v1.12.3) (2026-05-26)
 
 
