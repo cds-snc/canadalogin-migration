@@ -136,6 +136,8 @@ export default function LinkPrompt() {
       ) : null}
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
       <GcdsButton
+        id="sign-in-old-method-button"
+        buttonId="sign-in-old-method-button-control"
         type="link"
         href={linkingLink}
         onGcdsClick={() => {
@@ -160,7 +162,11 @@ export default function LinkPrompt() {
           noticeTitleTag="h2"
           lang={language}
         >
-          <GcdsLink href={pageContentJson["link_1_url"]} external>
+          <GcdsLink
+            id="sign-in-method-help-link"
+            href={pageContentJson["link_1_url"]}
+            external
+          >
             {pageContentJson["link_1"]}
           </GcdsLink>
         </GcdsNotice>
@@ -173,6 +179,7 @@ export default function LinkPrompt() {
       <GcdsText>{skipHelpText}</GcdsText>
       <GcdsText>
         <GcdsLink
+          id="skip-create-new-account-link"
           href={skipLink}
           onGcdsClick={() => {
             trackEvent({

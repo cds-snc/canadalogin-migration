@@ -83,6 +83,8 @@ export default function LinkSuccess() {
       </ul>
       <div className="mt-500">
         <GcdsButton
+          id="access-account-button"
+          buttonId="access-account-button-control"
           onGcdsClick={(ev) => {
             ev.preventDefault();
             trackEvent({
