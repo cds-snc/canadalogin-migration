@@ -63,10 +63,22 @@ export default function SkipLink() {
       <GcdsText>{pageContentJson["text_1"]}</GcdsText>
       <GcdsText>{pageContentJson["text_2"]}</GcdsText>
       <GcdsGrid columns="1" gap="300">
-        <GcdsButton type="link" href={links.LinkingLink} class="m-400">
+        <GcdsButton
+          id="confirm-link-account-button"
+          buttonId="confirm-link-account-button-control"
+          type="link"
+          href={links.LinkingLink}
+          class="m-400"
+        >
           {pageContentJson["btn_1"]}
         </GcdsButton>
-        <GcdsButton type="link" href={links.LinkingLink} buttonRole="secondary">
+        <GcdsButton
+          id="confirm-skip-create-account-button"
+          buttonId="confirm-skip-create-account-button-control"
+          type="link"
+          href={links.LinkingLink}
+          buttonRole="secondary"
+        >
           {pageContentJson["btn_2"]}
         </GcdsButton>
       </GcdsGrid>
