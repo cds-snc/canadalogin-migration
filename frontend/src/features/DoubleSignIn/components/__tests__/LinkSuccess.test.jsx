@@ -12,7 +12,7 @@ import {
 const mockTrackEvent = vi.hoisted(() => vi.fn());
 
 vi.mock("@gcds-core/components-react", () => ({
-  GcdsContainer: ({ children }) => <div>{children}</div>,
+  GcdsContainer: ({ children, ...props }) => <div {...props}>{children}</div>,
   GcdsText: ({ children }) => <div>{children}</div>,
   GcdsDetails: ({ children }) => <div>{children}</div>,
   GcdsInput: ({ children }) => <div>{children}</div>,
@@ -98,6 +98,7 @@ describe("LinkSuccess", () => {
     });
 
     expect(screen.getByText("All set")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByText("You linked Example RP")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Continue"));

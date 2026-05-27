@@ -50,16 +50,6 @@ export default function LinkPrompt() {
   const skipLink = MIGRATION_END_POINTS.skip;
 
   useEffect(() => {
-    document.title = pageTitle
-      ? `${pageTitle} - ${productTitle}`
-      : productTitle;
-
-    return () => {
-      document.title = productTitle;
-    };
-  }, [pageTitle, productTitle]);
-
-  useEffect(() => {
     let isCurrent = true;
 
     async function getRPData() {
@@ -100,6 +90,21 @@ export default function LinkPrompt() {
   const isPageReady =
     !rpLoadState.isLoading && rpLoadState.language === language;
   const rpData = isPageReady ? rpLoadState.data : null;
+
+  useEffect(() => {
+    if (!isPageReady) {
+      return;
+    }
+
+    document.title = pageTitle
+      ? `${pageTitle} - ${productTitle}`
+      : productTitle;
+
+    return () => {
+      document.title = productTitle;
+    };
+  }, [isPageReady, pageTitle, productTitle]);
+
   const errorMessage = errorPageJson[serverErrorMessage] || "";
   const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
   const rpName = getLocalizedRpName(rpData, language);
@@ -116,7 +121,7 @@ export default function LinkPrompt() {
   }
 
   return (
-    <GcdsContainer>
+    <GcdsContainer role="main">
       <MigrationStepper currentStep={2} />
       <GcdsHeading tag="h1" lang={language}>
         {pageContentJson["title"]}

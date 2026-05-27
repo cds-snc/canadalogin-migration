@@ -56,7 +56,7 @@ export default function SkipLink() {
   }, [language, searchParams]);
 
   return (
-    <GcdsContainer>
+    <GcdsContainer role="main">
       <GcdsHeading tag="h1" lang={language}>
         {pageContentJson["title"]}
       </GcdsHeading>

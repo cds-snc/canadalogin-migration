@@ -6,7 +6,7 @@ import SkipLink from "../SkipLink.jsx";
 import { MIGRATION_END_POINTS } from "../../../../utils/constants.jsx";
 
 vi.mock("@gcds-core/components-react", () => ({
-  GcdsContainer: ({ children }) => <div>{children}</div>,
+  GcdsContainer: ({ children, ...props }) => <div {...props}>{children}</div>,
   GcdsText: ({ children }) => <div>{children}</div>,
   GcdsDetails: ({ children }) => <div>{children}</div>,
   GcdsInput: ({ children }) => <div>{children}</div>,
@@ -46,6 +46,7 @@ describe("SkipLink", () => {
   it("renders links for login and skip", () => {
     render(<SkipLink />);
     expect(screen.getByText("Skip linking")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
 
     const goBack = screen.getByText("Go back");
     const skip = screen.getByText("Skip");
