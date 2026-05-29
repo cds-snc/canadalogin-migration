@@ -10,7 +10,6 @@ import os
 import sys
 from pathlib import Path
 
-
 REQUIRED_ENV_DEFAULTS = {
     "IBM_VERIFY_TENANT_URL": "https://example.test",
     "IBM_VERIFY_MIGRATION_API_CLIENT_ID": "openapi-client-id",

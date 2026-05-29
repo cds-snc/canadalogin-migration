@@ -9,7 +9,6 @@ import shlex
 import sys
 from pathlib import Path
 
-
 CONFIG_ENV_VAR = "RP_MIGRATION_CONFIG"
 LIST_WRAPPER_KEYS = ("rp_configs", "data", "configs")
 

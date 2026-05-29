@@ -12,7 +12,6 @@ from app.auth_legacy.services.skip import skip_account_linking
 from app.auth.services.auth_user_session import get_users_current_session
 from app.constants.session_keys import SessionKeys
 
-
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
