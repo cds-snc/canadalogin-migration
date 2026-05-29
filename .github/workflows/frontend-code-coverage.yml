@@ -64,7 +64,7 @@ jobs:
           path: ${{ matrix.module }}
 
       - name: "Report Coverage"
-        uses: davelosert/vitest-coverage-report-action@15b5b41bb7d36796d89f4bf482b09529c53f3446 # v2.9.2
+        uses: davelosert/vitest-coverage-report-action@02f3c2e641286b7fa308cd3e430783103ce6103b # v2.12.0
         with:
           vite-config-path: "./vitest.config.js"
           working-directory: "./${{ matrix.module }}"
