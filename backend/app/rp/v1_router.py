@@ -6,7 +6,6 @@ from app.constants.session_keys import SessionKeys
 from app.rp.services.config import get_rp_config_details
 from app.utils.custom_parameters import get_rp_return_parameters_from_session
 
-
 router = APIRouter()
 logger = logging.getLogger(__name__)
 

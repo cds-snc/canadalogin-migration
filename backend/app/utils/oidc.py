@@ -9,7 +9,6 @@ from authlib.integrations.starlette_client import OAuth, OAuthError
 from app.rp.schemas import LegacyIdpSchema
 from app.rp.services.config import get_legacy_idp_metadata
 
-
 oauth = OAuth()
 logger = logging.getLogger(__name__)
 
