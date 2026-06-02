@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.12.6](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.5...v1.12.6) (2026-06-02)
+
+
+### Bug Fixes
+
+* **deploy:** deploy to staging ([#315](https://github.com/cds-snc/canadalogin-migration/issues/315)) ([8a639c4](https://github.com/cds-snc/canadalogin-migration/commit/8a639c4c776954b984e67a8b0d1d9c88c510261e))
+
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump pytest from 8.4.2 to 9.0.3 in /backend ([#257](https://github.com/cds-snc/canadalogin-migration/issues/257)) ([c4dbe25](https://github.com/cds-snc/canadalogin-migration/commit/c4dbe259ce4becd16dd9553514dc7cd0ed1a2355))
+* **deps:** bump authlib from 1.6.9 to 1.6.12 in /backend ([#294](https://github.com/cds-snc/canadalogin-migration/issues/294)) ([db74151](https://github.com/cds-snc/canadalogin-migration/commit/db741515691a4dc694c6b9b6e8ff7facd842a421))
+* **deps:** bump python-multipart from 0.0.24 to 0.0.27 in /backend ([#290](https://github.com/cds-snc/canadalogin-migration/issues/290)) ([e495658](https://github.com/cds-snc/canadalogin-migration/commit/e4956583caca134e263a94b0ff080bffa7104380))
+* **deps:** update all non-major github action dependencies ([#184](https://github.com/cds-snc/canadalogin-migration/issues/184)) ([2b4d57c](https://github.com/cds-snc/canadalogin-migration/commit/2b4d57cf65ef0d0b6ccb82e3387b324c90418f64))
+* **deps:** update all patch dependencies ([#277](https://github.com/cds-snc/canadalogin-migration/issues/277)) ([b3f1b90](https://github.com/cds-snc/canadalogin-migration/commit/b3f1b90d2cb3d542dc467f7ce23971f1c910e547))
+* **deps:** update all patch dependencies ([#311](https://github.com/cds-snc/canadalogin-migration/issues/311)) ([241c221](https://github.com/cds-snc/canadalogin-migration/commit/241c22100cb85640aaf83cfd9ba86574a24da70e))
+* **deps:** update dependency black to v26 [security] ([#199](https://github.com/cds-snc/canadalogin-migration/issues/199)) ([003ce95](https://github.com/cds-snc/canadalogin-migration/commit/003ce953dd3aec290a4d269b73782e217ba4444f))
+* **deps:** update dependency prettier to v3.8.3 ([#273](https://github.com/cds-snc/canadalogin-migration/issues/273)) ([a864bfd](https://github.com/cds-snc/canadalogin-migration/commit/a864bfda32a623ce36cc255b8c8999d0e8561243))
+* **deps:** update dependency python-multipart to v0.0.27 [security] ([#269](https://github.com/cds-snc/canadalogin-migration/issues/269)) ([447a961](https://github.com/cds-snc/canadalogin-migration/commit/447a961142c56924d03a59e6fea5fea736e66719))
+* upgrade pip to 26.1 to fix CVE-2026-3219 ([#310](https://github.com/cds-snc/canadalogin-migration/issues/310)) ([aa832cd](https://github.com/cds-snc/canadalogin-migration/commit/aa832cd35d24400a978075f05b503c1bc04a4290))
+
 ## [1.12.5](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.4...v1.12.5) (2026-05-27)
 
 
