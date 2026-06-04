@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.7](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.6...v1.12.7) (2026-06-04)
+
+
+### Bug Fixes
+
+* **deployment:** update prod version for release ([#317](https://github.com/cds-snc/canadalogin-migration/issues/317)) ([25e2f30](https://github.com/cds-snc/canadalogin-migration/commit/25e2f3054678e5f28fd58daa431a661f5de846f9))
+
 ## [1.12.6](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.5...v1.12.6) (2026-06-02)
 
 
