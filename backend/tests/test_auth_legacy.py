@@ -319,6 +319,10 @@ async def test_legacy_callback_raises_on_patch_failure():
             new=AsyncMock(return_value=rp),
         ),
         patch(
+            "app.auth_legacy.services.callback.register_client",
+            new=AsyncMock(),
+        ),
+        patch(
             "app.auth_legacy.services.callback.create_client",
             new=AsyncMock(return_value=client),
         ),
@@ -370,6 +374,10 @@ async def test_legacy_callback_raises_with_upstream_detail_when_patch_returns_di
         patch(
             "app.auth_legacy.services.callback.get_config",
             new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.register_client",
+            new=AsyncMock(),
         ),
         patch(
             "app.auth_legacy.services.callback.create_client",
@@ -426,6 +434,10 @@ async def test_legacy_callback_raises_http_exception_on_upstream_http_status_err
             new=AsyncMock(return_value=rp),
         ),
         patch(
+            "app.auth_legacy.services.callback.register_client",
+            new=AsyncMock(),
+        ),
+        patch(
             "app.auth_legacy.services.callback.create_client",
             new=AsyncMock(return_value=client),
         ),
@@ -442,6 +454,7 @@ async def test_legacy_callback_patches_audit_with_linked_status():
     request = build_request()
     request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
     request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    request.session[SessionKeys.CURRENT_LANGUAGE.value] = "fr"
     seed_legacy_session(request)
     client = MagicMock()
     client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
@@ -452,7 +465,10 @@ async def test_legacy_callback_patches_audit_with_linked_status():
 
     legacy_idp = SimpleNamespace(client_name="SIC")
     rp = SimpleNamespace(
-        IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
+        IDP=[legacy_idp],
+        rp_client_name="rpname",
+        dependent_client_ids=[],
+        acr_values="MFA",
     )
 
     ok_response = MagicMock(status_code=204)
@@ -466,6 +482,14 @@ async def test_legacy_callback_patches_audit_with_linked_status():
             "app.auth_legacy.services.callback.get_config",
             new=AsyncMock(return_value=rp),
         ),
+        patch(
+            "app.auth_legacy.services.callback.has_registered_client",
+            return_value=False,
+        ),
+        patch(
+            "app.auth_legacy.services.callback.register_client",
+            new=AsyncMock(),
+        ) as mock_register_client,
         patch(
             "app.auth_legacy.services.callback.create_client",
             new=AsyncMock(return_value=client),
@@ -490,6 +514,13 @@ async def test_legacy_callback_patches_audit_with_linked_status():
         result = await legacy_callback(request, "user-at", "user-token", "rp-123")
 
     assert isinstance(result, RedirectResponse)
+    mock_register_client.assert_awaited_once_with(
+        request,
+        "rpname_SIC",
+        legacy_idp,
+        "fr-CA",
+        "MFA",
+    )
     mock_patch_audit.assert_awaited_once()
     kwargs = mock_patch_audit.await_args.kwargs
     assert kwargs["ibm_id"] == "ibm1"
@@ -504,6 +535,73 @@ async def test_legacy_callback_patches_audit_with_linked_status():
     assert "rpname_SIC_nonce" not in request.session
     assert "rpname_SIC_state" not in request.session
     assert "_state_rpname_SIC_state" not in request.session
+
+
+@pytest.mark.asyncio
+async def test_legacy_callback_reuses_registered_client():
+    request = build_request()
+    request.session[SessionKeys.CORRELATION_ID.value] = "corr-123"
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    seed_legacy_session(request)
+    client = MagicMock()
+    client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
+    client.parse_id_token = AsyncMock(return_value={"sub": "legacy-sub"})
+    client.server_metadata = {
+        "server_metadata": {"end_session_endpoint": "https://idp/logout"}
+    }
+
+    legacy_idp = SimpleNamespace(client_name="SIC")
+    rp = SimpleNamespace(
+        IDP=[legacy_idp],
+        rp_client_name="rpname",
+        dependent_client_ids=[],
+        acr_values="MFA",
+    )
+
+    ok_response = MagicMock(status_code=204)
+
+    with (
+        patch(
+            "app.auth_legacy.services.callback.config",
+            new=SimpleNamespace(LEGACY_IDP_LOGOUT_ENABLED=True, ENVIRONMENT="local"),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_config",
+            new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.has_registered_client",
+            return_value=True,
+        ),
+        patch(
+            "app.auth_legacy.services.callback.register_client",
+            new=AsyncMock(),
+        ) as mock_register_client,
+        patch(
+            "app.auth_legacy.services.callback.create_client",
+            new=AsyncMock(return_value=client),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_ibm_id",
+            new=MagicMock(return_value="ibm1"),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.get_user_custom_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_legacy_pai",
+            new=AsyncMock(return_value=ok_response),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.patch_audit_data",
+            new=AsyncMock(return_value=ok_response),
+        ),
+    ):
+        result = await legacy_callback(request, "user-at", "user-token", "rp-123")
+
+    assert isinstance(result, RedirectResponse)
+    mock_register_client.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -536,6 +634,10 @@ async def test_legacy_callback_uses_session_rp_client_id():
         patch(
             "app.auth_legacy.services.callback.get_config",
             new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.register_client",
+            new=AsyncMock(),
         ),
         patch(
             "app.auth_legacy.services.callback.create_client",
@@ -594,6 +696,10 @@ async def test_legacy_callback_handles_oauth_error():
             new=AsyncMock(return_value=rp),
         ),
         patch(
+            "app.auth_legacy.services.callback.register_client",
+            new=AsyncMock(),
+        ),
+        patch(
             "app.auth_legacy.services.callback.create_client",
             new=AsyncMock(return_value=client),
         ),
@@ -632,6 +738,10 @@ async def test_legacy_callback_rejects_mismatched_state():
         patch(
             "app.auth_legacy.services.callback.get_config",
             new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.register_client",
+            new=AsyncMock(),
         ),
         patch(
             "app.auth_legacy.services.callback.create_client",
@@ -674,6 +784,10 @@ async def test_legacy_callback_rejects_invalid_id_token_nonce():
         patch(
             "app.auth_legacy.services.callback.get_config",
             new=AsyncMock(return_value=rp),
+        ),
+        patch(
+            "app.auth_legacy.services.callback.register_client",
+            new=AsyncMock(),
         ),
         patch(
             "app.auth_legacy.services.callback.create_client",

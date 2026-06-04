@@ -77,10 +77,17 @@ async def register_client(
         raise HTTPException(status_code=500, detail="Failed to create OIDC client")
 
 
+def has_registered_client(client_name: str) -> bool:
+    return client_name in oauth._clients
+
+
 # Create Legacy RP to OAuth
 async def create_client(client_name: str):
     try:
         client = oauth.create_client(client_name)
+        if client is None:
+            logger.error("OIDC client '%s' was not registered", client_name)
+            raise HTTPException(status_code=500, detail="Failed to create OIDC client")
 
         return client
 

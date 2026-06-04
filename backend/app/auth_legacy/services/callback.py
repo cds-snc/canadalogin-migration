@@ -9,7 +9,10 @@ from urllib.parse import quote
 
 from app.config import get_configuration
 from app.auth.services.auth import get_base_profile_management_url
-from app.auth_legacy.services.session_state import clear_legacy_oidc_session
+from app.auth_legacy.services.session_state import (
+    clear_legacy_oidc_session,
+    get_legacy_client_name,
+)
 from app.constants.session_keys import SessionKeys
 from app.constants.audit_status_keys import AuditStatusKeys
 from app.rp.services.config import get_config
@@ -23,7 +26,7 @@ from app.utils.correlation_id import (
     ensure_linking_attempt_id,
     ensure_session_correlation_id,
 )
-from app.utils.oidc import create_client
+from app.utils.oidc import create_client, has_registered_client, register_client
 from app.utils.request_error_handler import RequestErrorHandler
 
 config = get_configuration()
@@ -253,7 +256,21 @@ async def legacy_callback(
         legacy_idp = rp.IDP[0]
 
         # Unique for RP / IDP combo
-        client_name = f"{rp.rp_client_name}_{legacy_idp.client_name}"
+        client_name = get_legacy_client_name(request) or (
+            f"{rp.rp_client_name}_{legacy_idp.client_name}"
+        )
+        if not has_registered_client(client_name):
+            lang = normalize_language(
+                request.session.get(SessionKeys.CURRENT_LANGUAGE.value)
+            )
+            ui_locales = f"{lang}-CA"
+            await register_client(
+                request,
+                client_name,
+                legacy_idp,
+                ui_locales,
+                getattr(rp, "acr_values", ""),
+            )
         client = await create_client(client_name)
 
         token = await _authorize_legacy_access_token(
