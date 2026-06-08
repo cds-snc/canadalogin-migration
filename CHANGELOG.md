@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.8](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.7...v1.12.8) (2026-06-08)
+
+
+### Bug Fixes
+
+* **oidc:** push oidc fix plus version number alignment ([#322](https://github.com/cds-snc/canadalogin-migration/issues/322)) ([9f8e111](https://github.com/cds-snc/canadalogin-migration/commit/9f8e1110908990702a38b03f9216a3d292934aa7))
+* **session:** fix oidc client missing on aws task refresh or load bal… ([#319](https://github.com/cds-snc/canadalogin-migration/issues/319)) ([1bd5a14](https://github.com/cds-snc/canadalogin-migration/commit/1bd5a14f21cf6548eeeb606b7474648e926340bc))
+
 ## [1.12.7](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.6...v1.12.7) (2026-06-04)
 
 
