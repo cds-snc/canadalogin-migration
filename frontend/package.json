@@ -75,7 +75,7 @@
     "storybook": "^8.6.12",
     "storybook-addon-remix-react-router": "^4.0.1",
     "vite": "^6.3.2",
-    "vitest": "3.2.4"
+    "vitest": "3.2.6"
   },
   "vitest": {
     "jsx": "react-jsx"
