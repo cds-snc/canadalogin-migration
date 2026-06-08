@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -5,6 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.rp.schemas import LegacyIdpSchema
+from app.utils import oidc
 from app.utils.oidc import create_client, has_registered_client, register_client
 
 
@@ -150,3 +152,54 @@ async def test_create_client_raises_when_client_is_not_registered():
 
     assert raised.value.status_code == 500
     assert raised.value.detail == "Failed to create OIDC client"
+
+
+@pytest.mark.asyncio
+async def test_create_client_waits_for_in_progress_registration():
+    request = _build_request()
+    idp = _build_idp()
+    client_name = "rpname_SIC"
+    previous_client = object()
+    registered_client = object()
+    registration_gap_open = asyncio.Event()
+    allow_registration_to_finish = asyncio.Event()
+
+    async def delayed_metadata(_request, _openid_configuration):
+        registration_gap_open.set()
+        await allow_registration_to_finish.wait()
+        return _build_metadata()
+
+    def store_registered_client(**kwargs):
+        oidc.oauth._clients[kwargs["name"]] = registered_client
+
+    with (
+        patch.dict(oidc.oauth._clients, {client_name: previous_client}, clear=True),
+        patch(
+            "app.utils.oidc.get_legacy_idp_metadata",
+            new=AsyncMock(side_effect=delayed_metadata),
+        ),
+        patch("app.utils.oidc.oauth.register", side_effect=store_registered_client),
+        patch(
+            "app.utils.oidc.oauth.create_client",
+            side_effect=lambda name: oidc.oauth._clients.get(name),
+        ),
+    ):
+        register_task = asyncio.create_task(
+            register_client(
+                request,
+                client_name=client_name,
+                idp=idp,
+                ui_locales="en-CA",
+                acr_values="",
+            )
+        )
+        await registration_gap_open.wait()
+        assert client_name not in oidc.oauth._clients
+
+        create_task = asyncio.create_task(create_client(client_name))
+        await asyncio.sleep(0)
+        assert not create_task.done()
+
+        allow_registration_to_finish.set()
+        await register_task
+        assert await create_task is registered_client
