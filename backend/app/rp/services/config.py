@@ -10,7 +10,6 @@ from app.rp.schemas import LegacyIdpSecretSchema, RPConfigSourceSchema, RPSchema
 from app.utils.redis import get_redis_client
 from app.config import get_configuration
 
-
 # Get the desired log level from configuration
 config = get_configuration()
 log_level_str = config.LOG_LEVEL.upper()

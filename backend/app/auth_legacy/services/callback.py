@@ -18,7 +18,6 @@ from app.users.services.patch import patch_legacy_pai, patch_audit_data
 from app.utils.oidc import create_client
 from app.utils.request_error_handler import RequestErrorHandler
 
-
 # Get the desired log level from configuration
 config = get_configuration()
 log_level_str = config.LOG_LEVEL.upper()

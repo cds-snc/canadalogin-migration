@@ -21,7 +21,6 @@ from app.utils.schemas import ResponseModel
 from app.utils.redis import get_redis_client
 from app.constants.redis_keys import RedisKeys
 
-
 # Get the desired log level from configuration
 config = get_configuration()
 log_level_str = config.LOG_LEVEL.upper()

@@ -10,7 +10,6 @@ from app.rp.schemas import LegacyIdpSchema
 from app.rp.services.config import get_legacy_idp_metadata
 from app.config import get_configuration
 
-
 oauth = OAuth()
 # Get the desired log level from configuration
 config = get_configuration()

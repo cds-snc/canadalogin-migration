@@ -5,7 +5,6 @@ from fastapi import APIRouter, Request
 from app.constants.session_keys import SessionKeys
 from app.rp.services.config import get_rp_config_details
 
-
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
