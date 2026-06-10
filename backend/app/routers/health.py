@@ -1,9 +1,13 @@
 """Health-related endpoints."""
 
 import logging
-from fastapi import APIRouter, Request
-from pydantic import BaseModel, Field
 from datetime import datetime
+
+from fastapi import APIRouter, Request, status
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+
+from app.utils.redis import get_redis_client
 
 API_VERSION = "1.0.0"
 
@@ -19,9 +23,39 @@ class HealthResponse(BaseModel):
 router = APIRouter()
 
 
+def _health_payload(service_status: str) -> dict[str, str]:
+    return {
+        "status": service_status,
+        "timestamp": datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
+        "service": "gc-signin-migration-backend",
+    }
+
+
+async def _dependencies_ready(request: Request) -> bool:
+    if not hasattr(request.app.state, "request_client"):
+        logger.error("Health check failed: request client is not initialized")
+        return False
+
+    try:
+        redis_client = get_redis_client(request)
+        return bool(await redis_client.ping())
+    except ValueError as exc:
+        logger.error("Health check failed: Redis client not initialized: %s", exc)
+        return False
+    except Exception as exc:
+        logger.error("Health check failed: Redis dependency unavailable: %s", exc)
+        return False
+
+
 @router.get(
     "/health",
     response_model=HealthResponse,
+    responses={
+        status.HTTP_503_SERVICE_UNAVAILABLE: {
+            "model": HealthResponse,
+            "description": "Service dependencies are unavailable",
+        }
+    },
     summary="Health Check",
     description="Returns the health status of the service",
 )
@@ -34,8 +68,10 @@ async def health_check(request: Request):
     Returns:
         HealthResponse: Service health information including status and timestamp
     """
-    return {
-        "status": "healthy",
-        "timestamp": datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
-        "service": "gc-signin-migration-backend",
-    }
+    if not await _dependencies_ready(request):
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=HealthResponse(**_health_payload("unhealthy")).model_dump(),
+        )
+
+    return HealthResponse(**_health_payload("healthy"))

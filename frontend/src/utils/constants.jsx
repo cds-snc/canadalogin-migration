@@ -81,8 +81,8 @@ export const PAGES = {
 
 export const FOOTERS = {
   default: {
-    en: '{ "About GC Sign in": "https://gc-signin.cdssandbox.xyz/en/", "Help": "https://gc-signin.cdssandbox.xyz/en/", "Terms": "https://gc-signin.cdssandbox.xyz/en/" }',
-    fr: '{ "À propos de Connexion GC": "https://gc-signin.cdssandbox.xyz/en/", "Aide": "https://gc-signin.cdssandbox.xyz/fr/", "Avis": "https://gc-signin.cdssandbox.xyz/en/" }',
+    en: '{ "About GC Sign in": "https://login.canada.ca/en/users/what-is-canadalogin/", "Help": "https://login.canada.ca/en/users/", "Terms": "https://login.canada.ca/en/users/terms/" }',
+    fr: '{ "À propos": "https://connexion.canada.ca/fr/utilisateurs/a-propos/", "Aide": "https://connexion.canada.ca/fr/utilisateurs/", "Avis": "https://connexion.canada.ca/fr/utilisateurs/avis/" }',
   },
 };
 
@@ -149,10 +149,28 @@ export const GA_EVENTS = {
   click: "click",
 };
 
+export const GA_FORM_EVENTS = {
+  formSubmitComplete: "form_submit_complete",
+};
+
 export const GA_STEPS = {
   step1: "1",
   step2: "2",
   step3: "3",
+};
+
+export const MIGRATION_ANALYTICS = {
+  flowId: "migration",
+  eventLabels: {
+    startedLinking: "Started linking from migration prompt",
+    skippedLinking: "Skipped linking from migration prompt",
+    completedLinking: "Completed linking from confirmation",
+  },
+  types: {
+    startedLinking: "migration_started",
+    skippedLinking: "migration_skipped",
+    completedLinking: "migration_complete",
+  },
 };
 
 export const countryMapping = {

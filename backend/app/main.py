@@ -17,6 +17,7 @@ from app.utils.helpers import generate_error_response
 from app.auth.services.auth import redirect_user_to_idp_verify
 from app.constants.redis_keys import RedisKeys
 from app.constants.session_keys import SessionKeys
+from app.utils.logging_config import configure_logging
 
 from .routers import health
 from app.auth import v1_router as v1_auth_router
@@ -36,11 +37,8 @@ class HealthCheckFilter(logging.Filter):
         return record.getMessage().find("/health/health") == -1
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+log_level = getattr(logging, configuration.LOG_LEVEL.upper(), logging.INFO)
+configure_logging(log_level)
 logger = logging.getLogger(__name__)
 
 # Add filter to suppress healthcheck logs from Uvicorn access logs
@@ -68,9 +66,6 @@ redis_url = configuration.session_config.SESSION_REDIS_URL
 if configuration.ENVIRONMENT != "local":
     # Construct the Redis URL with TLS and authentication for non-local environments
     redis_url = f"rediss://:{configuration.session_config.REDIS_AUTH_SECRET}@{configuration.session_config.REDIS_DOMAIN}:{configuration.session_config.REDIS_PORT}?ssl_cert_reqs=none"
-    logger.info(f"Redis instance {configuration.session_config.REDIS_DOMAIN}")
-else:
-    logger.info(f"Redis instance {redis_url}")
 redis_client = Redis.from_url(redis_url)
 
 
@@ -79,31 +74,27 @@ async def lifespan(app: FastAPI):
     app.state.config = configuration
     ibm_verify_config = app.state.config.ibm_verify_config
     logger.info("Starting IBM Verify Integration API")
-    logger.info(f"Tenant URL: {ibm_verify_config.IBM_VERIFY_TENANT_URL}")
-    logger.info(f"Client ID: {ibm_verify_config.IBM_VERIFY_MIGRATION_API_CLIENT_ID}")
+    logger.info("Tenant URL: %s", ibm_verify_config.IBM_VERIFY_TENANT_URL)
+    logger.info("Client ID: %s", ibm_verify_config.IBM_VERIFY_MIGRATION_API_CLIENT_ID)
     logger.info(
-        f"PROFILE_MANAGEMENT_CLIENT_ID: {ibm_verify_config.IBM_VERIFY_MIGRATION_CLIENT_ID}"
+        "PROFILE_MANAGEMENT_CLIENT_ID: %s",
+        ibm_verify_config.IBM_VERIFY_MIGRATION_CLIENT_ID,
     )
-    logger.info("Application startup complete")
     app.state.request_client = httpx.AsyncClient()
 
     if redis_client is not None:
         pong = await redis_client.ping()
         if pong:
-            logger.info("Connected to Redis server successfully")
             app.state.redis_client = redis_client
 
     oidc_config.register_oidc(app.state.config)
-    logger.info(f"CORS Origins: {app.state.config.cors_origins_list}")
-    logger.info(f"oidc_well_known_config: {app.state.config.oidc_well_known_config}")
-    logger.info(f"my_profile_endpoint: {app.state.config.profile_api_endpoint}")
+    logger.info("CORS Origins: %s", app.state.config.cors_origins_list)
+    logger.info("oidc_well_known_config: %s", app.state.config.oidc_well_known_config)
+    logger.info("my_profile_endpoint: %s", app.state.config.profile_api_endpoint)
     yield
-    logger.info("Closing global HTTP client")
     await app.state.request_client.aclose()
-    logger.info("Shutting down IBM Verify Integration API")
     if hasattr(app.state, "redis_client"):
         await app.state.redis_client.close()
-        logger.info("Closing Redis client")
 
 
 app = FastAPI(
@@ -118,18 +109,15 @@ app = FastAPI(
 session_domain = None
 if configuration.ENVIRONMENT != "local":
     session_domain = f".{configuration.ROOT_DOMAIN}"
-logger.info(f"ROOT_DOMAIN: {session_domain}")
 
 session_store = RedisStore(
     connection=redis_client,
     prefix=RedisKeys.REDIS_SESSION_KEY.value,
     gc_ttl=configuration.session_config.SESSION_LIFETIME,
 )
-logger.info("Using RedisStore for session management")
 
 # Determine if cookie should be secure
 cookie_secure = False if configuration.ENVIRONMENT == "local" else True
-logger.info(f"Cookie Secure: {cookie_secure}")
 
 # CORS
 app.add_middleware(
@@ -205,7 +193,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     error_message = ""
     for error in exc.errors():
         error_message = error["msg"]
-        logger.error(f"Validation error: {error_message} at " + str(request.url))
+        logger.error("Validation error: %s at %s", error_message, request.url.path)
         break
     return generate_error_response(status_code=400, message=error_message)
 
@@ -284,5 +272,5 @@ def log_request_response(
             body_summary = "non-json"
 
         logger.info("[%s] Response body summary: %s", endpoint, body_summary)
-    except Exception as e:
-        logger.error(f"[{endpoint}] Error logging request/response: {str(e)}")
+    except Exception:
+        logger.error("[%s] Error logging request/response", endpoint)

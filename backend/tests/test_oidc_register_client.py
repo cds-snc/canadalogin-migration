@@ -2,9 +2,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 from app.rp.schemas import LegacyIdpSchema
-from app.utils.oidc import register_client
+from app.utils.oidc import create_client, has_registered_client, register_client
 
 
 def _build_request():
@@ -107,3 +108,45 @@ async def test_register_client_preserves_acr_value_casing():
     authorize_params = mock_register.call_args.kwargs["authorize_params"]
     assert authorize_params["ui_locales"] == "en-CA"
     assert authorize_params["acr_values"] == "gckey,MFA"
+
+
+@pytest.mark.asyncio
+async def test_register_client_omits_client_secret_when_missing():
+    request = _build_request()
+    idp = _build_idp()
+    idp.client_secret = None
+
+    with (
+        patch(
+            "app.utils.oidc.get_legacy_idp_metadata",
+            new=AsyncMock(return_value=_build_metadata()),
+        ),
+        patch("app.utils.oidc.oauth.register") as mock_register,
+    ):
+        await register_client(
+            request,
+            client_name="rpname_SIC",
+            idp=idp,
+            ui_locales="en-CA",
+            acr_values="",
+        )
+
+    assert "client_secret" not in mock_register.call_args.kwargs
+
+
+def test_has_registered_client_reads_oauth_registry():
+    with patch.dict(
+        "app.utils.oidc.oauth._clients", {"rpname_SIC": object()}, clear=True
+    ):
+        assert has_registered_client("rpname_SIC") is True
+        assert has_registered_client("other_client") is False
+
+
+@pytest.mark.asyncio
+async def test_create_client_raises_when_client_is_not_registered():
+    with patch("app.utils.oidc.oauth.create_client", return_value=None):
+        with pytest.raises(HTTPException) as raised:
+            await create_client("missing-client")
+
+    assert raised.value.status_code == 500
+    assert raised.value.detail == "Failed to create OIDC client"

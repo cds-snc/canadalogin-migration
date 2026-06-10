@@ -10,13 +10,22 @@ from app.constants.session_keys import SessionKeys
 @pytest.mark.asyncio
 async def test_auth_redirect_url_calls_service():
     request = MagicMock()
-    with patch(
-        "app.auth.v1_router.redirect_user_to_idp_verify",
-        new=AsyncMock(return_value="ok"),
-    ) as mocked:
-        result = await auth_router.redirect_url(request, clientId="cid", lang="en")
+    with (
+        patch("app.auth.v1_router.set_customparameters_in_session") as mock_set_custom,
+        patch(
+            "app.auth.v1_router.redirect_user_to_idp_verify",
+            new=AsyncMock(return_value="ok"),
+        ) as mocked,
+    ):
+        result = await auth_router.redirect_url(
+            request,
+            clientId="cid",
+            lang="en",
+            customparameters="encoded-value",
+        )
         assert result == "ok"
-        mocked.assert_awaited_once()
+        mock_set_custom.assert_called_once_with(request, "encoded-value")
+        mocked.assert_awaited_once_with(request, "cid", "en")
 
 
 @pytest.mark.asyncio
@@ -180,10 +189,20 @@ async def test_legacy_skip_calls_service():
 async def test_rp_config_details_calls_service():
     request = MagicMock()
     request.session = {SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1"}
-    with patch(
-        "app.rp.v1_router.get_rp_config_details",
-        new=AsyncMock(return_value={"ok": True}),
-    ) as mocked:
+    with (
+        patch(
+            "app.rp.v1_router.get_rp_return_parameters_from_session",
+            return_value={"foo": "bar"},
+        ),
+        patch(
+            "app.rp.v1_router.get_rp_config_details",
+            new=AsyncMock(return_value={"ok": True}),
+        ) as mocked,
+    ):
         result = await rp_router.handle_get_rp_config_details(request)
         assert result == {"ok": True}
-        mocked.assert_awaited_once()
+        mocked.assert_awaited_once_with(
+            rp_client_id="rp-1",
+            custom_parameters={"foo": "bar"},
+            language=None,
+        )

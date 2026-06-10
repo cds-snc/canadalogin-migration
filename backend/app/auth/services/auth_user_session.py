@@ -21,16 +21,12 @@ from app.utils.schemas import ResponseModel
 from app.utils.redis import get_redis_client
 from app.constants.redis_keys import RedisKeys
 
-# Get the desired log level from configuration
-config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
+
+
+def _redis_unavailable() -> HTTPException:
+    logger.error("Redis unavailable during session status flow")
+    return HTTPException(status_code=503, detail="Redis unavailable")
 
 
 async def get_http_client(request: Request) -> AsyncClient:
@@ -60,12 +56,9 @@ async def introspect_user_token(
 
         response.raise_for_status()
         response_json = response.json()
-        logger.debug(
-            f"returned response from introspect_token_api_endpoint: {response_json}"
-        )
         return response_json
     except Exception as e:
-        logger.error(f"Error introspect_user_token: {str(e)}", exc_info=True)
+        logger.error("Error during token introspection", exc_info=True)
         if isinstance(e, HTTPException):
             raise
         RequestErrorHandler.handle(e, context="introspect_user_token")
@@ -75,7 +68,7 @@ def set_rp_client_id_in_session(request: Request) -> None:
     if SessionKeys.RP_CLIENT_ID_KEY.value in request.query_params:
         rp_client_id = request.query_params[SessionKeys.RP_CLIENT_ID_KEY.value]
         request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = rp_client_id
-        logger.info(f"RP ClientID has been set: {rp_client_id}")
+        logger.info("RP client id stored in session")
 
 
 async def get_users_current_session(request: Request):
@@ -90,12 +83,9 @@ async def get_users_current_session(request: Request):
     user_access_token = request.session.get(
         SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value
     )
-    logger.info("Get Users Session")
-
     if not user_access_token:
         logger.info("Not authenticated - no user access token found")
         raise OAuthError("user access token not found")
-    logger.info("Access Token found in session")
     http_client = await get_http_client(request)
     validate_user_token_response = await introspect_user_token(
         http_client, user_access_token
@@ -124,9 +114,7 @@ async def ensure_user_token(request: Request):
             raise OAuthError("user token has expired")
         user_token = await refresh_token(refresh_token)
         update_session_tokens(request, user_token)
-        userinfo = user_token.get("userinfo")
-        sid = userinfo.get("sid") if userinfo else None
-        logger.info(f"User token refreshed and session updated. sid: {sid}")
+        logger.info("User token refreshed and session updated")
     return user_token
 
 
@@ -156,8 +144,8 @@ async def refresh_token(refresh_token: str):
             refresh_token=refresh_token, grant_type="refresh_token"
         )
         return new_tokens
-    except Exception as e:
-        logger.error(f"Error refreshing ID token: {str(e)}", exc_info=True)
+    except Exception:
+        logger.exception("Error refreshing Verify ID token")
         raise OAuthError("get new token has failed")
 
 
@@ -174,14 +162,15 @@ def update_session_tokens(request: Request, new_tokens: dict):
 async def get_session_data_by_id(request: Request, session_id: str):
     # Try to get Redis client from the application state
     session_data = None
-    redis_client = get_redis_client(request)
-    logger.debug(f"get session by sid: {session_id}")
+    try:
+        redis_client = get_redis_client(request)
+    except ValueError as exc:
+        raise _redis_unavailable() from exc
     # read the session from Redis for the given session_id
     cache_key = f"{RedisKeys.REDIS_SESSION_KEY.value}{session_id}"
     session = await redis_client.get(cache_key)
     session_data = session if session else None
     if session_data is None:
-        logger.debug(f"No session found for session_id: {session_id}")
         return None
     # Convert bytes to dict if necessary
     if isinstance(session_data, bytes):
@@ -197,8 +186,8 @@ async def session_event_sse_generator(request: Request):
     user_info = None
     try:
         user_info = await get_user_info(request)
-    except OAuthError as oe:
-        logger.error(f"OAuth error while fetching user info: {str(oe)}")
+    except OAuthError:
+        logger.error("OAuth error while fetching user info")
         return StreamingResponse(
             [
                 f"event: error\ndata: {SSEventData(status='error', error='Authentication error.').model_dump_json()}\n\n"
@@ -266,8 +255,12 @@ async def session_event_sse_generator(request: Request):
 
         except asyncio.CancelledError:
             logger.info("SSE stream cancelled")
-        except Exception as e:
-            logger.error(f"Error in event stream: {str(e)}")
+        except HTTPException as exc:
+            logger.error("Session event stream unavailable: %s", exc.detail)
+            message_data = SSEventData(status="error", error=str(exc.detail))
+            yield f"event: error\ndata: {message_data.model_dump_json()}\n\n"
+        except Exception:
+            logger.exception("Error in event stream for session_id=%s", session_id)
             message_data = SSEventData(
                 status="error", error="An internal error has occurred."
             )
@@ -348,7 +341,10 @@ async def is_backchannel_logout(request: Request, sid: str) -> bool:
         return False
 
     # Try to get Redis client from the application state
-    redis_client = get_redis_client(request)
+    try:
+        redis_client = get_redis_client(request)
+    except ValueError as exc:
+        raise _redis_unavailable() from exc
 
     # Use Redis to check if token was processed
     cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"

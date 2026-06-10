@@ -1,7 +1,6 @@
 import logging
 import threading
 
-from datetime import datetime
 from fastapi import HTTPException
 from httpx import AsyncClient
 from app.config import get_configuration
@@ -19,7 +18,7 @@ async def request_access_token(global_http_client: AsyncClient):
         settings = get_configuration().ibm_verify_config
 
         token_url = f"{settings.IBM_VERIFY_TENANT_URL}/oauth2/token"
-        logger.info(f"Attempting to get access token from: {token_url}")
+        logger.info("Attempting to get IBM Verify access token from: %s", token_url)
 
         data = {
             "grant_type": "client_credentials",
@@ -27,39 +26,27 @@ async def request_access_token(global_http_client: AsyncClient):
             "client_secret": settings.IBM_VERIFY_MIGRATION_API_SECRET,
             "scope": "openid",
         }
-        logger.debug(f"Token URL: {token_url}")
-
         response = await global_http_client.post(
             token_url,
             data=data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         response.raise_for_status()
-        logger.info("Request returned successfully")
         return response
 
     except Exception as e:
-        logger.error(f"Error requesting token: {str(e)}", exc_info=True)
+        logger.error("Error requesting IBM Verify token", exc_info=True)
         RequestErrorHandler.handle(e)
 
 
 async def get_admin_token(global_http_client: AsyncClient) -> str:
     """Get access token for IBM Verify API operations"""
     try:
-        logger.info("Attempting to get access token")
-
-        start_time = datetime.now()
         response = await request_access_token(global_http_client)
-        duration = (datetime.now() - start_time).total_seconds()
-        logger.info(f"Token request completed in {duration:.2f} seconds")
         response_json = response.json()
         access_token = response_json.get("access_token")
         if not access_token:
-            logger.error(
-                "Failed to get access token. Status=%s, Body=%s",
-                response.status_code,
-                response.text,
-            )
+            logger.error("Failed to get access token. Status=%s", response.status_code)
             raise HTTPException(status_code=400, detail="Server Error")
         return access_token
     except Exception as e:

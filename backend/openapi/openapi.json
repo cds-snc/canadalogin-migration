@@ -390,6 +390,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Service dependencies are unavailable"
           }
         },
         "summary": "Health Check"
@@ -618,6 +628,22 @@
                 }
               ],
               "title": "Lang"
+            }
+          },
+          {
+            "in": "query",
+            "name": "customparameters",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customparameters"
             }
           }
         ],

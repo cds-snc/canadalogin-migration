@@ -8,17 +8,9 @@ from pydantic import ValidationError
 
 from app.rp.schemas import LegacyIdpSecretSchema, RPConfigSourceSchema, RPSchema
 from app.utils.redis import get_redis_client
-from app.config import get_configuration
+from app.utils.custom_parameters import append_customparameters_to_url
+from app.utils.request_error_handler import RequestErrorHandler
 
-# Get the desired log level from configuration
-config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 CONFIG_ENV_VAR = "RP_MIGRATION_CONFIG"
@@ -48,18 +40,58 @@ async def get_config(
                 status_code=404, detail="Legacy IdP configuration not found"
             )
 
-        logger.debug(f"RP Config {matching_rp_idp}")
-
         return matching_rp_idp
 
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Exception while resolving RP config")
         raise
+
+
+def _normalize_redirect_language(language: str | None) -> str:
+    if not isinstance(language, str):
+        return "en"
+
+    normalized = language.strip().lower()
+    if "-" in normalized:
+        normalized = normalized.split("-")[0]
+
+    return normalized if normalized in ("en", "fr") else "en"
+
+
+def _is_present(value: object) -> bool:
+    return isinstance(value, str) and value.strip() != ""
+
+
+def resolve_rp_redirect_uri(rp: object, language: str | None = None) -> str:
+    normalized_language = _normalize_redirect_language(language)
+
+    if normalized_language == "fr":
+        candidates = (
+            getattr(rp, "rp_redirect_uri_fr", None),
+            getattr(rp, "rp_redirect_uri", None),
+            getattr(rp, "rp_redirect_uri_en", None),
+        )
+    else:
+        candidates = (
+            getattr(rp, "rp_redirect_uri_en", None),
+            getattr(rp, "rp_redirect_uri", None),
+            getattr(rp, "rp_redirect_uri_fr", None),
+        )
+
+    redirect_uri = next(
+        (candidate.strip() for candidate in candidates if _is_present(candidate)),
+        None,
+    )
+
+    if redirect_uri:
+        return redirect_uri
+
+    raise HTTPException(status_code=500, detail="RP redirect URI not configured")
 
 
 # load the legacy idp config, from wherever it is stored
 async def get_config_json() -> list:
-    global _CONFIG_JSON_CACHE
+    global _CONFIG_JSON_CACHE  # nosemgrep: no-mutable-module-global - per-process cache of immutable config loaded from environment variables; safe across instances
 
     try:
         # In-process cache (per worker process)
@@ -72,10 +104,6 @@ async def get_config_json() -> list:
                 f"Missing required configuration: {CONFIG_ENV_VAR} is not set or empty"
             )
 
-        logger.debug(
-            "Loading migration RP config from env var %s (local)",
-            CONFIG_ENV_VAR,
-        )
         try:
             source_data = _parse_config_json(env_payload)
         except Exception as e:
@@ -95,8 +123,8 @@ async def get_config_json() -> list:
 
         _CONFIG_JSON_CACHE = merged
         return merged
-    except Exception as e:
-        logger.error(f"Exception Error: {e}")
+    except Exception:
+        logger.error("Exception while loading RP config JSON")
         raise
 
 
@@ -173,7 +201,6 @@ def _merge_config_with_secrets(
     config_data: list, secrets_by_client_id: dict[str, str]
 ) -> list:
     merged: list = []
-    referenced_client_ids: set[str] = set()
     missing_secret_client_ids: set[str] = set()
 
     for rp in config_data:
@@ -184,7 +211,6 @@ def _merge_config_with_secrets(
             client_id = idp_copy.get("client_id")
 
             if client_id:
-                referenced_client_ids.add(client_id)
                 secret_from_env = secrets_by_client_id.get(client_id)
                 if secret_from_env:
                     idp_copy["client_secret"] = secret_from_env
@@ -198,11 +224,13 @@ def _merge_config_with_secrets(
         merged.append(rp_copy)
 
     if missing_secret_client_ids:
-        missing_ids = ", ".join(sorted(missing_secret_client_ids))
-        raise ValueError(
-            "Missing legacy IDP client_secret for client_id(s): "
-            f"{missing_ids}. Provide {CONFIG_SECRETS_ENV_VAR} entries keyed by client_id "
-            f"or include inline client_secret in {CONFIG_ENV_VAR}."
+        logger.warning(
+            "Missing legacy IDP client_secret for one or more configured client_id values. "
+            "Continuing without client_secret. Configure %s entries keyed by client_id "
+            "or include inline client_secret in %s if those IdPs require confidential "
+            "client auth.",
+            CONFIG_SECRETS_ENV_VAR,
+            CONFIG_ENV_VAR,
         )
 
     return merged
@@ -210,30 +238,43 @@ def _merge_config_with_secrets(
 
 # Fetch and cache legacy IdP metadata in Redis.
 async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 86400):
+    try:
+        redis_client = get_redis_client(request)
+        cached = await redis_client.get(idp_url)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(
+            "Redis unavailable during legacy IdP metadata lookup", exc_info=True
+        )
+        raise HTTPException(status_code=503, detail="Redis unavailable") from exc
 
-    redis_client = get_redis_client(request)
-
-    logger.info(f"IDP url: {idp_url}")
-
-    # Return cached metadata if available
-    cached = await redis_client.get(idp_url)
     if cached:
-        logger.debug("Cached value: %s", cached[:200])  # first 200 chars
         return json.loads(cached.decode("utf-8"))
 
     # Fetch metadata from legacy IdP
-    async with AsyncClient(timeout=20.0) as client:
-        resp = await client.get(idp_url)
-        resp.raise_for_status()
-        metadata = resp.json()
+    try:
+        async with AsyncClient(timeout=20.0) as client:
+            resp = await client.get(idp_url)
+            resp.raise_for_status()
+            metadata = resp.json()
+    except Exception as exc:
+        RequestErrorHandler.handle(exc, context="legacy IdP metadata fetch")
 
-    # Store in Redis with TTL
-    await redis_client.set(idp_url, json.dumps(metadata), ex=ttl)
+    try:
+        await redis_client.set(idp_url, json.dumps(metadata), ex=ttl)
+    except Exception as exc:
+        logger.error(
+            "Redis unavailable while caching legacy IdP metadata", exc_info=True
+        )
+        raise HTTPException(status_code=503, detail="Redis unavailable") from exc
     return metadata
 
 
 async def get_rp_config_details(
     rp_client_id: str,
+    custom_parameters: dict[str, str] | None = None,
+    language: str | None = None,
 ):
     try:
 
@@ -246,7 +287,10 @@ async def get_rp_config_details(
         is_gckey_only = "gckey" in normalized_acr_values
 
         rpConfig = {
-            "rp_redirect_url": rp.rp_redirect_uri,
+            "rp_redirect_url": append_customparameters_to_url(
+                resolve_rp_redirect_uri(rp, language), custom_parameters
+            ),
+            "rp_client_id": rp.rp_client_id,
             "rp_client_name": rp.rp_client_name,
             "rp_client_name_en": rp.rp_client_name_en,
             "rp_client_name_fr": rp.rp_client_name_fr,
@@ -256,6 +300,6 @@ async def get_rp_config_details(
 
         return rpConfig
 
-    except ValidationError as e:
-        logger.error(f"Validation Error: {e.json()}")
+    except ValidationError:
+        logger.error("Validation error while building RP config details")
         raise HTTPException(status_code=422, detail="Request data validation error")

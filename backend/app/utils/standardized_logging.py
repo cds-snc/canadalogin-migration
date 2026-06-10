@@ -9,6 +9,17 @@ import logging
 import hashlib
 import json
 
+from app.utils.correlation_id import (
+    bind_attempt_id,
+    bind_linking_attempt_id,
+    bind_correlation_id,
+    bind_session_correlation_id,
+    get_request_attempt_id,
+    get_request_correlation_id,
+    reset_attempt_id,
+    reset_correlation_id,
+)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 PROJECT_NAME = "GCAuth"
@@ -89,6 +100,8 @@ class StandardizedLoggingMiddleware(BaseHTTPMiddleware):
             "request": self.build_request(request),
             "response": self.build_response(response),
             "endpoint": self.build_endpoint(request),
+            "correlation_id": get_request_correlation_id(request),
+            "attempt_id": get_request_attempt_id(request),
         }
 
         # Only include keys where the value is truthy
@@ -128,36 +141,45 @@ class StandardizedLoggingMiddleware(BaseHTTPMiddleware):
         return None
 
     async def dispatch(self, request: Request, call_next):
+        request.state.correlation_id = None
+        request.state.attempt_id = None
+        correlation_token = bind_correlation_id(None)
+        attempt_token = bind_attempt_id(None)
+        bind_session_correlation_id(request)
+        bind_linking_attempt_id(request)
         try:
             response = await call_next(request)
-        except Exception as exc:
+        except Exception:
             # Log unhandled exceptions (500 errors)
-            logger.error(f"Unhandled exception: {exc} | Path: {request.url.path}")
+            logger.error("Unhandled exception on path %s", request.url.path)
             raise
+        try:
+            context = await self.build_context(request, response)
+            # Get response status
+            log_level = logging.INFO
+            level = "INFO"
 
-        context = await self.build_context(request, response)
-        # Get response status
-        log_level = logging.INFO
-        level = "INFO"
+            if response.status_code >= 400 and response.status_code < 500:
+                log_level = logging.WARNING
+                level = "WARNING"
+            elif response.status_code >= 500:
+                log_level = logging.ERROR
+                level = "ERROR"
 
-        if response.status_code >= 400 and response.status_code < 500:
-            log_level = logging.WARNING
-            level = "WARNING"
-        elif response.status_code >= 500:
-            log_level = logging.ERROR
-            level = "ERROR"
+            if response.status_code >= 400:
+                logger.log(
+                    log_level,
+                    json.dumps(
+                        {
+                            "code": f"{PROJECT_NAME}.{APPLICATION_NAME}.{level}.{response.status_code}",
+                            "level": level,
+                            "context": context,
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        }
+                    ),
+                )
 
-        if response.status_code >= 400:
-            logger.log(
-                log_level,
-                json.dumps(
-                    {
-                        "code": f"{PROJECT_NAME}.{APPLICATION_NAME}.{level}.{response.status_code}",
-                        "level": level,
-                        "context": context,
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    }
-                ),
-            )
-
-        return response
+            return response
+        finally:
+            reset_correlation_id(correlation_token)
+            reset_attempt_id(attempt_token)

@@ -9,24 +9,27 @@ from urllib.parse import quote
 
 from app.config import get_configuration
 from app.auth.services.auth import get_base_profile_management_url
+from app.auth_legacy.services.session_state import (
+    clear_legacy_oidc_session,
+    get_legacy_client_name,
+)
 from app.constants.session_keys import SessionKeys
 from app.constants.audit_status_keys import AuditStatusKeys
 from app.rp.services.config import get_config
 from app.users.services.custom_attributes import get_user_custom_attributes
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_legacy_pai, patch_audit_data
-from app.utils.oidc import create_client
+from app.utils.auth_flow_logging import log_auth_flow_event
+from app.utils.correlation_id import (
+    bind_linking_attempt_id,
+    bind_session_correlation_id,
+    ensure_linking_attempt_id,
+    ensure_session_correlation_id,
+)
+from app.utils.oidc import create_client, has_registered_client, register_client
 from app.utils.request_error_handler import RequestErrorHandler
 
-# Get the desired log level from configuration
 config = get_configuration()
-log_level_str = config.LOG_LEVEL.upper()
-
-# Convert string level to the logging module's level constant (e.g., "DEBUG" to logging.DEBUG)
-log_level = getattr(logging, log_level_str, logging.INFO)
-
-# Apply the configuration
-logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -87,6 +90,145 @@ def normalize_language(lang: str | None) -> str:
     return language if language in ("en", "fr") else "en"
 
 
+def _reject_legacy_callback(
+    request: Request,
+    *,
+    rp_client_id: str,
+    step: str,
+    reason: str,
+    client_name: str | None = None,
+    legacy_provider: str | None = None,
+) -> None:
+    log_auth_flow_event(
+        logger,
+        flow="migration",
+        step=step,
+        outcome="rejected",
+        rp_client_id=rp_client_id,
+        legacy_provider=legacy_provider,
+        reason=reason,
+    )
+    clear_legacy_oidc_session(request, clear_attempt_id=True, client_name=client_name)
+    raise OAuthError("Invalid or expired token")
+
+
+def _validate_legacy_callback_state(
+    request: Request,
+    *,
+    client_name: str,
+    rp_client_id: str,
+    legacy_provider: str,
+) -> None:
+    callback_state = request.query_params.get("state")
+    expected_state = request.session.get(f"{client_name}_state")
+    if callback_state and callback_state != expected_state:
+        _reject_legacy_callback(
+            request,
+            rp_client_id=rp_client_id,
+            step="legacy_callback_state",
+            reason="mismatched_state",
+            client_name=client_name,
+            legacy_provider=legacy_provider,
+        )
+
+
+async def _authorize_legacy_access_token(
+    request: Request,
+    *,
+    client,
+    client_name: str,
+    rp_client_id: str,
+    legacy_provider: str,
+):
+    _validate_legacy_callback_state(
+        request,
+        client_name=client_name,
+        rp_client_id=rp_client_id,
+        legacy_provider=legacy_provider,
+    )
+
+    verifier = request.session.get(f"{client_name}_code_verifier")
+    try:
+        token = await client.authorize_access_token(request, code_verifier=verifier)
+    except OAuthError as error:
+        logger.error("OAuth error during legacy callback token retrieval")
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_token_exchange",
+            outcome="rejected",
+            rp_client_id=rp_client_id,
+            legacy_provider=legacy_provider,
+            reason="invalid_state_or_code_verifier",
+        )
+        clear_legacy_oidc_session(
+            request, clear_attempt_id=True, client_name=client_name
+        )
+        RequestErrorHandler.handle(error, context="OAuth error during legacy callback")
+
+    log_auth_flow_event(
+        logger,
+        flow="migration",
+        step="legacy_token_exchange",
+        outcome="succeeded",
+        rp_client_id=rp_client_id,
+        legacy_provider=legacy_provider,
+    )
+    return token
+
+
+async def _parse_legacy_id_token(
+    request: Request,
+    *,
+    client,
+    token: dict,
+    client_name: str,
+    rp_client_id: str,
+    legacy_provider: str,
+) -> tuple[dict, str | None]:
+    nonce = request.session.get(f"{client_name}_nonce")
+    state = request.session.get(f"{client_name}_state")
+
+    if not nonce:
+        _reject_legacy_callback(
+            request,
+            rp_client_id=rp_client_id,
+            step="legacy_id_token_validation",
+            reason="missing_nonce",
+            client_name=client_name,
+            legacy_provider=legacy_provider,
+        )
+
+    if "id_token" not in token:
+        logger.error(
+            "Token response missing id_token. Check requested scope includes 'openid'. "
+            "Token keys: %s",
+            list(token.keys()),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Token response missing id_token (scope likely missing 'openid')",
+        )
+
+    try:
+        user = await client.parse_id_token(token, nonce)
+    except Exception:
+        logger.error(
+            "Legacy callback rejected during ID token validation", exc_info=True
+        )
+        _reject_legacy_callback(
+            request,
+            rp_client_id=rp_client_id,
+            step="legacy_id_token_validation",
+            reason="invalid_or_mismatched_nonce",
+            client_name=client_name,
+            legacy_provider=legacy_provider,
+        )
+
+    clear_legacy_oidc_session(request, client_name=client_name)
+    return user, state
+
+
 async def legacy_callback(
     request: Request,
     user_access_token: str,
@@ -94,50 +236,73 @@ async def legacy_callback(
     rp_client_id: str,
 ):
     try:
+        correlation_id = ensure_session_correlation_id(request)
+        attempt_id = ensure_linking_attempt_id(request)
         session_rp_client_id = request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
         if session_rp_client_id:
             rp_client_id = session_rp_client_id
         elif not rp_client_id:
             raise HTTPException(status_code=400, detail="Missing RP client id")
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_callback",
+            outcome="started",
+            rp_client_id=rp_client_id,
+        )
 
         # RP with SIC only has 1 IDP
         rp = await get_config(rp_client_id)
         legacy_idp = rp.IDP[0]
 
         # Unique for RP / IDP combo
-        client_name = f"{rp.rp_client_name}_{legacy_idp.client_name}"
-        logger.debug(f"Callback Client Name: {client_name}")
+        client_name = get_legacy_client_name(request) or (
+            f"{rp.rp_client_name}_{legacy_idp.client_name}"
+        )
+        if not has_registered_client(client_name):
+            lang = normalize_language(
+                request.session.get(SessionKeys.CURRENT_LANGUAGE.value)
+            )
+            ui_locales = f"{lang}-CA"
+            await register_client(
+                request,
+                client_name,
+                legacy_idp,
+                ui_locales,
+                getattr(rp, "acr_values", ""),
+            )
         client = await create_client(client_name)
-        # Exchange authorization code for tokens
-        verifier = request.session.get(f"{client_name}_code_verifier")
-        try:
-            token = await client.authorize_access_token(request, code_verifier=verifier)
-        except OAuthError as e:
-            logger.error(f"OAuth error during legacy callback token retrieval: {e}")
-            RequestErrorHandler.handle(e, context="OAuth error during legacy callback")
-        logger.debug("Token response keys: %s", list(token.keys()))
 
-        # Parse ID token & extract legacy PAI
-        nonce = request.session.get(f"{client_name}_nonce")
-        state = request.session.get(f"{client_name}_state")
-        if "id_token" not in token:
-            logger.error(
-                "Token response missing id_token. Check requested scope includes 'openid'. "
-                "Token keys: %s",
-                list(token.keys()),
-            )
-            raise HTTPException(
-                status_code=500,
-                detail="Token response missing id_token (scope likely missing 'openid')",
-            )
-
-        user = await client.parse_id_token(token, nonce)
+        token = await _authorize_legacy_access_token(
+            request,
+            client=client,
+            client_name=client_name,
+            rp_client_id=rp_client_id,
+            legacy_provider=legacy_idp.client_name,
+        )
+        user, state = await _parse_legacy_id_token(
+            request,
+            client=client,
+            token=token,
+            client_name=client_name,
+            rp_client_id=rp_client_id,
+            legacy_provider=legacy_idp.client_name,
+        )
         legacy_pai = user["sub"]
 
         global_http_client = request.app.state.request_client
 
         # Return IBM Id
         ibm_id = get_ibm_id(session_user_token)
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_identity_resolved",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+        )
 
         # Get Users Custom Attributes
         custom_attributes = await get_user_custom_attributes(
@@ -150,35 +315,66 @@ async def legacy_callback(
             rp.dependent_client_ids,
         )
         patch_legacy_pai_response = await patch_legacy_pai(
-            global_http_client,
-            ibm_id,
-            rp_client_id,
-            custom_attributes,
-            legacy_pai,
+            global_http_client=global_http_client,
+            ibm_id=ibm_id,
+            rp_client_id=rp_client_id,
+            custom_attributes=custom_attributes,
+            legacy_pai=legacy_pai,
             target_rp_client_ids=target_rp_client_ids,
+            correlation_id=correlation_id,
+            attempt_id=attempt_id,
         )
         _raise_for_failed_patch_response(
             patch_legacy_pai_response, operation_name="patch_legacy_pai"
         )
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_pai_patch",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+            target_rp_client_count=len(target_rp_client_ids),
+        )
 
         # AUDIT DATA LOGIC + PATCH
         patch_audit_data_response = await patch_audit_data(
-            global_http_client,
-            ibm_id,
-            rp_client_id,
-            custom_attributes,
-            AuditStatusKeys.LINKED_KEY.value,
+            global_http_client=global_http_client,
+            ibm_id=ibm_id,
+            rp_client_id=rp_client_id,
+            custom_attributes=custom_attributes,
+            status=AuditStatusKeys.LINKED_KEY.value,
+            correlation_id=correlation_id,
+            attempt_id=attempt_id,
         )
         _raise_for_failed_patch_response(
             patch_audit_data_response, operation_name="patch_audit_data"
         )
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="audit_patch",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            audit_status=AuditStatusKeys.LINKED_KEY.value,
+            legacy_provider=legacy_idp.client_name,
+        )
 
         # The discovery metadata is stored here:
         idp_metadata = client.server_metadata
-        logger.debug(f"IDP Metadata: {idp_metadata}")
-
         if not config.LEGACY_IDP_LOGOUT_ENABLED:
             logger.info("Legacy IdP logout disabled; skipping end-session redirect.")
+            log_auth_flow_event(
+                logger,
+                flow="migration",
+                step="legacy_logout_redirect",
+                outcome="skipped",
+                rp_client_id=rp_client_id,
+                user_id=ibm_id,
+                legacy_provider=legacy_idp.client_name,
+            )
             return await legacy_post_logout_callback(request)
 
         # Grab the logout endpoint
@@ -202,19 +398,33 @@ async def legacy_callback(
             f"&state={state}"
             f"&client_id=e1a58c16-a649-45e1-b80c-3cd3daaeea0d"
         )
-
-        logger.debug(f"Logout URL: {logout_url}")
+        log_auth_flow_event(
+            logger,
+            flow="migration",
+            step="legacy_logout_redirect",
+            outcome="succeeded",
+            rp_client_id=rp_client_id,
+            user_id=ibm_id,
+            legacy_provider=legacy_idp.client_name,
+        )
 
         return RedirectResponse(url=logout_url)
 
     except httpx.HTTPStatusError as e:
-        # HTTPX error for status codes like 401
-        if e.response.status_code == 401:
-            return {"error": "Unauthorized: Invalid credentials or token"}
-        return {"error": f"HTTP error: {e.response.status_code}"}
+        status_code = e.response.status_code if e.response else 502
+        error_detail = (
+            _extract_error_detail(e.response) if e.response else "Unknown error"
+        )
+        logger.error(
+            "legacy_callback upstream HTTP error status=%s detail=%s",
+            status_code,
+            error_detail,
+            exc_info=True,
+        )
+        raise HTTPException(status_code=status_code, detail=error_detail) from e
 
-    except ValidationError as e:
-        logger.error(f"Validation Error: {e.json()}")
+    except ValidationError:
+        logger.error("Validation error during legacy callback")
         raise HTTPException(status_code=422, detail="Request data validation error")
     except OAuthError as e:
         raise e
@@ -225,11 +435,22 @@ async def legacy_callback(
 
 async def legacy_post_logout_callback(request: Request):
     # Logged out of legacy IDP Redirect to profile management language sync page.
+    bind_session_correlation_id(request)
+    bind_linking_attempt_id(request)
     lang = normalize_language(request.session.get(SessionKeys.CURRENT_LANGUAGE.value))
     lang_path = "/" + lang
     page_path = "/link/lang-sync"
 
     base_profile_url = get_base_profile_management_url()
     redirect_url = f"{base_profile_url}{lang_path}{page_path}"
+    log_auth_flow_event(
+        logger,
+        flow="migration",
+        step="post_logout_redirect",
+        outcome="succeeded",
+        rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),
+        lang=lang,
+    )
+    clear_legacy_oidc_session(request, clear_attempt_id=True)
 
     return RedirectResponse(url=redirect_url, status_code=302)

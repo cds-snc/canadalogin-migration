@@ -1,11 +1,17 @@
 import json
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from app.rp.services.config import get_config, get_config_json, get_rp_config_details
+from app.rp.services.config import (
+    get_config,
+    get_config_json,
+    get_legacy_idp_metadata,
+    get_rp_config_details,
+)
 
 
 def _sample_rp_config(include_inline_secret: bool = False):
@@ -103,6 +109,7 @@ async def test_get_rp_config_details_marks_gckey_only_when_configured(monkeypatc
     with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
         details = await get_rp_config_details("rp-123")
 
+    assert details["rp_client_id"] == "rp-123"
     assert details["acr_values"] == "gckey, MFA"
     assert details["is_gckey_only"] is True
 
@@ -120,13 +127,58 @@ async def test_get_rp_config_details_marks_not_gckey_only_when_blank(monkeypatch
 
 
 @pytest.mark.asyncio
-async def test_get_config_json_raises_when_secret_missing_for_client_id(monkeypatch):
+async def test_get_rp_config_details_appends_custom_parameters(monkeypatch):
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
+    monkeypatch.setenv("RP_MIGRATION_CONFIG_SECRETS", json.dumps(_sample_rp_secrets()))
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        details = await get_rp_config_details(
+            "rp-123",
+            custom_parameters={"fakeparam1": "value-1", "fakeparam2": "value-2"},
+        )
+
+    assert (
+        details["rp_redirect_url"]
+        == "https://rp.example.test/landing?fakeparam1=value-1&fakeparam2=value-2"
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_rp_config_details_prefers_language_specific_redirect(monkeypatch):
+    config = _sample_rp_config()
+    config[0]["rp_redirect_uri_en"] = "https://rp.example.test/landing/en"
+    config[0]["rp_redirect_uri_fr"] = "https://rp.example.test/landing/fr"
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(config))
+    monkeypatch.setenv("RP_MIGRATION_CONFIG_SECRETS", json.dumps(_sample_rp_secrets()))
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        details = await get_rp_config_details("rp-123", language="fr-CA")
+
+    assert details["rp_redirect_url"] == "https://rp.example.test/landing/fr"
+
+
+@pytest.mark.asyncio
+async def test_get_config_json_tolerates_missing_secret_for_client_id(monkeypatch):
     monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
     monkeypatch.delenv("RP_MIGRATION_CONFIG_SECRETS", raising=False)
 
     with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
-        with pytest.raises(ValueError, match="Missing legacy IDP client_secret"):
-            await get_config_json()
+        payload = await get_config_json()
+
+    assert payload[0]["IDP"][0]["client_id"] == "cid"
+    assert payload[0]["IDP"][0].get("client_secret") is None
+
+
+@pytest.mark.asyncio
+async def test_get_config_allows_missing_secret_for_client_id(monkeypatch):
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
+    monkeypatch.delenv("RP_MIGRATION_CONFIG_SECRETS", raising=False)
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        rp = await get_config("rp-123")
+
+    assert rp.IDP[0].client_id == "cid"
+    assert rp.IDP[0].client_secret is None
 
 
 @pytest.mark.asyncio
@@ -177,3 +229,34 @@ async def test_get_config_json_ignores_unused_secret_client_ids(monkeypatch):
         payload = await get_config_json()
 
     assert payload[0]["IDP"][0]["client_secret"] == "secret"
+
+
+@pytest.mark.asyncio
+async def test_get_legacy_idp_metadata_raises_503_when_redis_missing():
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace()))
+
+    with pytest.raises(HTTPException) as raised:
+        await get_legacy_idp_metadata(
+            request, "https://idp.example.test/.well-known/openid-configuration"
+        )
+
+    assert raised.value.status_code == 503
+    assert raised.value.detail == "Redis unavailable"
+
+
+@pytest.mark.asyncio
+async def test_get_legacy_idp_metadata_raises_503_when_redis_get_fails():
+    redis_client = SimpleNamespace(
+        get=AsyncMock(side_effect=RuntimeError("redis down"))
+    )
+    request = SimpleNamespace(
+        app=SimpleNamespace(state=SimpleNamespace(redis_client=redis_client))
+    )
+
+    with pytest.raises(HTTPException) as raised:
+        await get_legacy_idp_metadata(
+            request, "https://idp.example.test/.well-known/openid-configuration"
+        )
+
+    assert raised.value.status_code == 503
+    assert raised.value.detail == "Redis unavailable"

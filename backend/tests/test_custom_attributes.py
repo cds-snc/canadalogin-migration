@@ -1,7 +1,12 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from app.users.schemas import CustomAttribute
 from app.users.services.custom_attributes import (
     get_attribute_value,
     get_custom_attribute,
+    get_user_custom_attributes,
 )
 
 
@@ -49,3 +54,19 @@ def test_get_custom_attribute_returns_value_when_present():
     ]
     result = get_custom_attribute("beta", attributes)
     assert result == ["2", "3"]
+
+
+@pytest.mark.asyncio
+async def test_get_user_custom_attributes_returns_none_when_extension_missing():
+    http_client = AsyncMock()
+    response = MagicMock(status_code=200)
+    response.json.return_value = {"success": True, "message": "ok"}
+    http_client.get = AsyncMock(return_value=response)
+
+    with patch(
+        "app.users.services.custom_attributes.get_configuration",
+        return_value=MagicMock(profile_api_endpoint="https://example.test/profile"),
+    ):
+        result = await get_user_custom_attributes(http_client, "user-token")
+
+    assert result is None

@@ -8,6 +8,7 @@ from app.auth.services.auth import (
     callback_handler,
     reauthenticate_user,
 )
+from app.utils.custom_parameters import set_customparameters_in_session
 from app.auth.services.auth_user_session import (
     session_event_sse_generator,
 )
@@ -39,7 +40,9 @@ async def redirect_url(
     request: Request,
     clientId: Optional[str] = None,
     lang: Optional[str] = None,
+    customparameters: Optional[str] = None,
 ):
+    set_customparameters_in_session(request, customparameters)
     return await redirect_user_to_idp_verify(request, clientId, lang)
 
 

@@ -10,12 +10,34 @@ logger = logging.getLogger(__name__)
 class RequestErrorHandler:
     """Reusable exception handler for token-related requests."""
 
+    SAFE_DETAIL_KEYS = ("detail", "message", "error", "messageId")
+
     @staticmethod
     def extract_response_body(response):
         try:
             return response.json()
         except ValueError:
             return {"messageId": response.text}
+
+    @staticmethod
+    def extract_safe_error_detail(response) -> str | None:
+        if response is None:
+            return None
+
+        try:
+            payload = response.json()
+        except ValueError:
+            return None
+
+        if not isinstance(payload, dict):
+            return None
+
+        for key in RequestErrorHandler.SAFE_DETAIL_KEYS:
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+        return None
 
     @staticmethod
     def handle(exc: Exception, context: str = "API request") -> None:
@@ -26,9 +48,22 @@ class RequestErrorHandler:
                 else status.HTTP_502_BAD_GATEWAY
             )
             url = str(exc.request.url) if exc.request else "unknown"
-            logger.error(
-                "%s failed (status=%s, url=%s)", context, response_status_code, url
-            )
+            safe_detail = RequestErrorHandler.extract_safe_error_detail(exc.response)
+            if safe_detail:
+                logger.error(
+                    "%s failed (status=%s, url=%s, detail=%s)",
+                    context,
+                    response_status_code,
+                    url,
+                    safe_detail,
+                )
+            else:
+                logger.error(
+                    "%s failed (status=%s, url=%s)",
+                    context,
+                    response_status_code,
+                    url,
+                )
             if response_status_code in [
                 status.HTTP_429_TOO_MANY_REQUESTS,
                 status.HTTP_400_BAD_REQUEST,
@@ -37,13 +72,7 @@ class RequestErrorHandler:
                 body = RequestErrorHandler.extract_response_body(exc.response)
 
                 logger.error(
-                    "%s failed (status=%s, url=%s, messageId=%s, message=%s, detail=%s)",
-                    context,
-                    response_status_code,
-                    url,
-                    body.get("messageId", "N/A"),
-                    body.get("message", "N/A"),
-                    body.get("detail", "N/A"),
+                    "%s failed with client-safe upstream error details", context
                 )
 
                 if response_status_code == status.HTTP_429_TOO_MANY_REQUESTS:
@@ -71,7 +100,7 @@ class RequestErrorHandler:
             ) from exc
 
         elif isinstance(exc, ValidationError):
-            logger.error("%s schema validation failed: %s", context, exc.errors())
+            logger.error("%s schema validation failed", context)
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Validation Error",

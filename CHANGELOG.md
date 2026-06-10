@@ -1,5 +1,187 @@
 # Changelog
 
+## [1.12.8](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.7...v1.12.8) (2026-06-08)
+
+
+### Bug Fixes
+
+* **oidc:** push oidc fix plus version number alignment ([#322](https://github.com/cds-snc/canadalogin-migration/issues/322)) ([9f8e111](https://github.com/cds-snc/canadalogin-migration/commit/9f8e1110908990702a38b03f9216a3d292934aa7))
+* **session:** fix oidc client missing on aws task refresh or load bal… ([#319](https://github.com/cds-snc/canadalogin-migration/issues/319)) ([1bd5a14](https://github.com/cds-snc/canadalogin-migration/commit/1bd5a14f21cf6548eeeb606b7474648e926340bc))
+
+## [1.12.7](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.6...v1.12.7) (2026-06-04)
+
+
+### Bug Fixes
+
+* **deployment:** update prod version for release ([#317](https://github.com/cds-snc/canadalogin-migration/issues/317)) ([25e2f30](https://github.com/cds-snc/canadalogin-migration/commit/25e2f3054678e5f28fd58daa431a661f5de846f9))
+
+## [1.12.6](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.5...v1.12.6) (2026-06-02)
+
+
+### Bug Fixes
+
+* **deploy:** deploy to staging ([#315](https://github.com/cds-snc/canadalogin-migration/issues/315)) ([8a639c4](https://github.com/cds-snc/canadalogin-migration/commit/8a639c4c776954b984e67a8b0d1d9c88c510261e))
+
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump pytest from 8.4.2 to 9.0.3 in /backend ([#257](https://github.com/cds-snc/canadalogin-migration/issues/257)) ([c4dbe25](https://github.com/cds-snc/canadalogin-migration/commit/c4dbe259ce4becd16dd9553514dc7cd0ed1a2355))
+* **deps:** bump authlib from 1.6.9 to 1.6.12 in /backend ([#294](https://github.com/cds-snc/canadalogin-migration/issues/294)) ([db74151](https://github.com/cds-snc/canadalogin-migration/commit/db741515691a4dc694c6b9b6e8ff7facd842a421))
+* **deps:** bump python-multipart from 0.0.24 to 0.0.27 in /backend ([#290](https://github.com/cds-snc/canadalogin-migration/issues/290)) ([e495658](https://github.com/cds-snc/canadalogin-migration/commit/e4956583caca134e263a94b0ff080bffa7104380))
+* **deps:** update all non-major github action dependencies ([#184](https://github.com/cds-snc/canadalogin-migration/issues/184)) ([2b4d57c](https://github.com/cds-snc/canadalogin-migration/commit/2b4d57cf65ef0d0b6ccb82e3387b324c90418f64))
+* **deps:** update all patch dependencies ([#277](https://github.com/cds-snc/canadalogin-migration/issues/277)) ([b3f1b90](https://github.com/cds-snc/canadalogin-migration/commit/b3f1b90d2cb3d542dc467f7ce23971f1c910e547))
+* **deps:** update all patch dependencies ([#311](https://github.com/cds-snc/canadalogin-migration/issues/311)) ([241c221](https://github.com/cds-snc/canadalogin-migration/commit/241c22100cb85640aaf83cfd9ba86574a24da70e))
+* **deps:** update dependency black to v26 [security] ([#199](https://github.com/cds-snc/canadalogin-migration/issues/199)) ([003ce95](https://github.com/cds-snc/canadalogin-migration/commit/003ce953dd3aec290a4d269b73782e217ba4444f))
+* **deps:** update dependency prettier to v3.8.3 ([#273](https://github.com/cds-snc/canadalogin-migration/issues/273)) ([a864bfd](https://github.com/cds-snc/canadalogin-migration/commit/a864bfda32a623ce36cc255b8c8999d0e8561243))
+* **deps:** update dependency python-multipart to v0.0.27 [security] ([#269](https://github.com/cds-snc/canadalogin-migration/issues/269)) ([447a961](https://github.com/cds-snc/canadalogin-migration/commit/447a961142c56924d03a59e6fea5fea736e66719))
+* upgrade pip to 26.1 to fix CVE-2026-3219 ([#310](https://github.com/cds-snc/canadalogin-migration/issues/310)) ([aa832cd](https://github.com/cds-snc/canadalogin-migration/commit/aa832cd35d24400a978075f05b503c1bc04a4290))
+
+## [1.12.5](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.4...v1.12.5) (2026-05-27)
+
+
+### Bug Fixes
+
+* **nvda:** added ids ([#308](https://github.com/cds-snc/gc-sign-in-migration/issues/308)) ([3eb9645](https://github.com/cds-snc/gc-sign-in-migration/commit/3eb9645e6dbbbfd080cbdfa1593174cdbbc290e9))
+
+
+### Miscellaneous Chores
+
+* add LICENSE and SECURITY.md ([#301](https://github.com/cds-snc/gc-sign-in-migration/issues/301)) ([18e42da](https://github.com/cds-snc/gc-sign-in-migration/commit/18e42da04e3f68d139ee353ce3c181b899e0f943))
+
+## [1.12.4](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.3...v1.12.4) (2026-05-27)
+
+
+### Bug Fixes
+
+* **nvda:** add landmarks ([#305](https://github.com/cds-snc/gc-sign-in-migration/issues/305)) ([cabe022](https://github.com/cds-snc/gc-sign-in-migration/commit/cabe02215a7307c5d21a0b92d26de7057ccaf142))
+
+## [1.12.3](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.2...v1.12.3) (2026-05-26)
+
+
+### Bug Fixes
+
+* **NVDA:** fix screen loading since NVDA cannot handle dyanmic page loading content ([#303](https://github.com/cds-snc/gc-sign-in-migration/issues/303)) ([81d356f](https://github.com/cds-snc/gc-sign-in-migration/commit/81d356f7a94020ff6e6622cdc0b0f145ef766e60))
+
+## [1.12.2](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.1...v1.12.2) (2026-05-19)
+
+
+### Bug Fixes
+
+* **GA:** removed some rxtra events and aligned parameters ([#296](https://github.com/cds-snc/gc-sign-in-migration/issues/296)) ([f64c306](https://github.com/cds-snc/gc-sign-in-migration/commit/f64c3069d9a4dc681bde4e485458ba54d22eaf25))
+
+## [1.12.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.12.0...v1.12.1) (2026-05-13)
+
+
+### Bug Fixes
+
+* **GA:** added some GA enhancements and alignments ([#293](https://github.com/cds-snc/gc-sign-in-migration/issues/293)) ([3ae1325](https://github.com/cds-snc/gc-sign-in-migration/commit/3ae1325695b932d08c9ce141821f3534f0279a8f))
+
+## [1.12.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.11.1...v1.12.0) (2026-05-12)
+
+
+### Features
+
+* Add semgrep linter to catch local container state ([#288](https://github.com/cds-snc/gc-sign-in-migration/issues/288)) ([8a8d0c1](https://github.com/cds-snc/gc-sign-in-migration/commit/8a8d0c12e5ea31ac1de1782fe76423b390728950))
+
+
+### Bug Fixes
+
+* **deploy:** forceDeployToTest ([#291](https://github.com/cds-snc/gc-sign-in-migration/issues/291)) ([f75a787](https://github.com/cds-snc/gc-sign-in-migration/commit/f75a787dfb9850020d50540b308b3acf7e6604ec))
+
+## [1.11.1](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.11.0...v1.11.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* **GA:** added support to pass rp name and client id and also trigger completi… ([#285](https://github.com/cds-snc/gc-sign-in-migration/issues/285)) ([5422e47](https://github.com/cds-snc/gc-sign-in-migration/commit/5422e474ec275ca6309c0e7961a777205586ed3d))
+
+## [1.11.0](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.16...v1.11.0) (2026-04-30)
+
+
+### Features
+
+* Implement load test system in CI, disabled for now ([#283](https://github.com/cds-snc/gc-sign-in-migration/issues/283)) ([32db907](https://github.com/cds-snc/gc-sign-in-migration/commit/32db907aa9b373a64a88928f6ff3624059f17837))
+
+
+### Bug Fixes
+
+* **staging:** deploy ([#280](https://github.com/cds-snc/gc-sign-in-migration/issues/280)) ([636fe8d](https://github.com/cds-snc/gc-sign-in-migration/commit/636fe8de1b2537c936438967c6fc5feed4fd682d))
+
+## [1.10.16](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.15...v1.10.16) (2026-04-28)
+
+
+### Bug Fixes
+
+* **logs:** resolve issue with logs exceeding 1000 characters per entry ([#276](https://github.com/cds-snc/gc-sign-in-migration/issues/276)) ([d15b2ef](https://github.com/cds-snc/gc-sign-in-migration/commit/d15b2ef6e55ab5ac1f5eaca0e6b982309d14c078))
+
+## [1.10.15](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.14...v1.10.15) (2026-04-15)
+
+
+### Bug Fixes
+
+* **bug:** add missing info banner with english and french urls ([#267](https://github.com/cds-snc/gc-sign-in-migration/issues/267)) ([7889b7f](https://github.com/cds-snc/gc-sign-in-migration/commit/7889b7f13697b05290004bdbd52cf5a53f3fc8a4))
+* **release:** deploy to prod ([#265](https://github.com/cds-snc/gc-sign-in-migration/issues/265)) ([4836dc4](https://github.com/cds-snc/gc-sign-in-migration/commit/4836dc4d17d6e9cc3239e68f004753daa567a1f2))
+
+## [1.10.14](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.13...v1.10.14) (2026-04-14)
+
+
+### Bug Fixes
+
+* **release:** release to test and staging ([#263](https://github.com/cds-snc/gc-sign-in-migration/issues/263)) ([d565b41](https://github.com/cds-snc/gc-sign-in-migration/commit/d565b41650763ecc44a1def885704acb97900a55))
+* **release:** releasling latest to test and staging ([#259](https://github.com/cds-snc/gc-sign-in-migration/issues/259)) ([cbb53dc](https://github.com/cds-snc/gc-sign-in-migration/commit/cbb53dcd7e6f68deec6feb0938a3169133721ef6))
+
+## [1.10.13](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.12...v1.10.13) (2026-04-13)
+
+
+### Bug Fixes
+
+* **deps:** update dependency axios to &gt;=1.13.5 &lt;1.15.1 [security] ([#241](https://github.com/cds-snc/gc-sign-in-migration/issues/241)) ([c68a693](https://github.com/cds-snc/gc-sign-in-migration/commit/c68a693baf953d18af5f307a9716a04b030e7cde))
+* **migration:** fail closed on SIC and Redis dependency errors ([#252](https://github.com/cds-snc/gc-sign-in-migration/issues/252)) ([7da1918](https://github.com/cds-snc/gc-sign-in-migration/commit/7da1918bc172ac3ea1b605a55deb5693c6d9cb3d))
+* **saa:** implemented code to meet controls ([#254](https://github.com/cds-snc/gc-sign-in-migration/issues/254)) ([80d79e8](https://github.com/cds-snc/gc-sign-in-migration/commit/80d79e8fd80e4f9ded1a1cdc16b829af1d764166))
+
+## [1.10.12](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.11...v1.10.12) (2026-04-12)
+
+
+### Bug Fixes
+
+* **axios:** updated the versioning around axios ([#237](https://github.com/cds-snc/gc-sign-in-migration/issues/237)) ([2ec845f](https://github.com/cds-snc/gc-sign-in-migration/commit/2ec845fd51173e37c12ff46382bc3e87ec27c256))
+* **lang:** added missing french translations ([#239](https://github.com/cds-snc/gc-sign-in-migration/issues/239)) ([e47de50](https://github.com/cds-snc/gc-sign-in-migration/commit/e47de501f53b531e1dee200df2752772f3c9d3dd))
+* **logging:** added correlation ids and cleaned up logging a bit to c… ([#250](https://github.com/cds-snc/gc-sign-in-migration/issues/250)) ([a1dc8ed](https://github.com/cds-snc/gc-sign-in-migration/commit/a1dc8edd5cfca0567af50846a1acbbce2e76bd42))
+* **staging:** deploy to staging ([#242](https://github.com/cds-snc/gc-sign-in-migration/issues/242)) ([ff84422](https://github.com/cds-snc/gc-sign-in-migration/commit/ff8442233e82ab0028afb255d79252fba45b49a2))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump cryptography from 46.0.5 to 46.0.7 in /backend ([#238](https://github.com/cds-snc/gc-sign-in-migration/issues/238)) ([eb90156](https://github.com/cds-snc/gc-sign-in-migration/commit/eb901560d5853272b788164df5716ae1f60c1f18))
+* **deps:** bump requests from 2.32.5 to 2.33.0 in /backend ([#224](https://github.com/cds-snc/gc-sign-in-migration/issues/224)) ([eb31928](https://github.com/cds-snc/gc-sign-in-migration/commit/eb31928a7342d1302cb9ea1369328dc625da7b84))
+* **deps:** update all patch dependencies ([#217](https://github.com/cds-snc/gc-sign-in-migration/issues/217)) ([17feb54](https://github.com/cds-snc/gc-sign-in-migration/commit/17feb5429c1a4a5cf2904d95aad00477410ededc))
+* **deps:** update all patch dependencies ([#253](https://github.com/cds-snc/gc-sign-in-migration/issues/253)) ([28d2109](https://github.com/cds-snc/gc-sign-in-migration/commit/28d2109abb7ad8f469f99f754d2111bc953f0b2b))
+* **deps:** update dependency uvicorn to v0.43.0 ([#228](https://github.com/cds-snc/gc-sign-in-migration/issues/228)) ([7fd667b](https://github.com/cds-snc/gc-sign-in-migration/commit/7fd667b912dd2127db000b1d664703c64a4e957e))
+
+## [1.10.11](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.10...v1.10.11) (2026-03-26)
+
+
+### Bug Fixes
+
+* **logging:** removed and cleanup logging, was to much uncessarily been logged to a… ([#225](https://github.com/cds-snc/gc-sign-in-migration/issues/225)) ([adb6a4d](https://github.com/cds-snc/gc-sign-in-migration/commit/adb6a4d0a3a3f4ecee57beb51eb7d81ff92fcbc5))
+
+## [1.10.10](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.9...v1.10.10) (2026-03-24)
+
+
+### Bug Fixes
+
+* **extraParam:** support for extra parameters being sent bt RP to IBM… ([#212](https://github.com/cds-snc/gc-sign-in-migration/issues/212)) ([4f74c8b](https://github.com/cds-snc/gc-sign-in-migration/commit/4f74c8b9cb054f43ce71169c1725ba5db12b436d))
+* **language:** Feature/new french t ranslations ([#222](https://github.com/cds-snc/gc-sign-in-migration/issues/222)) ([5238903](https://github.com/cds-snc/gc-sign-in-migration/commit/5238903c3f4cf539b4064885ea31945f2ae3e9d7))
+* **staging:** deploy to staging ([#208](https://github.com/cds-snc/gc-sign-in-migration/issues/208)) ([db7c400](https://github.com/cds-snc/gc-sign-in-migration/commit/db7c4006585481afc5207e6d529509a732cc433c))
+
+## [1.10.9](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.8...v1.10.9) (2026-03-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update dependency pre-commit to v4.5.1 ([#203](https://github.com/cds-snc/gc-sign-in-migration/issues/203)) ([77c97a9](https://github.com/cds-snc/gc-sign-in-migration/commit/77c97a9029a75a176de77bafbbab2b5dd67112ea))
+* **deps:** update dependency pyjwt to v2.12.0 [security] ([#202](https://github.com/cds-snc/gc-sign-in-migration/issues/202)) ([d5bcf31](https://github.com/cds-snc/gc-sign-in-migration/commit/d5bcf31ad3045310c5059dec8c3d734701f1afac))
+
 ## [1.10.8](https://github.com/cds-snc/gc-sign-in-migration/compare/v1.10.7...v1.10.8) (2026-03-17)
 
 

@@ -9,15 +9,19 @@ import { getPageContent } from "../../../utils/functions.jsx";
 
 import {
   PAGES,
-  GA_LABELS,
   GA_CATEGORIES,
-  GA_EVENTS,
-  GA_STEPS,
+  GA_FORM_EVENTS,
+  MIGRATION_ANALYTICS,
 } from "../../../utils/constants.jsx";
 
 import { useParams } from "react-router";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
+import {
+  getLocalizedRpName,
+  getRpAnalyticsParams,
+  replaceRpName,
+} from "../utils/relyingParty.js";
 import { MigrationStepper } from "./MigrationStepper.jsx";
 import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
 
@@ -56,23 +60,22 @@ export default function LinkSuccess() {
   };
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
+  const rpName = getLocalizedRpName(rpData, language);
+  const rpAnalyticsParams = getRpAnalyticsParams(rpData);
 
   return (
-    <GcdsContainer>
+    <GcdsContainer role="main">
       <MigrationStepper currentStep={3} />
       <GcdsHeading tag="h1" lang={language}>
         {pageContentJson["title"]}
       </GcdsHeading>
 
       {errorMessage ? <GcdsText>{errorMessage}</GcdsText> : null}
-      <GcdsText>
-        {pageContentJson["text_1"].replace(
-          "{RP_Name}",
-          language != "en"
-            ? rpData?.rp_client_name_fr
-            : rpData?.rp_client_name_en,
-        )}
-      </GcdsText>
+      {rpName ? (
+        <GcdsText>
+          {replaceRpName(pageContentJson["text_1"], rpData, language)}
+        </GcdsText>
+      ) : null}
       <GcdsText>{pageContentJson["text_2"]}</GcdsText>
       <ul className="list-disc mt-0">
         <li>{pageContentJson["list_text_1"]}</li>
@@ -80,13 +83,18 @@ export default function LinkSuccess() {
       </ul>
       <div className="mt-500">
         <GcdsButton
+          id="access-account-button"
+          buttonId="access-account-button-control"
           onGcdsClick={(ev) => {
             ev.preventDefault();
             trackEvent({
               category: GA_CATEGORIES.formSubmit,
-              action: GA_EVENTS.click,
-              label: `${GA_LABELS.button}_MigrationConfirmation`,
-              step: GA_STEPS.step2,
+              action: GA_FORM_EVENTS.formSubmitComplete,
+              label: MIGRATION_ANALYTICS.eventLabels.completedLinking,
+              form_id: MIGRATION_ANALYTICS.flowId,
+              type: MIGRATION_ANALYTICS.types.completedLinking,
+              status: "success",
+              ...rpAnalyticsParams,
             });
             continueToRP();
           }}

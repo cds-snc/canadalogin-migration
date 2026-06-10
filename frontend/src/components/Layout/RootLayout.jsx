@@ -22,14 +22,14 @@ export default function RootLayout() {
   }, [currentLang]);
 
   useEffect(() => {
-    document.title = currentLang === "fr" ? "CanadaConnexion" : "CanadaLogin";
+    document.title = currentLang === "fr" ? "ConnexionCanada" : "CanadaLogin";
   }, [currentLang]);
 
   return (
     <div className="mainBody">
       <Header langHref={langHref} currentLang={currentLang} />
       <GcdsContainer className="gcds-page">
-        <GcdsContainer size="sm" className="gcds-content">
+        <GcdsContainer size="sm" className="gcds-content" id="main-content">
           <Outlet />
         </GcdsContainer>
       </GcdsContainer>

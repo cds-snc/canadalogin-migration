@@ -10,6 +10,11 @@ import {
 import { getPageContent } from "../../../utils/functions.jsx";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
+import {
+  getLocalizedRpName,
+  getRpAnalyticsParams,
+  replaceRpName,
+} from "../utils/relyingParty.js";
 import { useParams } from "react-router";
 import { MigrationStepper } from "./MigrationStepper.jsx";
 import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
@@ -17,10 +22,9 @@ import { useTrackPage, useTrackEvent } from "../../../utils/gatag.jsx";
 import {
   PAGES,
   MIGRATION_END_POINTS,
-  GA_LABELS,
   GA_CATEGORIES,
-  GA_EVENTS,
-  GA_STEPS,
+  GA_FORM_EVENTS,
+  MIGRATION_ANALYTICS,
 } from "../../../utils/constants.jsx";
 
 export default function LinkPrompt() {
@@ -29,43 +33,82 @@ export default function LinkPrompt() {
   const trackEvent = useTrackEvent();
 
   const [serverErrorMessage] = useState("");
+  const [rpLoadState, setRpLoadState] = useState({
+    language,
+    isLoading: true,
+    data: null,
+  });
 
   const pageContentJson = getPageContent(language, PAGES.LinkPrompt);
   const errorPageJson = getPageContent(language, PAGES.error);
+  const pageTitle = pageContentJson["title"];
+  const productTitle = language === "fr" ? "ConnexionCanada" : "CanadaLogin";
 
   useTrackPage("Migration - Legacy method prompt");
 
-  const [links, setLinks] = useState({
-    LinkingLink: "",
-    SkipLink: "",
-  });
-
-  const [rpData, setRpData] = useState(null);
+  const linkingLink = `${MIGRATION_END_POINTS.login}?lang=${language}`;
+  const skipLink = MIGRATION_END_POINTS.skip;
 
   useEffect(() => {
+    let isCurrent = true;
+
     async function getRPData() {
+      setRpLoadState({
+        language,
+        isLoading: true,
+        data: null,
+      });
+
       try {
         const data = await updateLinkStateAPI.getRPAuthUrl();
-        setRpData(data);
+        if (isCurrent) {
+          setRpLoadState({
+            language,
+            isLoading: false,
+            data: data || {},
+          });
+        }
       } catch (e) {
         console.error("Failed loading RP data", e);
+        if (isCurrent) {
+          setRpLoadState({
+            language,
+            isLoading: false,
+            data: {},
+          });
+        }
       }
     }
 
-    try {
-      const LinkingLink = MIGRATION_END_POINTS.login + "?lang=" + language;
-      const SkipLink = MIGRATION_END_POINTS.skip;
+    getRPData();
 
-      setLinks({ LinkingLink, SkipLink });
-    } catch (e) {
-      console.error("Failed building links", e);
+    return () => {
+      isCurrent = false;
+    };
+  }, [language]);
+
+  const isPageReady =
+    !rpLoadState.isLoading && rpLoadState.language === language;
+  const rpData = isPageReady ? rpLoadState.data : null;
+
+  useEffect(() => {
+    if (!isPageReady) {
+      return;
     }
 
-    getRPData();
-  }, [language]);
+    document.title = pageTitle
+      ? `${pageTitle} - ${productTitle}`
+      : productTitle;
+
+    return () => {
+      document.title = productTitle;
+    };
+  }, [isPageReady, pageTitle, productTitle]);
 
   const errorMessage = errorPageJson[serverErrorMessage] || "";
   const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
+  const rpName = getLocalizedRpName(rpData, language);
+  const rpAnalyticsParams = getRpAnalyticsParams(rpData);
   const linkButtonText = isGcKeyOnly
     ? pageContentJson["btn_1_gckey_only"] || pageContentJson["btn_1"]
     : pageContentJson["btn_1"];
@@ -73,8 +116,12 @@ export default function LinkPrompt() {
     ? pageContentJson["text_4_gckey_only"] || pageContentJson["text_4"]
     : pageContentJson["text_4"];
 
+  if (!isPageReady) {
+    return null;
+  }
+
   return (
-    <GcdsContainer>
+    <GcdsContainer role="main">
       <MigrationStepper currentStep={2} />
       <GcdsHeading tag="h1" lang={language}>
         {pageContentJson["title"]}
@@ -82,24 +129,26 @@ export default function LinkPrompt() {
 
       {errorMessage ? <GcdsText>{errorMessage}</GcdsText> : null}
 
-      <GcdsText>
-        {pageContentJson["text_2"].replace(
-          "{RP_Name}",
-          language != "en"
-            ? rpData?.rp_client_name_fr
-            : rpData?.rp_client_name_en,
-        )}
-      </GcdsText>
+      {rpName ? (
+        <GcdsText>
+          {replaceRpName(pageContentJson["text_2"], rpData, language)}
+        </GcdsText>
+      ) : null}
       <GcdsText>{pageContentJson["text_3"]}</GcdsText>
       <GcdsButton
+        id="sign-in-old-method-button"
+        buttonId="sign-in-old-method-button-control"
         type="link"
-        href={links.LinkingLink}
+        href={linkingLink}
         onGcdsClick={() => {
           trackEvent({
             category: GA_CATEGORIES.formSubmit,
-            action: GA_EVENTS.click,
-            label: `${GA_LABELS.button}_StartMigration`,
-            step: GA_STEPS.step1,
+            action: GA_FORM_EVENTS.formSubmitComplete,
+            label: MIGRATION_ANALYTICS.eventLabels.startedLinking,
+            form_id: MIGRATION_ANALYTICS.flowId,
+            type: MIGRATION_ANALYTICS.types.startedLinking,
+            status: "success",
+            ...rpAnalyticsParams,
           });
         }}
       >
@@ -108,34 +157,39 @@ export default function LinkPrompt() {
 
       <div className="mt-500 mb-700">
         <GcdsNotice
-          type="info"
+          noticeRole="info"
           noticeTitle={pageContentJson["notice_title"]}
           noticeTitleTag="h2"
           lang={language}
         >
-          <GcdsLink href="#" external>
+          <GcdsLink
+            id="sign-in-method-help-link"
+            href={pageContentJson["link_1_url"]}
+            external
+          >
             {pageContentJson["link_1"]}
           </GcdsLink>
         </GcdsNotice>
       </div>
-      <GcdsHeading tag="h2" lang={language}>
-        {pageContentJson["subtitle"].replace(
-          "{RP_Name}",
-          language != "en"
-            ? rpData?.rp_client_name_fr
-            : rpData?.rp_client_name_en,
-        )}
-      </GcdsHeading>
+      {rpName ? (
+        <GcdsHeading tag="h2" lang={language}>
+          {replaceRpName(pageContentJson["subtitle"], rpData, language)}
+        </GcdsHeading>
+      ) : null}
       <GcdsText>{skipHelpText}</GcdsText>
       <GcdsText>
         <GcdsLink
-          href={links.SkipLink}
+          id="skip-create-new-account-link"
+          href={skipLink}
           onGcdsClick={() => {
             trackEvent({
               category: GA_CATEGORIES.formSubmit,
-              action: GA_EVENTS.click,
-              label: `${GA_LABELS.link}_SkipMigration`,
-              step: GA_STEPS.step1,
+              action: GA_FORM_EVENTS.formSubmitComplete,
+              label: MIGRATION_ANALYTICS.eventLabels.skippedLinking,
+              form_id: MIGRATION_ANALYTICS.flowId,
+              type: MIGRATION_ANALYTICS.types.skippedLinking,
+              status: "success",
+              ...rpAnalyticsParams,
             });
           }}
         >

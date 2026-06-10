@@ -237,6 +237,8 @@ class PatchRequest(BaseModel):
 class LegacyPaiDataSchema(BaseModel):
     client_id: str
     pai: str
+    correlation_id: Optional[str] = None
+    attempt_id: Optional[str] = None
 
 
 class AuditDataSchema(BaseModel):
@@ -244,9 +246,23 @@ class AuditDataSchema(BaseModel):
     legacy_idp: str
     timestamp: str
     status: str
+    correlation_id: Optional[str] = None
+    attempt_id: Optional[str] = None
+
+
+class ProcessingAttemptSchema(BaseModel):
+    correlation_id: Optional[str] = None
+    attempt_id: Optional[str] = None
+    timestamp: str
 
 
 class ProcessingDataSchema(BaseModel):
     client_id: str
-    retry_count: int
+    retry_count: int = 0
     timestamp: str
+    first_attempt_timestamp: Optional[str] = None
+    last_attempt_timestamp: Optional[str] = None
+    correlation_id: Optional[str] = None
+    attempt_id: Optional[str] = None
+    # Read old nested processing records, but never write nested attempts back to IBM.
+    attempts: List[ProcessingAttemptSchema] = Field(default_factory=list, exclude=True)
