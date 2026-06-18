@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.12.9](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.8...v1.12.9) (2026-06-18)
+
+
+### Bug Fixes
+
+* **SIC:** fixed migration code to support SIC ACR multi values ([#335](https://github.com/cds-snc/canadalogin-migration/issues/335)) ([405cdbf](https://github.com/cds-snc/canadalogin-migration/commit/405cdbfa0239c287b78639857991198f06cf3b9e))
+
+
+### Miscellaneous Chores
+
+* **ci:** add PR title check workflow ([#312](https://github.com/cds-snc/canadalogin-migration/issues/312)) ([5d5082d](https://github.com/cds-snc/canadalogin-migration/commit/5d5082d3614a64fab71d5db779280107ce09c545))
+* **deps:** update all minor dependencies ([#274](https://github.com/cds-snc/canadalogin-migration/issues/274)) ([dc08550](https://github.com/cds-snc/canadalogin-migration/commit/dc08550c6bc97129d0880fc0863b554226aa1161))
+
 ## [1.12.8](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.7...v1.12.8) (2026-06-08)
 
 
