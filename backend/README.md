@@ -67,7 +67,7 @@ If the language API is unavailable or blocked (CORS/cookie policy/network), the 
 - `""` (blank): no forced MFA; legacy provider choice unchanged (e.g., GCKey + Interac)
 - `"gckey"`: GCKey only
 - `"MFA"`: force MFA prompt
-- `"gckey,MFA"`: GCKey only + force MFA prompt
+- `"gckeymfa"`: GCKey only + force MFA prompt
 
 `RP_MIGRATION_CONFIG` also supports per-language RP return URLs:
 - `rp_redirect_uri_en`: used when the migration session language is English
