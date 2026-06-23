@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.12.10](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.9...v1.12.10) (2026-06-23)
+
+
+### Bug Fixes
+
+* **auth:** added prompt login to SIC auth call ([#342](https://github.com/cds-snc/canadalogin-migration/issues/342)) ([2db668c](https://github.com/cds-snc/canadalogin-migration/commit/2db668c9011a44183a750b84450eb4ec457513a9))
+
+
+### Miscellaneous Chores
+
+* **release:** deploye 1.12.9 to prod ([#338](https://github.com/cds-snc/canadalogin-migration/issues/338)) ([cc8d4d6](https://github.com/cds-snc/canadalogin-migration/commit/cc8d4d63ca804836b40a22183bd9b442267ea4a2))
+* **staging:** set staging version to 1.12.9 ([#336](https://github.com/cds-snc/canadalogin-migration/issues/336)) ([9bec14d](https://github.com/cds-snc/canadalogin-migration/commit/9bec14d1d7422c56785dba4d43ac946c7f31a03c))
+
 ## [1.12.9](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.8...v1.12.9) (2026-06-18)
 
 
