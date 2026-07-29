@@ -284,7 +284,7 @@ async def get_rp_config_details(
             for value in (rp.acr_values or "").split(",")
             if value.strip()
         }
-        is_gckey_only = "gckey" in normalized_acr_values
+        is_gckey_only = any("gckey" in value for value in normalized_acr_values)
 
         rpConfig = {
             "rp_redirect_url": append_customparameters_to_url(
