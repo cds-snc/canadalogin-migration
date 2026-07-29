@@ -14,8 +14,7 @@ import {
 import { getPageContent } from "../../../utils/functions.jsx";
 
 import { MIGRATION_END_POINTS, PAGES } from "../../../utils/constants.jsx";
-import { useParams } from "react-router";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router";
 
 export default function SkipLink() {
   const { language } = useParams();
