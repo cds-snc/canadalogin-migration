@@ -911,6 +911,7 @@ async def test_sic_legacy_login_auth_sets_session_and_state():
     assert kwargs["nonce"] == "nonce-token"
     assert kwargs["code_challenge"] == "challenge-token"
     assert kwargs["code_challenge_method"] == "S256"
+    assert kwargs["prompt"] == "login"
     assert kwargs["ui_locales"] == "en-CA"
 
 
