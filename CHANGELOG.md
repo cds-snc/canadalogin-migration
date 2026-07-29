@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.12.10](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.9...v1.12.10) (2026-06-23)
+
+
+### Bug Fixes
+
+* **auth:** added prompt login to SIC auth call ([#342](https://github.com/cds-snc/canadalogin-migration/issues/342)) ([2db668c](https://github.com/cds-snc/canadalogin-migration/commit/2db668c9011a44183a750b84450eb4ec457513a9))
+
+
+### Miscellaneous Chores
+
+* **release:** deploye 1.12.9 to prod ([#338](https://github.com/cds-snc/canadalogin-migration/issues/338)) ([cc8d4d6](https://github.com/cds-snc/canadalogin-migration/commit/cc8d4d63ca804836b40a22183bd9b442267ea4a2))
+* **staging:** set staging version to 1.12.9 ([#336](https://github.com/cds-snc/canadalogin-migration/issues/336)) ([9bec14d](https://github.com/cds-snc/canadalogin-migration/commit/9bec14d1d7422c56785dba4d43ac946c7f31a03c))
+
+## [1.12.9](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.8...v1.12.9) (2026-06-18)
+
+
+### Bug Fixes
+
+* **SIC:** fixed migration code to support SIC ACR multi values ([#335](https://github.com/cds-snc/canadalogin-migration/issues/335)) ([405cdbf](https://github.com/cds-snc/canadalogin-migration/commit/405cdbfa0239c287b78639857991198f06cf3b9e))
+
+
+### Miscellaneous Chores
+
+* **ci:** add PR title check workflow ([#312](https://github.com/cds-snc/canadalogin-migration/issues/312)) ([5d5082d](https://github.com/cds-snc/canadalogin-migration/commit/5d5082d3614a64fab71d5db779280107ce09c545))
+* **deps:** update all minor dependencies ([#274](https://github.com/cds-snc/canadalogin-migration/issues/274)) ([dc08550](https://github.com/cds-snc/canadalogin-migration/commit/dc08550c6bc97129d0880fc0863b554226aa1161))
+
+## [1.12.8](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.7...v1.12.8) (2026-06-08)
+
+
+### Bug Fixes
+
+* **oidc:** push oidc fix plus version number alignment ([#322](https://github.com/cds-snc/canadalogin-migration/issues/322)) ([9f8e111](https://github.com/cds-snc/canadalogin-migration/commit/9f8e1110908990702a38b03f9216a3d292934aa7))
+* **session:** fix oidc client missing on aws task refresh or load bal… ([#319](https://github.com/cds-snc/canadalogin-migration/issues/319)) ([1bd5a14](https://github.com/cds-snc/canadalogin-migration/commit/1bd5a14f21cf6548eeeb606b7474648e926340bc))
+
 ## [1.12.7](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.6...v1.12.7) (2026-06-04)
 
 

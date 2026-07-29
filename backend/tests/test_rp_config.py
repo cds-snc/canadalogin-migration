@@ -115,6 +115,22 @@ async def test_get_rp_config_details_marks_gckey_only_when_configured(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_get_rp_config_details_marks_gckey_only_when_acr_combines_mfa(
+    monkeypatch,
+):
+    config = _sample_rp_config()
+    config[0]["acr_values"] = "gckeymfa"
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(config))
+    monkeypatch.setenv("RP_MIGRATION_CONFIG_SECRETS", json.dumps(_sample_rp_secrets()))
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        details = await get_rp_config_details("rp-123")
+
+    assert details["acr_values"] == "gckeymfa"
+    assert details["is_gckey_only"] is True
+
+
+@pytest.mark.asyncio
 async def test_get_rp_config_details_marks_not_gckey_only_when_blank(monkeypatch):
     monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
     monkeypatch.setenv("RP_MIGRATION_CONFIG_SECRETS", json.dumps(_sample_rp_secrets()))
