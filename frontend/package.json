@@ -70,7 +70,7 @@
     "msw": "^2.7.5",
     "msw-storybook-addon": "^2.0.4",
     "playwright": "^1.52.0",
-    "prettier": "3.8.3",
+    "prettier": "3.9.6",
     "prop-types": "^15.8.1",
     "storybook": "^8.6.12",
     "storybook-addon-remix-react-router": "^4.0.1",
