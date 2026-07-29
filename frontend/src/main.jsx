@@ -4,7 +4,7 @@ import "@gcds-core/components-react/gcds.css";
 import "@gcds-core/css-shortcuts/dist/gcds-css-shortcuts.min.css";
 import "./index.css";
 import router from "./router";
-import { RouterProvider } from "react-router";
+import { RouterProvider } from "react-router/dom";
 import ReactGA from "react-ga4";
 
 import config from "./config.jsx";

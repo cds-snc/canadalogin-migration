@@ -189,6 +189,7 @@ async def SIC_legacy_login_auth(
             state=state,
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
+            prompt="login",
             ui_locales=ui_locales,
         )
         log_auth_flow_event(

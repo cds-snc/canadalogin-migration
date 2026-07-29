@@ -1,4 +1,4 @@
-import { expect, within } from "@storybook/test";
+import { expect, within } from "storybook/test";
 import { AVAILABLE_LANGUAGES, PAGES } from "../../../utils/constants.jsx";
 import { buildTestCase, TestTemplate } from "../utils/functions.tsx";
 import NoticeFactory from "../../../components/InfoBlocks/NoticeFactory.jsx";

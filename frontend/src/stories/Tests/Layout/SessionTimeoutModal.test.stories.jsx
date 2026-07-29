@@ -1,4 +1,4 @@
-import { expect, userEvent, within } from "@storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import SessionTimeoutModal from "../../../components/Layout/SessionTimeoutModal";
 
 export default {
