@@ -1,6 +1,7 @@
 import React from "react";
 import { render, waitFor } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router";
+import { createMemoryRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
 
 import { vi, describe, beforeEach, it, expect } from "vitest";
 import RootLayout from "../components/Layout/RootLayout";

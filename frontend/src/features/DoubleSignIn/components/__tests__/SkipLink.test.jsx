@@ -18,12 +18,9 @@ vi.mock("@gcds-core/components-react", () => ({
   GcdsHeading: ({ children }) => <h1>{children}</h1>,
 }));
 
+const mockSearchParams = new URLSearchParams();
 vi.mock("react-router", () => ({
   useParams: () => ({ language: "en" }),
-}));
-
-const mockSearchParams = new URLSearchParams();
-vi.mock("react-router-dom", () => ({
   useSearchParams: () => [mockSearchParams],
 }));
 
