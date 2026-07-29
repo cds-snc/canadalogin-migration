@@ -2,8 +2,6 @@ import pytest
 import logging
 import json
 
-from app.auth.services.auth_user_session import get_users_current_session
-from app.main import app
 from app.utils.auth_flow_logging import hash_identifier, log_auth_flow_event
 from app.utils.correlation_id import (
     bind_attempt_id,
@@ -11,38 +9,30 @@ from app.utils.correlation_id import (
     reset_attempt_id,
     reset_correlation_id,
 )
+from app.utils.standardized_logging import StandardizedLoggingMiddleware
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.testclient import TestClient
-from fastapi import HTTPException, status
-from fastapi.routing import APIRoute
-
-client = TestClient(app)
+from starlette.middleware.sessions import SessionMiddleware
 
 
-def override_health_endpoint(monkeypatch, new_endpoint):
-    for route in app.routes:
-        if isinstance(route, APIRoute) and route.path == "/health":
-            monkeypatch.setattr(route, "endpoint", new_endpoint, raising=True)
-            monkeypatch.setattr(route.dependant, "call", new_endpoint, raising=True)
-            return
-    raise AssertionError("/health route not found")
+def build_logging_client(endpoint) -> TestClient:
+    test_app = FastAPI()
+    test_app.add_middleware(StandardizedLoggingMiddleware)
+    test_app.add_middleware(SessionMiddleware, secret_key="test-secret")
+    test_app.add_api_route("/health", endpoint, methods=["GET", "POST"])
+    return TestClient(test_app)
 
 
 @pytest.mark.asyncio
 async def test_log_status_400(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    def mock_auth_user_session():
-        return {}
-
-    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
-
-    def mock_400(*args, **kwargs):
+    async def mock_400(_request: Request):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Bad Request"
         )
 
-    override_health_endpoint(monkeypatch, mock_400)
-
+    client = build_logging_client(mock_400)
     client.get("/health")
 
     record = caplog.records[0]
@@ -55,19 +45,13 @@ async def test_log_status_400(monkeypatch, caplog):
 async def test_log_status_500(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    def mock_auth_user_session():
-        return {}
-
-    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
-
-    def mock_500(*args, **kwargs):
+    async def mock_500(_request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Erroer",
         )
 
-    override_health_endpoint(monkeypatch, mock_500)
-
+    client = build_logging_client(mock_500)
     client.get("/health")
 
     record = caplog.records[0]
@@ -80,19 +64,13 @@ async def test_log_status_500(monkeypatch, caplog):
 async def test_log_request_get(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    def mock_auth_user_session():
-        return {}
-
-    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
-
-    def mock_500(*args, **kwargs):
+    async def mock_500(_request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Erroer",
         )
 
-    override_health_endpoint(monkeypatch, mock_500)
-
+    client = build_logging_client(mock_500)
     client.get("/health")
 
     record = caplog.records[0]
@@ -105,19 +83,13 @@ async def test_log_request_get(monkeypatch, caplog):
 async def test_log_request_post(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    def mock_auth_user_session():
-        return {}
-
-    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
-
-    def mock_500(*args, **kwargs):
+    async def mock_500(_request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Erroer",
         )
 
-    override_health_endpoint(monkeypatch, mock_500)
-
+    client = build_logging_client(mock_500)
     client.post("/health")
 
     record = caplog.records[0]
@@ -130,19 +102,13 @@ async def test_log_request_post(monkeypatch, caplog):
 async def test_log_request_query_string(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    def mock_auth_user_session():
-        return {}
-
-    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
-
-    def mock_500(*args, **kwargs):
+    async def mock_500(_request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Erroer",
         )
 
-    override_health_endpoint(monkeypatch, mock_500)
-
+    client = build_logging_client(mock_500)
     client.get("/health?test=data")
 
     record = caplog.records[0]
@@ -154,19 +120,13 @@ async def test_log_request_query_string(monkeypatch, caplog):
 async def test_log_request_query_string_blacklist(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    def mock_auth_user_session():
-        return {}
-
-    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
-
-    def mock_500(*args, **kwargs):
+    async def mock_500(_request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Erroer",
         )
 
-    override_health_endpoint(monkeypatch, mock_500)
-
+    client = build_logging_client(mock_500)
     client.get("/health?test=data&secret=password")
 
     record = caplog.records[0]
@@ -178,18 +138,11 @@ async def test_log_request_query_string_blacklist(monkeypatch, caplog):
 async def test_log_signed_in(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    def mock_auth_user_session():
-        return {}
-
-    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
-
-    def mock_500(*args, **kwargs):
+    async def mock_500(_request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Erroer",
         )
-
-    override_health_endpoint(monkeypatch, mock_500)
 
     async def mock_get_user_info(*args, **kwargs):
         return {"sub": "12345678", "amr": ["password"]}
@@ -198,6 +151,7 @@ async def test_log_signed_in(monkeypatch, caplog):
         "app.utils.standardized_logging.get_user_info", mock_get_user_info
     )
 
+    client = build_logging_client(mock_500)
     client.get("/health")
 
     record = caplog.records[0]
@@ -214,19 +168,13 @@ async def test_log_signed_in(monkeypatch, caplog):
 async def test_log_signed_out(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    def mock_auth_user_session():
-        return {}
-
-    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
-
-    def mock_500(*args, **kwargs):
+    async def mock_500(_request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Erroer",
         )
 
-    override_health_endpoint(monkeypatch, mock_500)
-
+    client = build_logging_client(mock_500)
     client.get("/health")
 
     record = caplog.records[0]
@@ -238,12 +186,7 @@ async def test_log_signed_out(monkeypatch, caplog):
 async def test_log_includes_request_correlation_and_attempt_ids(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    def mock_auth_user_session():
-        return {}
-
-    app.dependency_overrides[get_users_current_session] = mock_auth_user_session
-
-    async def mock_500(request):
+    async def mock_500(request: Request):
         request.state.correlation_id = "corr-123"
         request.state.attempt_id = "attempt-123"
         raise HTTPException(
@@ -251,8 +194,7 @@ async def test_log_includes_request_correlation_and_attempt_ids(monkeypatch, cap
             detail="Internal Server Error",
         )
 
-    override_health_endpoint(monkeypatch, mock_500)
-
+    client = build_logging_client(mock_500)
     client.get("/health")
 
     record = caplog.records[0]
