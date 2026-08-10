@@ -76,8 +76,15 @@ async def handle_legacy_post_logout_callback(
 )
 async def handle_skip_account_linking(
     request: Request,
+    lang: str | None = None,
     user_access_token: str = Depends(get_users_current_session),
 ):
+    if lang is not None:
+        lang = lang.lower()
+        if lang not in ("en", "fr"):
+            lang = "en"
+        request.session[SessionKeys.CURRENT_LANGUAGE.value] = lang
+
     return await skip_account_linking(
         request,
         user_access_token,

@@ -578,6 +578,24 @@
       "get": {
         "description": "Handles skip flow, updating IBM Profile and redirecting to RP",
         "operationId": "handle_skip_account_linking_v1_auth_legacy_skip_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lang"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -586,6 +604,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Skip Linking",

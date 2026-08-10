@@ -47,7 +47,7 @@ export default function LinkPrompt() {
   useTrackPage("Migration - Legacy method prompt");
 
   const linkingLink = `${MIGRATION_END_POINTS.login}?lang=${language}`;
-  const skipLink = MIGRATION_END_POINTS.skip;
+  const skipLink = `${MIGRATION_END_POINTS.skip}?lang=${language}`;
 
   useEffect(() => {
     let isCurrent = true;
