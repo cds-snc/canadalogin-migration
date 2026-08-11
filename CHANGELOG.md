@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.12.11](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.10...v1.12.11) (2026-08-11)
+
+
+### Bug Fixes
+
+* **deps:** update dependency react-router to ^7.18.0 [security] ([#353](https://github.com/cds-snc/canadalogin-migration/issues/353)) ([30c1d07](https://github.com/cds-snc/canadalogin-migration/commit/30c1d07ca05954b589d326a6a41b5afd00c1d271))
+* **deps:** update dependency react-router to v8 [security] ([#355](https://github.com/cds-snc/canadalogin-migration/issues/355)) ([ea8922c](https://github.com/cds-snc/canadalogin-migration/commit/ea8922cad1586c3367bad13d79fdd809c52a4df3))
+* skip migration wasnt maintaining language ([#361](https://github.com/cds-snc/canadalogin-migration/issues/361)) ([87b1105](https://github.com/cds-snc/canadalogin-migration/commit/87b1105ab6c4f8720de62fd222f18a1039876a29))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump pydantic-settings from 2.14.1 to 2.14.2 in /backend ([#341](https://github.com/cds-snc/canadalogin-migration/issues/341)) ([39d4ca6](https://github.com/cds-snc/canadalogin-migration/commit/39d4ca6b54c64b212df95fc31a8cc936a6f853a9))
+* **deps:** bump python-multipart from 0.0.29 to 0.0.31 in /backend ([#333](https://github.com/cds-snc/canadalogin-migration/issues/333)) ([dd97cff](https://github.com/cds-snc/canadalogin-migration/commit/dd97cff8d68b8d632b98b14c7011d9e81f2175f2))
+* **deps:** update all minor dependencies ([#327](https://github.com/cds-snc/canadalogin-migration/issues/327)) ([d1f49bf](https://github.com/cds-snc/canadalogin-migration/commit/d1f49bfa9a656d662ede0d106cdfd42fad4a17dc))
+* **deps:** update all non-major github action dependencies ([#326](https://github.com/cds-snc/canadalogin-migration/issues/326)) ([50a87bf](https://github.com/cds-snc/canadalogin-migration/commit/50a87bfa0ae572eb2c201f105d7127fc9f8a8a3d))
+* **deps:** update all patch dependencies ([#321](https://github.com/cds-snc/canadalogin-migration/issues/321)) ([58c8d91](https://github.com/cds-snc/canadalogin-migration/commit/58c8d9148ffcdfce3acdfc66eaf7f1739f7553f4))
+* **deps:** update dependency cryptography to v48 [security] ([#329](https://github.com/cds-snc/canadalogin-migration/issues/329)) ([1e328af](https://github.com/cds-snc/canadalogin-migration/commit/1e328af929213a005b8b934da25d8719b0b99add))
+* **deps:** update dependency prettier to v3.9.6 ([#340](https://github.com/cds-snc/canadalogin-migration/issues/340)) ([2cf7b14](https://github.com/cds-snc/canadalogin-migration/commit/2cf7b14b89f1989d38994060a4520ee892d4b45f))
+* **deps:** update dependency pydantic-settings to v2.14.2 [security] ([#339](https://github.com/cds-snc/canadalogin-migration/issues/339)) ([d3ff09f](https://github.com/cds-snc/canadalogin-migration/commit/d3ff09fb951b7080e8a4a037b4ac03b057e96507))
+* **deps:** update dependency pyjwt to v2.13.0 [security] ([#316](https://github.com/cds-snc/canadalogin-migration/issues/316)) ([d596937](https://github.com/cds-snc/canadalogin-migration/commit/d59693731f161650c039d86b1e0f0d3fc4c255d0))
+* **deps:** update dependency vitest to v3.2.6 [security] ([#314](https://github.com/cds-snc/canadalogin-migration/issues/314)) ([7ddcd0a](https://github.com/cds-snc/canadalogin-migration/commit/7ddcd0aad577f835038f2e97857f940c996adf76))
+
+
+### Continuous Integration
+
+* deploy to prod ([#347](https://github.com/cds-snc/canadalogin-migration/issues/347)) ([7a18ee2](https://github.com/cds-snc/canadalogin-migration/commit/7a18ee27d07707fb6168eac92a26234e3586b020))
+* deploy to staging ([#345](https://github.com/cds-snc/canadalogin-migration/issues/345)) ([de03470](https://github.com/cds-snc/canadalogin-migration/commit/de03470c5cd70831fe52ab49db61bd49401d7426))
+
 ## [1.12.10](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.9...v1.12.10) (2026-06-23)
 
 
