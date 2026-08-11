@@ -173,16 +173,23 @@ async def test_legacy_skip_calls_service():
     request.session = {
         SessionKeys.SESSION_USER_TOKEN.value: "token",
         SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1",
+        SessionKeys.CURRENT_LANGUAGE.value: "en",
     }
     with patch(
         "app.auth_legacy.v1_router.skip_account_linking",
         new=AsyncMock(return_value="skip"),
     ) as mocked:
         result = await legacy_router.handle_skip_account_linking(
-            request, user_access_token="user-token"
+            request, lang="fr", user_access_token="user-token"
         )
         assert result == "skip"
-        mocked.assert_awaited_once()
+        assert request.session[SessionKeys.CURRENT_LANGUAGE.value] == "fr"
+        mocked.assert_awaited_once_with(
+            request,
+            "user-token",
+            "token",
+            rp_client_id="rp-1",
+        )
 
 
 @pytest.mark.asyncio

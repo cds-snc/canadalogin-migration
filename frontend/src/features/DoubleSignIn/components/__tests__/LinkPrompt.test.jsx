@@ -157,7 +157,25 @@ describe("LinkPrompt", () => {
     );
 
     const skipLink = screen.getByText("Skip for now");
-    expect(skipLink).toHaveAttribute("href", MIGRATION_END_POINTS.skip);
+    expect(skipLink).toHaveAttribute(
+      "href",
+      `${MIGRATION_END_POINTS.skip}?lang=en`,
+    );
+  });
+
+  it("builds both migration actions with the French language", async () => {
+    mockLanguage = "fr";
+
+    render(<LinkPrompt />);
+
+    expect(await screen.findByText("Link now")).toHaveAttribute(
+      "href",
+      `${MIGRATION_END_POINTS.login}?lang=fr`,
+    );
+    expect(screen.getByText("Skip for now")).toHaveAttribute(
+      "href",
+      `${MIGRATION_END_POINTS.skip}?lang=fr`,
+    );
   });
 
   it("adds RP analytics to the start migration click", async () => {
