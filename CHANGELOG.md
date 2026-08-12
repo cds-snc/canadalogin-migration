@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.12](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.11...v1.12.12) (2026-08-12)
+
+
+### Miscellaneous Chores
+
+* release 1.12.11 to staging ([#362](https://github.com/cds-snc/canadalogin-migration/issues/362)) ([263fd21](https://github.com/cds-snc/canadalogin-migration/commit/263fd21cdeb57a24e4f4570d136bd4aaa7b045a0))
+
 ## [1.12.11](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.10...v1.12.11) (2026-08-11)
 
 
