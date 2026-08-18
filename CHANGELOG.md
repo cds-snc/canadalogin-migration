@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.13](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.12...v1.12.13) (2026-08-18)
+
+
+### Bug Fixes
+
+* Update sign-in method URL in English locale ([#364](https://github.com/cds-snc/canadalogin-migration/issues/364)) ([2a56efe](https://github.com/cds-snc/canadalogin-migration/commit/2a56efecadbefd2a30ebdaa3f124efef17325830))
+
 ## [1.12.12](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.11...v1.12.12) (2026-08-12)
 
 
