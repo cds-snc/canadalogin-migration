@@ -48,10 +48,35 @@ describe("LegacyLanguageSync", () => {
     });
   });
 
-  it("redirects to resolved language when API returns fr", async () => {
+  it.each([
+    ["en", "en"],
+    ["en-CA", "en"],
+    ["eng", "en"],
+    ["fr", "fr"],
+    ["fr-CA", "fr"],
+    ["fra", "fr"],
+  ])(
+    "normalizes API language %s to the %s route",
+    async (apiLanguage, expectedLanguage) => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ lang: apiLanguage }),
+      });
+
+      render(<LegacyLanguageSync />);
+
+      await waitFor(() => {
+        expect(window.location.replace).toHaveBeenCalledWith(
+          `/${expectedLanguage}/link/success`,
+        );
+      });
+    },
+  );
+
+  it("normalizes case and region tags from the language API", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: vi.fn().mockResolvedValue({ lang: "fr" }),
+      json: vi.fn().mockResolvedValue({ lang: "FRA-CA" }),
     });
 
     render(<LegacyLanguageSync />);

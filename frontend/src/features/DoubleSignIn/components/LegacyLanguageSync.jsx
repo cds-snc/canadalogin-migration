@@ -21,15 +21,11 @@ function resolveLegacyLanguage(language) {
     return null;
   }
 
-  const normalized = language.includes("-")
-    ? language.split("-")[0].toLowerCase()
-    : language.toLowerCase();
+  const languagePrefix = language.trim().slice(0, 2).toLowerCase();
 
-  if (normalized === "en" || normalized === "fr") {
-    return normalized;
-  }
-
-  return null;
+  return languagePrefix === "en" || languagePrefix === "fr"
+    ? languagePrefix
+    : null;
 }
 
 async function getLegacyLanguage(signal) {
