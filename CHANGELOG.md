@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.12.14](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.13...v1.12.14) (2026-08-19)
+
+
+### Bug Fixes
+
+* added package lock json and more language filtering to support f… ([#368](https://github.com/cds-snc/canadalogin-migration/issues/368)) ([f2a38dd](https://github.com/cds-snc/canadalogin-migration/commit/f2a38dd5acf1d294ddcc21b132b1515525e160c9))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all minor dependencies ([#357](https://github.com/cds-snc/canadalogin-migration/issues/357)) ([26180ad](https://github.com/cds-snc/canadalogin-migration/commit/26180adeab1fdc458b931a5dd10f21ed1fa92aca))
+* **deps:** update all non-major github action dependencies ([#358](https://github.com/cds-snc/canadalogin-migration/issues/358)) ([40857f5](https://github.com/cds-snc/canadalogin-migration/commit/40857f5572bfb924feaa327751b05556829367f0))
+
 ## [1.12.13](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.12...v1.12.13) (2026-08-18)
 
 
