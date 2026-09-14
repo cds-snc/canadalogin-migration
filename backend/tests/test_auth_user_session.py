@@ -7,6 +7,7 @@ from authlib.integrations.starlette_client import OAuthError
 
 from app.auth.services import auth_user_session
 from app.constants.session_keys import SessionKeys
+from app.utils.recovery_errors import RecoveryError
 
 
 def test_set_rp_client_id_in_session_sets_value():
@@ -18,6 +19,19 @@ def test_set_rp_client_id_in_session_sets_value():
     auth_user_session.set_rp_client_id_in_session(mock_request)
 
     assert mock_request.session.get(key) == "rp-abc"
+
+
+@pytest.mark.parametrize(
+    "query_params", [{}, {"rp_client_id": ""}, {"rp_client_id": " \t "}]
+)
+def test_set_rp_client_id_in_session_preserves_existing_value(query_params):
+    request = MagicMock()
+    request.query_params = query_params
+    request.session = {SessionKeys.RP_CLIENT_ID_KEY.value: "rp-existing"}
+
+    auth_user_session.set_rp_client_id_in_session(request)
+
+    assert request.session[SessionKeys.RP_CLIENT_ID_KEY.value] == "rp-existing"
 
 
 @pytest.mark.asyncio
@@ -60,7 +74,7 @@ async def test_get_session_data_by_id_raises_503_when_redis_is_unavailable():
             await auth_user_session.get_session_data_by_id(mock_request, "sid123")
 
     assert raised.value.status_code == 503
-    assert raised.value.detail == "Redis unavailable"
+    assert raised.value.code == "service-unavailable"
 
 
 @pytest.mark.asyncio
@@ -108,7 +122,7 @@ async def test_is_backchannel_logout_raises_503_when_redis_is_unavailable():
             await auth_user_session.is_backchannel_logout(mock_request, "sid123")
 
     assert raised.value.status_code == 503
-    assert raised.value.detail == "Redis unavailable"
+    assert raised.value.code == "service-unavailable"
 
 
 @pytest.mark.asyncio
@@ -127,9 +141,7 @@ async def test_session_event_sse_generator_yields_error_when_redis_is_unavailabl
         ),
         patch(
             "app.auth.services.auth_user_session.get_session_data_by_id",
-            new=AsyncMock(
-                side_effect=HTTPException(status_code=503, detail="Redis unavailable")
-            ),
+            new=AsyncMock(side_effect=RecoveryError("service-unavailable")),
         ),
     ):
         response = await auth_user_session.session_event_sse_generator(mock_request)
@@ -141,7 +153,7 @@ async def test_session_event_sse_generator_yields_error_when_redis_is_unavailabl
 
     payload = "".join(chunks)
     assert "event: error" in payload
-    assert "Redis unavailable" in payload
+    assert '"code":"service-unavailable"' in payload
 
 
 def test_update_session_tokens_updates_session_dict():

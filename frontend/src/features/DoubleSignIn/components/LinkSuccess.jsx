@@ -6,6 +6,10 @@ import {
   GcdsHeading,
 } from "@gcds-core/components-react";
 import { getPageContent } from "../../../utils/functions.jsx";
+import {
+  getRecoveryReason,
+  redirectToRecovery,
+} from "../../../utils/recoveryErrors.js";
 
 import {
   PAGES,
@@ -40,13 +44,35 @@ export default function LinkSuccess() {
   useTrackPage("Migration - Confirmation");
 
   useEffect(() => {
+    let isCurrent = true;
+    setRpData(null);
     async function getRPData() {
-      const data = await updateLinkStateAPI.getRPAuthUrl();
-      setRpData(data);
+      try {
+        const data = await updateLinkStateAPI.getRPAuthUrl();
+        if (!isCurrent) return;
+        if (
+          typeof data?.rp_redirect_url !== "string" ||
+          !data.rp_redirect_url.trim()
+        ) {
+          redirectToRecovery("missing-rp-context", language);
+          return;
+        }
+        setRpData(data);
+      } catch (error) {
+        if (isCurrent) {
+          redirectToRecovery(
+            getRecoveryReason(error) || "service-unavailable",
+            language,
+          );
+        }
+      }
     }
 
     getRPData();
-  }, []);
+    return () => {
+      isCurrent = false;
+    };
+  }, [language]);
 
   const continueToRP = async () => {
     try {
@@ -62,6 +88,8 @@ export default function LinkSuccess() {
   const errorMessage = errorPageJson[serverErrorMessage] || "";
   const rpName = getLocalizedRpName(rpData, language);
   const rpAnalyticsParams = getRpAnalyticsParams(rpData);
+
+  if (!rpData) return null;
 
   return (
     <GcdsContainer role="main">

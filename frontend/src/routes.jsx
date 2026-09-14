@@ -10,9 +10,14 @@ import SkipLink from "./features/DoubleSignIn/components/SkipLink.jsx";
 import LinkPrompt from "./features/DoubleSignIn/components/LinkPrompt.jsx";
 import LinkSuccess from "./features/DoubleSignIn/components/LinkSuccess.jsx";
 import LegacyLanguageSync from "./features/DoubleSignIn/components/LegacyLanguageSync.jsx";
+import RecoveryPage from "./features/DoubleSignIn/components/RecoveryPage.jsx";
 import { PAGES } from "./utils/constants.jsx";
 
 export const appRoutes = [
+  {
+    path: "/:language/error/:reason",
+    element: <RecoveryPage />,
+  },
   {
     element: (
       <UserProvider>

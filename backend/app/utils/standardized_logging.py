@@ -1,8 +1,7 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from urllib.parse import urlencode
-from app.auth.services.auth_user_session import get_user_info
-from authlib.integrations.starlette_client import OAuthError
+from app.constants.session_keys import SessionKeys
 from datetime import datetime
 
 import logging
@@ -108,16 +107,20 @@ class StandardizedLoggingMiddleware(BaseHTTPMiddleware):
         return {k: v for k, v in context.items() if v}
 
     async def build_user(self, request):
-        try:
-            user_info = await get_user_info(request)
-            return {
-                "id": hashlib.sha256(
-                    str(user_info.get("sub")).encode("utf-8")
-                ).hexdigest(),
-                "auth_methods": user_info.get("amr"),
-            }
-        except OAuthError:
+        # Logging must not refresh tokens or turn a handled error into a 500.
+        session = request.scope.get("session")
+        if type(session) is not dict:
             return None
+        token = session.get(SessionKeys.SESSION_USER_TOKEN.value)
+        if not isinstance(token, dict):
+            return None
+        user_info = token.get("userinfo")
+        if not isinstance(user_info, dict) or not user_info.get("sub"):
+            return None
+        return {
+            "id": hashlib.sha256(str(user_info["sub"]).encode("utf-8")).hexdigest(),
+            "auth_methods": user_info.get("amr"),
+        }
 
     def build_request(self, request):
         return {
