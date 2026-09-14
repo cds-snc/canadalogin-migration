@@ -138,18 +138,14 @@ async def test_log_request_query_string_blacklist(monkeypatch, caplog):
 async def test_log_signed_in(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    async def mock_500(_request: Request):
+    async def mock_500(request: Request):
+        request.session["token"] = {
+            "userinfo": {"sub": "12345678", "amr": ["password"]}
+        }
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Erroer",
         )
-
-    async def mock_get_user_info(*args, **kwargs):
-        return {"sub": "12345678", "amr": ["password"]}
-
-    monkeypatch.setattr(
-        "app.utils.standardized_logging.get_user_info", mock_get_user_info
-    )
 
     client = build_logging_client(mock_500)
     client.get("/health")

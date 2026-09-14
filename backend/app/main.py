@@ -25,6 +25,13 @@ from app.auth.services import oidc_config
 from app.auth_legacy import v1_router as v1_auth_legacy_router
 from app.rp import v1_router as v1_rp_router
 from app.utils.standardized_logging import StandardizedLoggingMiddleware
+from app.utils.recovery_errors import (
+    AuthenticationRequiredError,
+    RecoveryError,
+    SessionEndedError,
+    SessionStoreErrorMiddleware,
+    recovery_response,
+)
 
 configuration = get_configuration()
 
@@ -119,16 +126,6 @@ session_store = RedisStore(
 # Determine if cookie should be secure
 cookie_secure = False if configuration.ENVIRONMENT == "local" else True
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=configuration.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
-
 # Logging
 app.add_middleware(StandardizedLoggingMiddleware)
 
@@ -143,6 +140,18 @@ app.add_middleware(
     lifetime=configuration.session_config.SESSION_LIFETIME,
     cookie_domain=configuration.ROOT_DOMAIN,
     cookie_name=configuration.session_config.SESSION_COOKIE_NAME,
+)
+
+# Redis failures can happen before route handlers or while saving the response.
+app.add_middleware(SessionStoreErrorMiddleware)
+# Keep CORS outside session recovery so API clients can read failure responses.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=configuration.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -200,6 +209,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    if isinstance(exc, RecoveryError):
+        return recovery_response(request, exc.code)
     return JSONResponse(
         status_code=exc.status_code,
         content={"success": False, "message": exc.detail},
@@ -210,11 +221,20 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
 async def oauth_error_handler(request: Request, _exc: OAuthError):
     """Catch OAuth errors and redirect user to IdP login."""
     logger.error("OAuth exception handler error")
-    if "application/json" in request.headers.get("accept", ""):
+    if isinstance(_exc, AuthenticationRequiredError):
         return JSONResponse(
             status_code=401,
-            content={"detail": "Invalid or expired token"},
+            content={
+                "success": False,
+                "message": "Authentication is required to start migration.",
+                "code": "authentication-required",
+            },
+            headers={"Cache-Control": "no-store"},
         )
+    if isinstance(_exc, SessionEndedError):
+        return recovery_response(request, "session-ended")
+    if "application/json" in request.headers.get("accept", ""):
+        return recovery_response(request, "session-ended")
 
     client_id = request.session.get(
         SessionKeys.RP_CLIENT_ID_KEY.value
@@ -230,13 +250,10 @@ async def oauth_error_handler(request: Request, _exc: OAuthError):
 
     if not client_id:
         logger.error(
-            "OAuth exception handler missing rp_client_id for path %s; returning 401",
+            "OAuth exception handler missing rp_client_id for path %s",
             request.url.path,
         )
-        return JSONResponse(
-            status_code=401,
-            content={"detail": "Invalid or expired token"},
-        )
+        return recovery_response(request, "session-ended")
 
     return await redirect_user_to_idp_verify(request, client_id, lang)
 

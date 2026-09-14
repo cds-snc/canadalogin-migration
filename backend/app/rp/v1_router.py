@@ -21,7 +21,7 @@ async def handle_get_rp_config_details(
     return_parameters = get_rp_return_parameters_from_session(request)
 
     return await get_rp_config_details(
-        rp_client_id=request.session[SessionKeys.RP_CLIENT_ID_KEY.value],
+        rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),
         custom_parameters=return_parameters,
         language=return_parameters.get("lang"),
     )

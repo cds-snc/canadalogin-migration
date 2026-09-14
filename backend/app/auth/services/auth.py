@@ -22,6 +22,7 @@ from app.users.services.custom_attributes import (
 from app.users.schemas import AuditDataSchema
 from app.utils.auth_flow_logging import hash_identifier, log_auth_flow_event
 from app.utils.correlation_id import ensure_session_correlation_id
+from app.utils.recovery_errors import RecoveryError
 
 logger = logging.getLogger(__name__)
 
@@ -55,16 +56,21 @@ def get_callback_redirect_uri(request: Request):
     return redirect_uri
 
 
-async def redirect_user_to_idp_verify(request: Request, clientId: str, lang: str):
+async def redirect_user_to_idp_verify(
+    request: Request, clientId: str | None, lang: str
+):
     """
     Get the redirect URL for the OAuth login flow.
     This function is used to initiate the login process with IBM Verify.
     """
     try:
+        # Recovery redirects may omit clientId; retain the RP supplied earlier.
+        if isinstance(clientId, str) and clientId.strip():
+            request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = clientId
+        clientId = request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+        if not isinstance(clientId, str) or not clientId.strip():
+            raise RecoveryError("missing-rp-context")
         ensure_session_correlation_id(request)
-
-        # Add Client Id from Ibm
-        request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = clientId
         log_auth_flow_event(
             logger,
             flow="verify",
@@ -73,8 +79,6 @@ async def redirect_user_to_idp_verify(request: Request, clientId: str, lang: str
             rp_client_id=clientId,
             lang=lang,
         )
-
-        # TODO: Redirect if clientId = NULL
 
         callback_redirect_uri = get_callback_redirect_uri(request)
         callback_redirect_uri = f"{callback_redirect_uri}?lang={lang}"
@@ -92,6 +96,8 @@ async def redirect_user_to_idp_verify(request: Request, clientId: str, lang: str
         )
         return redirect_response
 
+    except RecoveryError:
+        raise
     except Exception as e:
         logger.exception("Unexpected error during redirect_to_verify")
         RequestErrorHandler.handle(e, context="Unexpected error during idp redirect")
