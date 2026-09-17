@@ -1,8 +1,6 @@
-import axios from "axios";
+import { apiClient } from "../../../services/apiClient.js";
 import { MIGRATION_END_POINTS } from "../../../utils/constants.jsx";
 import { handleApiError } from "../../../utils/apiErrorHandler.js";
-
-axios.defaults.withCredentials = true;
 
 export const updateLinkStateAPI = {
   getRPAuthUrl: async () => {
@@ -12,7 +10,7 @@ export const updateLinkStateAPI = {
         `====== API Endpoint: ${MIGRATION_END_POINTS.rpcallback} ======`,
       );
 
-      const response = await axios.get(`${MIGRATION_END_POINTS.rpcallback}`);
+      const response = await apiClient.get(MIGRATION_END_POINTS.rpcallback);
 
       var rpData = response.data;
 
@@ -20,6 +18,22 @@ export const updateLinkStateAPI = {
       console.log("====== end getRPAuthUrl ======");
 
       return rpData;
+    } catch (error) {
+      handleApiError(error);
+    }
+  },
+  skipLinking: async (language) => {
+    try {
+      const response = await apiClient.post(
+        `${MIGRATION_END_POINTS.skip}?lang=${encodeURIComponent(language)}`,
+      );
+      if (
+        typeof response.data?.redirect_url !== "string" ||
+        !response.data.redirect_url
+      ) {
+        throw new Error("The server did not return a redirect URL.");
+      }
+      return response.data;
     } catch (error) {
       handleApiError(error);
     }

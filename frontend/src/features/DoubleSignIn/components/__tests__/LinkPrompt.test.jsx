@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   act,
   fireEvent,
@@ -25,34 +25,37 @@ const localizedHelpLinks = {
 
 vi.mock("@gcds-core/components-react", () => ({
   GcdsContainer: ({ children, ...props }) => <div {...props}>{children}</div>,
-  GcdsText: ({ children }) => <div>{children}</div>,
+  GcdsText: ({ children, ...props }) => <div {...props}>{children}</div>,
   GcdsDetails: ({ children }) => <div>{children}</div>,
   GcdsInput: ({ children }) => <div>{children}</div>,
   GcdsStepper: ({ children }) => <div>{children}</div>,
-  GcdsLink: ({ children, href, onGcdsClick }) => (
-    <a
-      href={href}
-      onClick={(event) => {
-        event.preventDefault();
-        onGcdsClick?.(event);
-      }}
-    >
+  GcdsLink: ({ children, id, href, onGcdsClick }) => (
+    <a id={id} href={href} onClick={onGcdsClick}>
       {children}
     </a>
   ),
   GcdsCheckboxes: ({ children }) => <div>{children}</div>,
   GcdsGrid: ({ children }) => <div>{children}</div>,
-  GcdsButton: ({ children, href, onGcdsClick }) => (
-    <a
-      href={href}
-      onClick={(event) => {
-        event.preventDefault();
-        onGcdsClick?.(event);
-      }}
-    >
-      {children}
-    </a>
-  ),
+  GcdsButton: ({ children, href, onGcdsClick, disabled, ...props }) =>
+    href ? (
+      <a
+        href={href}
+        onClick={(event) => {
+          event.preventDefault();
+          onGcdsClick?.(event);
+        }}
+      >
+        {children}
+      </a>
+    ) : (
+      <button
+        disabled={disabled}
+        aria-busy={props["aria-busy"]}
+        onClick={onGcdsClick}
+      >
+        {children}
+      </button>
+    ),
   GcdsHeading: ({ children }) => <h1>{children}</h1>,
   GcdsIcon: () => <div />,
   GcdsNotice: ({ children }) => <div>{children}</div>,
@@ -81,7 +84,10 @@ vi.mock("../../../../utils/functions.jsx", () => ({
         link_2: "Skip for now",
       };
     }
-    return {};
+    return {
+      skip_failed:
+        _language === "fr" ? "Veuillez réessayer." : "Please try again.",
+    };
   },
 }));
 
@@ -97,15 +103,30 @@ vi.mock("../../../../utils/gatag.jsx", () => ({
 vi.mock("../../api/UpdateLinkState.jsx", () => ({
   updateLinkStateAPI: {
     getRPAuthUrl: vi.fn(),
+    skipLinking: vi.fn(),
   },
 }));
 
 import { updateLinkStateAPI } from "../../api/UpdateLinkState.jsx";
 
 describe("LinkPrompt", () => {
+  const originalLocation = window.location;
+  afterEach(() =>
+    Object.defineProperty(window, "location", {
+      value: originalLocation,
+      writable: true,
+    }),
+  );
   beforeEach(() => {
     vi.clearAllMocks();
     mockLanguage = "en";
+    Object.defineProperty(window, "location", {
+      value: { assign: vi.fn() },
+      writable: true,
+    });
+    updateLinkStateAPI.skipLinking.mockResolvedValue({
+      redirect_url: "https://rp.example/continue",
+    });
     document.title = "";
     updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
       rp_client_id: "rp-123",
@@ -156,11 +177,9 @@ describe("LinkPrompt", () => {
       `${MIGRATION_END_POINTS.login}?lang=en`,
     );
 
-    const skipLink = screen.getByText("Skip for now");
-    expect(skipLink).toHaveAttribute(
-      "href",
-      `${MIGRATION_END_POINTS.skip}?lang=en`,
-    );
+    const skipLink = screen.getByRole("link", { name: "Skip for now" });
+    expect(skipLink).toHaveAttribute("id", "skip-create-new-account-link");
+    expect(skipLink).toHaveAttribute("href", "#skip-create-new-account-link");
   });
 
   it("builds both migration actions with the French language", async () => {
@@ -172,9 +191,9 @@ describe("LinkPrompt", () => {
       "href",
       `${MIGRATION_END_POINTS.login}?lang=fr`,
     );
-    expect(screen.getByText("Skip for now")).toHaveAttribute(
-      "href",
-      `${MIGRATION_END_POINTS.skip}?lang=fr`,
+    fireEvent.click(screen.getByRole("link", { name: "Skip for now" }));
+    await waitFor(() =>
+      expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledWith("fr"),
     );
   });
 
@@ -206,8 +225,17 @@ describe("LinkPrompt", () => {
       expect(updateLinkStateAPI.getRPAuthUrl).toHaveBeenCalled();
     });
 
-    fireEvent.click(await screen.findByText("Skip for now"));
+    // Returning false means the click handler cancelled native navigation.
+    expect(fireEvent.click(await screen.findByText("Skip for now"))).toBe(
+      false,
+    );
 
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith(
+        "https://rp.example/continue",
+      ),
+    );
+    expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledWith("en");
     expect(mockTrackEvent).toHaveBeenCalledTimes(1);
     expect(mockTrackEvent).toHaveBeenCalledWith({
       category: GA_CATEGORIES.formSubmit,
@@ -220,6 +248,59 @@ describe("LinkPrompt", () => {
       rp_name: "Example RP",
     });
   });
+
+  it("blocks duplicate actions and waits for success before tracking or redirecting", async () => {
+    let resolveSkip;
+    updateLinkStateAPI.skipLinking.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSkip = resolve;
+      }),
+    );
+    render(<LinkPrompt />);
+    const skipLink = await screen.findByRole("link", { name: "Skip for now" });
+    expect(fireEvent.click(skipLink)).toBe(false);
+    expect(fireEvent.click(skipLink)).toBe(false);
+    expect(skipLink.parentElement).toHaveAttribute("aria-busy", "true");
+    expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledTimes(1);
+    expect(mockTrackEvent).not.toHaveBeenCalled();
+    expect(window.location.assign).not.toHaveBeenCalled();
+    await act(async () =>
+      resolveSkip({ redirect_url: "https://rp.example/continue" }),
+    );
+    expect(mockTrackEvent).toHaveBeenCalledTimes(1);
+    expect(window.location.assign).toHaveBeenCalledWith(
+      "https://rp.example/continue",
+    );
+  });
+
+  it.each(["en", "fr"])(
+    "shows an accessible %s error and permits a manual retry",
+    async (language) => {
+      mockLanguage = language;
+      updateLinkStateAPI.skipLinking.mockRejectedValueOnce(
+        new Error("Forbidden"),
+      );
+      render(<LinkPrompt />);
+      const skipLink = await screen.findByRole("link", {
+        name: "Skip for now",
+      });
+      fireEvent.click(skipLink);
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        language === "fr" ? "Veuillez réessayer." : "Please try again.",
+      );
+      expect(skipLink.parentElement).toHaveAttribute("aria-busy", "false");
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+      expect(window.location.assign).not.toHaveBeenCalled();
+      fireEvent.click(skipLink);
+      await waitFor(() =>
+        expect(window.location.assign).toHaveBeenCalledWith(
+          "https://rp.example/continue",
+        ),
+      );
+      expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledTimes(2);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    },
+  );
 
   it("links the info notice to the English sign-in method help page", async () => {
     render(<LinkPrompt />);
