@@ -249,6 +249,15 @@ function buildMswMapping(mswArray: Array<MSW>) {
 
   // Add default handlers for EventSource endpoints that are always needed
   handlers.push(
+    http.get(`${config.apiUrl}/v1/auth/csrf-token`, () =>
+      HttpResponse.json(
+        { csrf_token: "storybook-csrf-token" },
+        { headers: { "Cache-Control": "no-store" } },
+      ),
+    ),
+    http.post(`${config.apiUrl}/v1/auth/rp-context`, () =>
+      HttpResponse.json({ success: true }),
+    ),
     // Mock the session-status EventSource endpoint
     http.get(`${config.apiUrl}/v1/auth/session-status`, async () => {
       // Return a simple response for EventSource connection attempts

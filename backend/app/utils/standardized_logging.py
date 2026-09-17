@@ -43,6 +43,8 @@ REDACT_KEYS = [
     "access_token",
     "refresh_token",
     "id_token",
+    "csrf_token",
+    "x-csrf-token",
     "api_key",
     "apikey",
     "client_secret",
@@ -108,6 +110,8 @@ class StandardizedLoggingMiddleware(BaseHTTPMiddleware):
         return {k: v for k, v in context.items() if v}
 
     async def build_user(self, request):
+        if getattr(request.state, "csrf_rejected", False) is True:
+            return None
         try:
             user_info = await get_user_info(request)
             return {

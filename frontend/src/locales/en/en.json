@@ -21,6 +21,7 @@
     "19": "I forgot my password"
   },
   "Error": {
+    "skip_failed": "We could not complete your request. Please try again.",
     "1": "There was a problem",
     "2": "Invalid email. Email must contain an ‘@’ symbol followed by a domain.",
     "3": "Codes must be six digits. Try again.",

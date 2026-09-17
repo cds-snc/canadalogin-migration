@@ -413,13 +413,9 @@ export function UserProvider({
     // we let PrivateRoute handle the OIDC redirect
     const fetchProfileAndRelyingPartyInfo = async () => {
       try {
-        // This is the first request made after the OIDC redirect back to the app
-        // Try to get user profile to see if user is authenticated
-        // Relying party info (rp_client_id) is passed in the query param of the redirect URL
-        // but after the first request, subsequent requests do not have the rp_client_id
-        // as it's a session based authentication, the backend keeps track of the session
-        // and the relying party info associated with the session
-        // so we need to pass the rp_client_id to the backend to store in the session otherwise it will be lost
+        // After an OIDC redirect, store any RP context from the redirect URL
+        // through a CSRF-protected POST before reading the profile. Later reads
+        // use the existing session context without changing it through GET.
         const rp_client_id = searchParams.get(RP_CLIENT_ID_KEY);
 
         const response = await authService.get_my_user_profile(rp_client_id);

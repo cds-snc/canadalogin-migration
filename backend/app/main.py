@@ -3,7 +3,7 @@ import requests
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +15,7 @@ from starsessions.stores.redis import RedisStore
 from app.config import get_configuration
 from app.utils.helpers import generate_error_response
 from app.auth.services.auth import redirect_user_to_idp_verify
+from app.auth.services.csrf import validate_csrf_token
 from app.constants.redis_keys import RedisKeys
 from app.constants.session_keys import SessionKeys
 from app.utils.logging_config import configure_logging
@@ -102,6 +103,7 @@ app = FastAPI(
     title=configuration.app_info.app_name,
     description=API_DESCRIPTION,
     contact=CONTACT_INFO,
+    dependencies=[Depends(validate_csrf_token)],
 )
 
 # Determine session domain

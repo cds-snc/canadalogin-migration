@@ -10,6 +10,7 @@ import {
 import { getPageContent } from "../../../utils/functions.jsx";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
+import { useSkipLink } from "../hooks/useSkipLink.js";
 import {
   getLocalizedRpName,
   getRpAnalyticsParams,
@@ -32,7 +33,6 @@ export default function LinkPrompt() {
 
   const trackEvent = useTrackEvent();
 
-  const [serverErrorMessage] = useState("");
   const [rpLoadState, setRpLoadState] = useState({
     language,
     isLoading: true,
@@ -47,7 +47,6 @@ export default function LinkPrompt() {
   useTrackPage("Migration - Legacy method prompt");
 
   const linkingLink = `${MIGRATION_END_POINTS.login}?lang=${language}`;
-  const skipLink = `${MIGRATION_END_POINTS.skip}?lang=${language}`;
 
   useEffect(() => {
     let isCurrent = true;
@@ -105,10 +104,20 @@ export default function LinkPrompt() {
     };
   }, [isPageReady, pageTitle, productTitle]);
 
-  const errorMessage = errorPageJson[serverErrorMessage] || "";
   const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
   const rpName = getLocalizedRpName(rpData, language);
   const rpAnalyticsParams = getRpAnalyticsParams(rpData);
+  const { skipLink, isSkipping, skipFailed } = useSkipLink(language, () => {
+    trackEvent({
+      category: GA_CATEGORIES.formSubmit,
+      action: GA_FORM_EVENTS.formSubmitComplete,
+      label: MIGRATION_ANALYTICS.eventLabels.skippedLinking,
+      form_id: MIGRATION_ANALYTICS.flowId,
+      type: MIGRATION_ANALYTICS.types.skippedLinking,
+      status: "success",
+      ...rpAnalyticsParams,
+    });
+  });
   const linkButtonText = isGcKeyOnly
     ? pageContentJson["btn_1_gckey_only"] || pageContentJson["btn_1"]
     : pageContentJson["btn_1"];
@@ -127,7 +136,11 @@ export default function LinkPrompt() {
         {pageContentJson["title"]}
       </GcdsHeading>
 
-      {errorMessage ? <GcdsText>{errorMessage}</GcdsText> : null}
+      {skipFailed ? (
+        <div role="alert">
+          <GcdsText>{errorPageJson["skip_failed"]}</GcdsText>
+        </div>
+      ) : null}
 
       {rpName ? (
         <GcdsText>
@@ -140,6 +153,7 @@ export default function LinkPrompt() {
         buttonId="sign-in-old-method-button-control"
         type="link"
         href={linkingLink}
+        disabled={isSkipping}
         onGcdsClick={() => {
           trackEvent({
             category: GA_CATEGORIES.formSubmit,
@@ -177,20 +191,14 @@ export default function LinkPrompt() {
         </GcdsHeading>
       ) : null}
       <GcdsText>{skipHelpText}</GcdsText>
-      <GcdsText>
+      <GcdsText aria-busy={isSkipping}>
         <GcdsLink
           id="skip-create-new-account-link"
-          href={skipLink}
-          onGcdsClick={() => {
-            trackEvent({
-              category: GA_CATEGORIES.formSubmit,
-              action: GA_FORM_EVENTS.formSubmitComplete,
-              label: MIGRATION_ANALYTICS.eventLabels.skippedLinking,
-              form_id: MIGRATION_ANALYTICS.flowId,
-              type: MIGRATION_ANALYTICS.types.skippedLinking,
-              status: "success",
-              ...rpAnalyticsParams,
-            });
+          href="#skip-create-new-account-link"
+          onGcdsClick={(event) => {
+            // Keep the link appearance while submitting the protected action.
+            event.preventDefault();
+            skipLink();
           }}
         >
           {pageContentJson["link_2"]}
