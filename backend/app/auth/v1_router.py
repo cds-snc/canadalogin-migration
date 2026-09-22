@@ -2,7 +2,9 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter
-from fastapi import Request, Depends
+from fastapi import Request, Response, Depends
+from app.auth.schemas import CSRFTokenResponse, RPContextRequest
+from app.auth.services.csrf import get_or_create_csrf_token
 from app.auth.services.auth import (
     redirect_user_to_idp_verify,
     callback_handler,
@@ -26,9 +28,34 @@ from app.auth.services.auth_user_session import (
 from app.constants.session_keys import SessionKeys
 from app.users.schemas import ProfileResponse
 from app.users.services.get_my_profile import get_my_profile
+from app.rp.services.config import get_config
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+@router.get(
+    path="/csrf-token",
+    response_model=CSRFTokenResponse,
+    summary="Get a CSRF token for the current browser session",
+)
+async def csrf_token(request: Request, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return CSRFTokenResponse(csrf_token=await get_or_create_csrf_token(request))
+
+
+@router.post(
+    path="/rp-context",
+    summary="Set the relying party for the authenticated browser session",
+)
+async def set_rp_context(
+    request: Request,
+    context: RPContextRequest,
+    user_access_token: str = Depends(get_users_current_session),
+):
+    await get_config(context.rp_client_id)
+    request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = context.rp_client_id
+    return {"success": True}
 
 
 @router.get(

@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class SessionKeys(str, Enum):
+    CSRF_TOKEN = "csrf_token"
     SESSION_USER_ACCESS_TOKEN_KEY = "access_token"
     RETURN_TO_PAGE = "returnToPage"
     CALLBACK_ROUTE_NAME = "callback_route"

@@ -8,7 +8,9 @@ function parseTimeoutMs(value, fallback) {
 }
 
 const config = {
-  apiUrl: import.meta.env.VITE_BACKEND_API_URL || "http://localhost:8000",
+  apiUrl: (
+    import.meta.env.VITE_BACKEND_API_URL || "http://localhost:8000"
+  ).replace(/\/+$/, ""),
   gatag: import.meta.env.VITE_GOOGLE_ANALYTICS_ID?.trim() || "",
   legacyLanguageApiUrl:
     import.meta.env.VITE_LEGACY_LANGUAGE_API_URL ||

@@ -1,10 +1,6 @@
-import axios from "axios";
+import { apiClient } from "./apiClient.js";
 import config from "../config";
-import {
-  FLOW_TYPES,
-  SUBMIT_END_POINTS,
-  RP_CLIENT_ID_KEY,
-} from "../utils/constants.jsx";
+import { FLOW_TYPES, SUBMIT_END_POINTS } from "../utils/constants.jsx";
 import { handleApiError } from "../utils/apiErrorHandler.js";
 
 import {
@@ -16,12 +12,10 @@ import {
   VALIDATION_CODE_ERROR_RESPONSE,
 } from "../stories/Tests/utils/constants.jsx";
 
-axios.defaults.withCredentials = true;
-
 export const authService = {
   requestPasswordPolicy: async () => {
     try {
-      const response = await axios.get(
+      const response = await apiClient.get(
         `${config.apiUrl}${SUBMIT_END_POINTS.requestPasswordPolicy}`,
       );
       return response.data;
@@ -33,7 +27,7 @@ export const authService = {
     if (TEST_USERS.has(userData.userName))
       return buildTestResponse(userData, "create");
 
-    const response = await axios.post(
+    const response = await apiClient.post(
       `${config.apiUrl}${SUBMIT_END_POINTS.create}`,
       userData,
     );
@@ -43,7 +37,7 @@ export const authService = {
     if (TEST_USERS.has(userData.userName))
       return buildTestResponse(userData, "transientOtpSend");
 
-    const response = await axios.post(
+    const response = await apiClient.post(
       `${config.apiUrl}${SUBMIT_END_POINTS.transientOtpSend}`,
       userData,
     );
@@ -53,7 +47,7 @@ export const authService = {
     if (TEST_USERS.has(userData.userName))
       return buildTestResponse(userData, "transientOtpVerify");
 
-    const response = await axios.post(
+    const response = await apiClient.post(
       `${config.apiUrl}${SUBMIT_END_POINTS.transientOtpVerify}`,
       userData,
     );
@@ -66,7 +60,7 @@ export const authService = {
       return SUCCESS_RESPONSE;
     }
 
-    const response = await axios.post(
+    const response = await apiClient.post(
       `${config.apiUrl}${SUBMIT_END_POINTS.createCoreProfile}`,
       userData,
     );
@@ -76,7 +70,7 @@ export const authService = {
   login: async (userData) => {
     if (TEST_USERS.has(userData.userName))
       return buildTestResponse(userData, "login");
-    const response = await axios.post(
+    const response = await apiClient.post(
       `${config.apiUrl}${SUBMIT_END_POINTS.login}`,
       userData,
     );
@@ -86,7 +80,7 @@ export const authService = {
     if (TEST_USERS.has(userData.userName))
       return buildTestResponse(userData, "otpSend");
 
-    const response = await axios.post(
+    const response = await apiClient.post(
       `${config.apiUrl}${SUBMIT_END_POINTS.otpSend}`,
       userData,
     );
@@ -96,7 +90,7 @@ export const authService = {
     if (TEST_USERS.has(userData.userName))
       return buildTestResponse(userData, "otpVerify");
 
-    const response = await axios.post(
+    const response = await apiClient.post(
       `${config.apiUrl}${SUBMIT_END_POINTS.otpVerify}`,
       userData,
     );
@@ -104,13 +98,15 @@ export const authService = {
   },
 
   get_my_user_profile: async (rp_client_id) => {
-    let profileUrl = `${config.apiUrl}${SUBMIT_END_POINTS.profile}`;
-    if (rp_client_id) {
-      profileUrl += `?${RP_CLIENT_ID_KEY}=${encodeURIComponent(rp_client_id)}`;
-    }
-
     try {
-      const response = await axios.get(profileUrl);
+      if (rp_client_id) {
+        await apiClient.post(`${config.apiUrl}/v1/auth/rp-context`, {
+          rp_client_id,
+        });
+      }
+      const response = await apiClient.get(
+        `${config.apiUrl}${SUBMIT_END_POINTS.profile}`,
+      );
       return response.data;
     } catch (error) {
       handleApiError(error);
@@ -118,7 +114,7 @@ export const authService = {
   },
   update_my_user_profile: async (editedProfile) => {
     try {
-      const response = await axios.post(
+      const response = await apiClient.post(
         `${config.apiUrl}${SUBMIT_END_POINTS.profile}`,
         editedProfile,
       );
@@ -129,7 +125,7 @@ export const authService = {
   },
   get_rp_info: async () => {
     try {
-      const response = await axios.get(
+      const response = await apiClient.get(
         `${config.apiUrl}${SUBMIT_END_POINTS.rp_info}`,
       );
       return response.data;
@@ -139,7 +135,7 @@ export const authService = {
   },
   logout: async () => {
     try {
-      const response = await axios.post(
+      const response = await apiClient.post(
         `${config.apiUrl}${SUBMIT_END_POINTS.logout}`,
       );
       return response.data;
@@ -149,7 +145,7 @@ export const authService = {
   },
   keepAlive: async () => {
     try {
-      const response = await axios.post(
+      const response = await apiClient.post(
         `${config.apiUrl}${SUBMIT_END_POINTS.keepAlive}`,
       );
       return response.data;

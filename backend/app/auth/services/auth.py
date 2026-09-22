@@ -7,6 +7,7 @@ from authlib.integrations.starlette_client import OAuthError
 from httpx import AsyncClient
 from starsessions.session import get_session_handler
 from app.auth.services.oidc_config import oauth
+from app.auth.services.csrf import rotate_csrf_token
 from app.config import get_configuration
 from app.constants.session_keys import SessionKeys
 from app.utils.request_error_handler import RequestErrorHandler
@@ -145,6 +146,7 @@ async def callback_handler(request: Request, lang: str):
         handler.session_id = new_session_id
 
         update_session_tokens(request, oidc_response)
+        rotate_csrf_token(request)
         log_auth_flow_event(
             logger,
             flow="verify",
