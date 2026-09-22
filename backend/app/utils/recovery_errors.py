@@ -103,7 +103,8 @@ class SessionStoreErrorMiddleware:
         response_started = False
 
         async def track_response(message: Message):
-            nonlocal response_started
+            # This closure tracks one request; no state is shared across requests.
+            nonlocal response_started  # nosemgrep: no-mutable-module-global
             if message["type"] == "http.response.start":
                 response_started = True
             await send(message)

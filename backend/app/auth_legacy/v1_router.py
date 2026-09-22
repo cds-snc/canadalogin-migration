@@ -10,6 +10,7 @@ from app.auth_legacy.services.callback import (
 from app.auth_legacy.services.login import legacy_login
 from app.auth_legacy.services.skip import skip_account_linking
 from app.auth.services.auth_user_session import get_users_current_session
+from app.auth.schemas import RedirectResponseModel
 from app.constants.session_keys import SessionKeys
 
 router = APIRouter()
@@ -69,10 +70,11 @@ async def handle_legacy_post_logout_callback(
     return await legacy_post_logout_callback(request)
 
 
-@router.get(
+@router.post(
     path="/skip",
+    response_model=RedirectResponseModel,
     summary="Skip Linking",
-    description="Handles skip flow, updating IBM Profile and redirecting to RP",
+    description="Updates IBM Profile and returns the RP redirect URL",
 )
 async def handle_skip_account_linking(
     request: Request,

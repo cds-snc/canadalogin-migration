@@ -40,6 +40,7 @@ This writes `backend/openapi/openapi.json`.
 It is important to keep this up to date.
 
 ### Additional Documentation
+- [CSRF protection and code walkthrough](docs/developer_guides/csrf_protection.md)
 - [IBM Verify Documentation](https://docs.verify.ibm.com/verify/reference/overview)
 
 ### Other GC Sign in Repos

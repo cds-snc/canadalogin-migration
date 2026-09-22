@@ -2,8 +2,7 @@ import logging
 
 from fastapi import Request
 
-from fastapi.responses import RedirectResponse
-
+from app.auth.schemas import RedirectResponseModel
 from app.auth_legacy.services.session_state import clear_legacy_oidc_session
 from app.rp.services.config import get_config
 from app.rp.services.config import resolve_rp_redirect_uri
@@ -88,4 +87,4 @@ async def skip_account_linking(
     )
     clear_legacy_oidc_session(request, clear_attempt_id=True)
 
-    return RedirectResponse(url=redirect_url, status_code=302)
+    return RedirectResponseModel(redirect_url=redirect_url)

@@ -1,5 +1,17 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class CSRFTokenResponse(BaseModel):
+    csrf_token: str
+
+
+class RPContextRequest(BaseModel):
+    rp_client_id: str = Field(min_length=1)
+
+
+class RedirectResponseModel(BaseModel):
+    redirect_url: str
 
 
 class LogoutResponseModel(BaseModel):

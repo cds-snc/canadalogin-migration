@@ -168,13 +168,15 @@ async def test_other_endpoints_keep_503_json_for_event_stream_accept():
 async def test_session_store_write_failure_replaces_response_before_headers():
     with patch.object(
         session_store, "write", new=AsyncMock(side_effect=TimeoutError("offline"))
-    ):
+    ) as write:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://testserver"
         ) as client:
-            response = await client.get("/v1/auth/me?rp_client_id=rp-123")
+            response = await client.get("/v1/auth/csrf-token")
+    write.assert_awaited_once()
     assert response.status_code == 503
     assert response.json()["code"] == "service-unavailable"
+    assert "set-cookie" not in response.headers
 
 
 @pytest.mark.asyncio

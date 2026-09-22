@@ -10,28 +10,34 @@ from app.constants.session_keys import SessionKeys
 from app.utils.recovery_errors import RecoveryError
 
 
-def test_set_rp_client_id_in_session_sets_value():
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query_params",
+    [
+        {},
+        {"rp_client_id": ""},
+        {"rp_client_id": " \t "},
+        {"rp_client_id": "untrusted-rp"},
+    ],
+)
+async def test_authentication_does_not_change_rp_context_from_query_string(
+    query_params,
+):
     mock_request = MagicMock()
     key = SessionKeys.RP_CLIENT_ID_KEY.value
-    mock_request.query_params = {key: "rp-abc"}
-    mock_request.session = {}
+    mock_request.query_params = query_params
+    mock_request.session = {
+        key: "original-rp",
+        SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value: "access-token",
+    }
 
-    auth_user_session.set_rp_client_id_in_session(mock_request)
+    with patch(
+        "app.auth.services.auth_user_session.introspect_user_token",
+        new=AsyncMock(return_value={"active": True}),
+    ):
+        await auth_user_session.get_users_current_session(mock_request)
 
-    assert mock_request.session.get(key) == "rp-abc"
-
-
-@pytest.mark.parametrize(
-    "query_params", [{}, {"rp_client_id": ""}, {"rp_client_id": " \t "}]
-)
-def test_set_rp_client_id_in_session_preserves_existing_value(query_params):
-    request = MagicMock()
-    request.query_params = query_params
-    request.session = {SessionKeys.RP_CLIENT_ID_KEY.value: "rp-existing"}
-
-    auth_user_session.set_rp_client_id_in_session(request)
-
-    assert request.session[SessionKeys.RP_CLIENT_ID_KEY.value] == "rp-existing"
+    assert mock_request.session[key] == "original-rp"
 
 
 @pytest.mark.asyncio
@@ -158,7 +164,7 @@ async def test_session_event_sse_generator_yields_error_when_redis_is_unavailabl
 
 def test_update_session_tokens_updates_session_dict():
     mock_request = MagicMock()
-    mock_request.session = {}
+    mock_request.session = {SessionKeys.CSRF_TOKEN.value: "existing-csrf-token"}
     new_tokens = {"access_token": "at-1", "refresh_token": "rt-1"}
 
     auth_user_session.update_session_tokens(mock_request, new_tokens)
@@ -167,6 +173,7 @@ def test_update_session_tokens_updates_session_dict():
         mock_request.session[SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value] == "at-1"
     )
     assert mock_request.session[SessionKeys.SESSION_USER_TOKEN.value] == new_tokens
+    assert mock_request.session[SessionKeys.CSRF_TOKEN.value] == "existing-csrf-token"
 
 
 @pytest.mark.asyncio

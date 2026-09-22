@@ -252,7 +252,7 @@ async def test_skip_account_linking_resolves_rp_before_profile_access():
 
 
 @pytest.mark.asyncio
-async def test_skip_account_linking_redirects_to_rp():
+async def test_skip_account_linking_returns_rp_redirect_url():
     request = build_request()
     seed_legacy_session(request)
     request.session[SessionKeys.CUSTOM_PARAMETERS.value] = {
@@ -286,7 +286,7 @@ async def test_skip_account_linking_redirects_to_rp():
         response = await skip_account_linking(
             request, "user-at", "user-token", "rp-123"
         )
-        assert isinstance(response, RedirectResponse)
+        assert response.redirect_url
         assert mock_patch_audit.await_args.kwargs["correlation_id"]
         assert SessionKeys.CORRELATION_ID.value in request.session
         assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
@@ -297,7 +297,7 @@ async def test_skip_account_linking_redirects_to_rp():
         assert "rpname_SIC_state" not in request.session
         assert "_state_rpname_SIC_state" not in request.session
         assert (
-            response.headers["location"]
+            response.redirect_url
             == "https://rp.example.test/landing/fr?fakeparam1=value-1&fakeparam2=value-2&lang=fr&ui_locales=fr-CA"
         )
 

@@ -42,6 +42,8 @@ REDACT_KEYS = [
     "access_token",
     "refresh_token",
     "id_token",
+    "csrf_token",
+    "x-csrf-token",
     "api_key",
     "apikey",
     "client_secret",
@@ -107,6 +109,8 @@ class StandardizedLoggingMiddleware(BaseHTTPMiddleware):
         return {k: v for k, v in context.items() if v}
 
     async def build_user(self, request):
+        if getattr(request.state, "csrf_rejected", False) is True:
+            return None
         # Logging must not refresh tokens or turn a handled error into a 500.
         session = request.scope.get("session")
         if type(session) is not dict:
