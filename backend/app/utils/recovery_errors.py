@@ -65,11 +65,11 @@ def recovery_response(request: Request, code: str):
             headers={**headers, "X-Accel-Buffering": "no"},
         )
     if "text/html" in accept and "application/json" not in accept:
-        # Session loading itself may have failed, leaving starsessions' LoadGuard.
+        # Accept dict subclasses without touching starsessions' unloaded LoadGuard.
         session = request.scope.get("session")
         session_language = (
             session.get(SessionKeys.CURRENT_LANGUAGE.value)
-            if type(session) is dict
+            if issubclass(type(session), dict)
             else None
         )
         language = request.query_params.get("lang") or session_language or "en"

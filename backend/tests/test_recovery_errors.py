@@ -21,6 +21,10 @@ from app.utils.recovery_errors import (
 )
 
 
+class SessionDict(dict):
+    """Model the dictionary subclass used by newer Starlette sessions."""
+
+
 def request_for(path="/v1/auth/me", query=b"", session=None, accept="application/json"):
     return Request(
         {
@@ -371,8 +375,9 @@ async def test_unrelated_error_is_not_reported_as_redis_failure():
 @pytest.mark.parametrize(
     "language,expected", [("fr", "fr"), ("EN", "en"), ("../../x", "en")]
 )
-def test_error_navigation_uses_allowlisted_language(language, expected):
-    request = request_for(session={"lang": language}, accept="text/html")
+@pytest.mark.parametrize("session_type", [dict, SessionDict])
+def test_error_navigation_uses_allowlisted_language(language, expected, session_type):
+    request = request_for(session=session_type(lang=language), accept="text/html")
     response = recovery_response(request, "missing-rp-context")
     assert response.headers["location"].endswith(
         f"/{expected}/error/missing-rp-context"

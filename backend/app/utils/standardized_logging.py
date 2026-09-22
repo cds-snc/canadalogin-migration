@@ -113,7 +113,8 @@ class StandardizedLoggingMiddleware(BaseHTTPMiddleware):
             return None
         # Logging must not refresh tokens or turn a handled error into a 500.
         session = request.scope.get("session")
-        if type(session) is not dict:
+        # Accept dict subclasses without probing an unloaded session's LoadGuard.
+        if not issubclass(type(session), dict):
             return None
         token = session.get(SessionKeys.SESSION_USER_TOKEN.value)
         if not isinstance(token, dict):
