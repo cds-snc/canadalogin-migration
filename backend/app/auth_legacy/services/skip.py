@@ -28,10 +28,12 @@ async def skip_account_linking(
     request: Request,
     user_access_token: str,
     session_user_token: str,
-    rp_client_id: str,
+    rp_client_id: str | None,
 ):
     correlation_id = ensure_session_correlation_id(request)
     attempt_id = ensure_linking_attempt_id(request)
+
+    rp = await get_config(rp_client_id)
 
     ibm_id = get_ibm_id(session_user_token)
     log_auth_flow_event(
@@ -68,7 +70,6 @@ async def skip_account_linking(
         audit_status=AuditStatusKeys.SKIPPED_KEY.value,
     )
 
-    rp = await get_config(rp_client_id)
     return_parameters = get_rp_return_parameters_from_session(request)
 
     redirect_url = append_customparameters_to_url(

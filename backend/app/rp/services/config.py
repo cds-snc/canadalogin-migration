@@ -5,11 +5,13 @@ import os
 from fastapi import HTTPException, Request
 from httpx import AsyncClient
 from pydantic import ValidationError
+from redis.exceptions import ConnectionError, TimeoutError
 
 from app.rp.schemas import LegacyIdpSecretSchema, RPConfigSourceSchema, RPSchema
 from app.utils.redis import get_redis_client
 from app.utils.custom_parameters import append_customparameters_to_url
 from app.utils.request_error_handler import RequestErrorHandler
+from app.utils.recovery_errors import RecoveryError
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +25,11 @@ _CONFIG_JSON_CACHE: list | None = None
 
 
 async def get_config(
-    rp_client_id: str,
+    rp_client_id: str | None,
 ):
+    if not isinstance(rp_client_id, str) or not rp_client_id.strip():
+        raise RecoveryError("missing-rp-context")
+
     try:
         data = await get_config_json()
 
@@ -240,14 +245,19 @@ def _merge_config_with_secrets(
 async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 86400):
     try:
         redis_client = get_redis_client(request)
-        cached = await redis_client.get(idp_url)
-    except HTTPException:
-        raise
-    except Exception as exc:
+    except ValueError as exc:
         logger.error(
             "Redis unavailable during legacy IdP metadata lookup", exc_info=True
         )
-        raise HTTPException(status_code=503, detail="Redis unavailable") from exc
+        raise RecoveryError("service-unavailable") from exc
+
+    try:
+        cached = await redis_client.get(idp_url)
+    except (ConnectionError, TimeoutError) as exc:
+        logger.error(
+            "Redis unavailable during legacy IdP metadata lookup", exc_info=True
+        )
+        raise RecoveryError("service-unavailable") from exc
 
     if cached:
         return json.loads(cached.decode("utf-8"))
@@ -263,11 +273,11 @@ async def get_legacy_idp_metadata(request: Request, idp_url: str, ttl: int = 864
 
     try:
         await redis_client.set(idp_url, json.dumps(metadata), ex=ttl)
-    except Exception as exc:
+    except (ConnectionError, TimeoutError) as exc:
         logger.error(
             "Redis unavailable while caching legacy IdP metadata", exc_info=True
         )
-        raise HTTPException(status_code=503, detail="Redis unavailable") from exc
+        raise RecoveryError("service-unavailable") from exc
     return metadata
 
 

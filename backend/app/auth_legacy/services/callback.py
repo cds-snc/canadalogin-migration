@@ -4,6 +4,7 @@ import httpx
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuthError
+from app.utils.recovery_errors import RecoveryError
 from pydantic import ValidationError
 from urllib.parse import quote
 
@@ -242,7 +243,7 @@ async def legacy_callback(
         if session_rp_client_id:
             rp_client_id = session_rp_client_id
         elif not rp_client_id:
-            raise HTTPException(status_code=400, detail="Missing RP client id")
+            raise RecoveryError("missing-rp-context")
         log_auth_flow_event(
             logger,
             flow="migration",

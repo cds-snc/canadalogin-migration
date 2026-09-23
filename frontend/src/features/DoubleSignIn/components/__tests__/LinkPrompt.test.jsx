@@ -108,6 +108,12 @@ vi.mock("../../api/UpdateLinkState.jsx", () => ({
 }));
 
 import { updateLinkStateAPI } from "../../api/UpdateLinkState.jsx";
+import { redirectToRecovery } from "../../../../utils/recoveryErrors.js";
+
+vi.mock("../../../../utils/recoveryErrors.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  redirectToRecovery: vi.fn(),
+}));
 
 describe("LinkPrompt", () => {
   const originalLocation = window.location;
@@ -322,6 +328,7 @@ describe("LinkPrompt", () => {
 
   it("uses GCKey-only text when RP config is gckey only", async () => {
     updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({
+      rp_client_id: "rp-123",
       rp_client_name_en: "Example RP",
       is_gckey_only: true,
     });
@@ -336,5 +343,38 @@ describe("LinkPrompt", () => {
     expect(
       screen.getByText("You can skip if you did not use GCKey."),
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      { status: 400, data: { code: "missing-rp-context" } },
+      "missing-rp-context",
+    ],
+    [
+      { status: 503, data: { code: "service-unavailable" } },
+      "service-unavailable",
+    ],
+  ])("hides linking actions when RP loading fails", async (error, reason) => {
+    updateLinkStateAPI.getRPAuthUrl.mockRejectedValue(error);
+    render(<LinkPrompt />);
+
+    await waitFor(() =>
+      expect(redirectToRecovery).toHaveBeenCalledWith(reason, "en"),
+    );
+    expect(screen.queryByText("Skip for now")).not.toBeInTheDocument();
+    expect(screen.queryByText("Link now")).not.toBeInTheDocument();
+  });
+
+  it("rejects an empty RP response before showing linking actions", async () => {
+    updateLinkStateAPI.getRPAuthUrl.mockResolvedValue({});
+    render(<LinkPrompt />);
+
+    await waitFor(() =>
+      expect(redirectToRecovery).toHaveBeenCalledWith(
+        "missing-rp-context",
+        "en",
+      ),
+    );
+    expect(screen.queryByText("Skip for now")).not.toBeInTheDocument();
   });
 });

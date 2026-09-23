@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from fastapi import HTTPException
 
 from app.auth import v1_router as auth_router
 from app.auth_legacy import v1_router as legacy_router
@@ -190,6 +191,38 @@ async def test_legacy_skip_calls_service():
             "token",
             rp_client_id="rp-1",
         )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "handler",
+    [
+        legacy_router.handle_legacy_login,
+        legacy_router.handle_legacy_callback,
+        legacy_router.handle_skip_account_linking,
+        rp_router.handle_get_rp_config_details,
+    ],
+)
+@pytest.mark.parametrize("rp_session", [{}, {"rp_client_id": None}])
+async def test_rp_routes_handle_missing_client_context(handler, rp_session):
+    request = MagicMock()
+    request.session = {
+        SessionKeys.SESSION_USER_TOKEN.value: "user-token",
+        **rp_session,
+    }
+    kwargs = {}
+    if handler is not rp_router.handle_get_rp_config_details:
+        kwargs["user_access_token"] = "user-at"
+    if handler is legacy_router.handle_legacy_login:
+        kwargs["lang"] = "en"
+
+    with patch("app.rp.services.config.get_config_json", new=AsyncMock()) as mock_load:
+        with pytest.raises(HTTPException) as raised:
+            await handler(request, **kwargs)
+
+    assert raised.value.status_code == 400
+    assert raised.value.detail == "Missing RP client id"
+    mock_load.assert_not_awaited()
 
 
 @pytest.mark.asyncio

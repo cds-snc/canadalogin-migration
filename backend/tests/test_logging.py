@@ -13,6 +13,11 @@ from app.utils.standardized_logging import StandardizedLoggingMiddleware
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.testclient import TestClient
 from starlette.middleware.sessions import SessionMiddleware
+from starsessions.middleware import LoadGuard
+
+
+class SessionDict(dict):
+    """Model the dictionary subclass used by newer Starlette sessions."""
 
 
 def build_logging_client(endpoint) -> TestClient:
@@ -138,18 +143,14 @@ async def test_log_request_query_string_blacklist(monkeypatch, caplog):
 async def test_log_signed_in(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
 
-    async def mock_500(_request: Request):
+    async def mock_500(request: Request):
+        request.session["token"] = {
+            "userinfo": {"sub": "12345678", "amr": ["password"]}
+        }
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Erroer",
         )
-
-    async def mock_get_user_info(*args, **kwargs):
-        return {"sub": "12345678", "amr": ["password"]}
-
-    monkeypatch.setattr(
-        "app.utils.standardized_logging.get_user_info", mock_get_user_info
-    )
 
     client = build_logging_client(mock_500)
     client.get("/health")
@@ -162,6 +163,36 @@ async def test_log_signed_in(monkeypatch, caplog):
         == "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f"
     )
     assert log_json["context"]["user"]["auth_methods"] == ["password"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("session_type", [dict, SessionDict])
+async def test_build_user_accepts_session_dictionary_subclasses(session_type):
+    request = Request(
+        {
+            "type": "http",
+            "session": session_type(
+                token={"userinfo": {"sub": "12345678", "amr": ["password"]}}
+            ),
+        }
+    )
+    middleware = StandardizedLoggingMiddleware(FastAPI())
+
+    assert await middleware.build_user(request) == {
+        "id": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
+        "auth_methods": ["password"],
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("session_type", [None, LoadGuard], ids=["missing", "unloaded"])
+async def test_build_user_skips_unavailable_session(session_type):
+    scope = {"type": "http"}
+    if session_type is not None:
+        scope["session"] = session_type()
+    middleware = StandardizedLoggingMiddleware(FastAPI())
+
+    assert await middleware.build_user(Request(scope)) is None
 
 
 @pytest.mark.asyncio

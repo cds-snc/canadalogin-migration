@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
+from redis.exceptions import ConnectionError
 
 from app.rp.services.config import (
     get_config,
@@ -42,6 +43,18 @@ def _sample_rp_config(include_inline_secret: bool = False):
 
 def _sample_rp_secrets():
     return [{"client_id": "cid", "client_secret": "secret"}]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("client_id", [None, "", " \t "])
+async def test_get_config_rejects_missing_client_before_loading_config(client_id):
+    with patch("app.rp.services.config.get_config_json", new=AsyncMock()) as mock_load:
+        with pytest.raises(HTTPException) as raised:
+            await get_config(client_id)
+
+    assert raised.value.status_code == 400
+    assert raised.value.detail == "Missing RP client id"
+    mock_load.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -257,13 +270,13 @@ async def test_get_legacy_idp_metadata_raises_503_when_redis_missing():
         )
 
     assert raised.value.status_code == 503
-    assert raised.value.detail == "Redis unavailable"
+    assert raised.value.code == "service-unavailable"
 
 
 @pytest.mark.asyncio
 async def test_get_legacy_idp_metadata_raises_503_when_redis_get_fails():
     redis_client = SimpleNamespace(
-        get=AsyncMock(side_effect=RuntimeError("redis down"))
+        get=AsyncMock(side_effect=ConnectionError("redis down"))
     )
     request = SimpleNamespace(
         app=SimpleNamespace(state=SimpleNamespace(redis_client=redis_client))
@@ -275,4 +288,4 @@ async def test_get_legacy_idp_metadata_raises_503_when_redis_get_fails():
         )
 
     assert raised.value.status_code == 503
-    assert raised.value.detail == "Redis unavailable"
+    assert raised.value.code == "service-unavailable"

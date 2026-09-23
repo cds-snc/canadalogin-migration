@@ -2,7 +2,11 @@ import { GcdsContainer, GcdsHeader } from "@gcds-core/components-react";
 import Breadcrumbs from "./Breadcrumbs";
 import TopNav from "./TopNav";
 
-export default function Header({ langHref, currentLang }) {
+export default function Header({
+  langHref,
+  currentLang,
+  showBreadcrumbs = true,
+}) {
   return (
     <GcdsContainer className="gcds-header">
       <GcdsHeader
@@ -12,7 +16,7 @@ export default function Header({ langHref, currentLang }) {
         lang={currentLang}
       >
         <TopNav currentLang={currentLang} />
-        <Breadcrumbs />
+        {showBreadcrumbs ? <Breadcrumbs /> : null}
       </GcdsHeader>
     </GcdsContainer>
   );
