@@ -5,7 +5,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuthError
 from pydantic import ValidationError
-from urllib.parse import quote
+from urllib.parse import urlencode
 
 from app.config import get_configuration
 from app.auth.services.auth import get_base_profile_management_url
@@ -251,7 +251,7 @@ async def legacy_callback(
             rp_client_id=rp_client_id,
         )
 
-        # RP with SIC only has 1 IDP
+        # Each RP config selects one legacy provider.
         rp = await get_config(rp_client_id)
         legacy_idp = rp.IDP[0]
 
@@ -362,10 +362,14 @@ async def legacy_callback(
             legacy_provider=legacy_idp.client_name,
         )
 
-        # The discovery metadata is stored here:
         idp_metadata = client.server_metadata
-        if not config.LEGACY_IDP_LOGOUT_ENABLED:
-            logger.info("Legacy IdP logout disabled; skipping end-session redirect.")
+        end_session_endpoint = idp_metadata.get("server_metadata", idp_metadata).get(
+            "end_session_endpoint"
+        )
+        if not config.LEGACY_IDP_LOGOUT_ENABLED or not end_session_endpoint:
+            logger.info(
+                "Legacy IdP logout disabled or unavailable; skipping end-session redirect."
+            )
             log_auth_flow_event(
                 logger,
                 flow="migration",
@@ -377,27 +381,22 @@ async def legacy_callback(
             )
             return await legacy_post_logout_callback(request)
 
-        # Grab the logout endpoint
-        end_session_endpoint = idp_metadata["server_metadata"].get(
-            "end_session_endpoint"
-        )
-
         post_logout_redirect_uri = request.url_for("handle_legacy_post_logout_callback")
         if config.ENVIRONMENT != "local":
             post_logout_redirect_uri = str(post_logout_redirect_uri).replace(
                 "http://", "https://"
             )
 
-        encoded_post_logout_redirect_uri = quote(str(post_logout_redirect_uri), safe="")
-
-        # Build the logout url for the Legacy IDP
-        logout_url = (
-            f"{end_session_endpoint}"
-            f"?id_token_hint={token['id_token']}"
-            f"&post_logout_redirect_uri={encoded_post_logout_redirect_uri}"
-            f"&state={state}"
-            f"&client_id=e1a58c16-a649-45e1-b80c-3cd3daaeea0d"
+        logout_parameters = urlencode(
+            {
+                "id_token_hint": token["id_token"],
+                "post_logout_redirect_uri": str(post_logout_redirect_uri),
+                "state": state,
+                "client_id": legacy_idp.client_id,
+            }
         )
+        separator = "&" if "?" in end_session_endpoint else "?"
+        logout_url = f"{end_session_endpoint}{separator}{logout_parameters}"
         log_auth_flow_event(
             logger,
             flow="migration",

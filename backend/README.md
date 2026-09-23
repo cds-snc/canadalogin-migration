@@ -57,7 +57,7 @@ RP_MIGRATION_CONFIG=[{"rp_client_id":"your-rp-client-id","rp_client_name":"Examp
 RP_MIGRATION_CONFIG_SECRETS=[{"client_id":"your-legacy-idp-client-id","client_secret":"your-legacy-idp-client-secret"}]
 ```
 
-`LEGACY_IDP_LOGOUT_ENABLED` defaults to `false`. Set to `true` to enable legacy IdP (SIC) logout redirect.
+`LEGACY_IDP_LOGOUT_ENABLED` defaults to `false`. Set to `true` to enable the configured legacy OIDC IdP's logout redirect.
 
 When legacy logout is enabled, the migration flow now redirects users to `/{lang}/link/lang-sync` before `/{lang}/link/success`.
 That sync step is handled in the frontend and calls `https://lang-canada.fjgc-gccf.gc.ca/v1/lang` from the browser with credentials.
@@ -108,6 +108,61 @@ python3 backend/scripts/rp_migration_config_to_env.py \
   --input /path/to/rp_migration_config.json \
   --output /tmp/rp_migration_config.env
 ```
+
+#### GCCF migration configuration in TEST
+
+GCCF uses the existing OIDC configuration with `IDP[].client_name` set to `"GCCF"`.
+Each migration RP is configured through `RP_MIGRATION_CONFIG`; adding an RP does not require a code change.
+Use one legacy `IDP` entry per RP. No `protocol` or `provider_key` field is required.
+
+The [GCCF sample](docs/rp_migration_config.gccf.sample.json) contains two RP entries for the simulator's `client7` and `client8` flows.
+Append these entries to the existing `RP_MIGRATION_CONFIG` array in Terraform after replacing the placeholders:
+
+- Outer `rp_client_id`: the corresponding RP's client ID from IBM Verify TEST. Use a distinct `rp_client_name` for each RP.
+- Inner `IDP[].client_id`: the GCCF client ID used by migration. Both entries can share it when they use the same GCCF registration.
+- `openid_configuration`: the full discovery URL supplied for GCCF TEST, including its discovery path. The sample URL is a placeholder.
+- `token_endpoint_auth_method`: the method registered for that GCCF client. The sample's `client_secret_basic` is illustrative; replace it with the registered shared-secret method, such as `client_secret_post` if applicable.
+- `scope`: scopes allowed by the GCCF registration. The sample requests `openid`; add `profile` or `email` only if required and allowed.
+
+Register this migration callback on the GCCF client:
+
+```text
+https://api.migration.test.login-connexion.alpha.canada.ca/v1/auth/legacy/callback
+```
+
+If `LEGACY_IDP_LOGOUT_ENABLED=true` and GCCF advertises an end-session endpoint, also register `https://api.migration.test.login-connexion.alpha.canada.ca/v1/auth/legacy/post_logout` as the migration post-logout redirect URI. This is separate from the simulator's logout callback. If the provider has no end-session endpoint, migration continues to its completion flow without a provider logout redirect.
+
+The sample's `rp_redirect_uri_en` and `rp_redirect_uri_fr` return the user to the simulator's `/auth/client7/{lang}` or `/auth/client8/{lang}` route after migration.
+These are RP return URLs, separate from the OIDC callback registered on the GCCF client.
+The simulator's direct GCCF `client6` flow does not need an entry in migration configuration.
+
+The first entry uses `acr_values: ""` to leave provider selection to GCCF; the second sends `acr_values: "gckey"` for GCKey only.
+Confirm in TEST that GCCF accepts `gckey` and applies the expected provider restriction.
+
+Supply the GCCF secret separately through `RP_MIGRATION_CONFIG_SECRETS`, using the same inner GCCF client ID:
+
+```json
+[
+  {
+    "client_id": "your-gccf-test-client-id",
+    "client_secret": "your-gccf-test-client-secret"
+  }
+]
+```
+
+One matching secret entry is merged into both RP configurations at startup.
+The Verify RP secrets used by the simulator are not the legacy IdP secret in this payload.
+Keep existing secret entries when adding the GCCF entry, and supply the real secret through the deployment secret process.
+
+The sample can be validated and compacted without contacting GCCF:
+
+```bash
+python3 backend/scripts/rp_migration_config_to_env.py \
+  --input backend/docs/rp_migration_config.gccf.sample.json
+```
+
+Automated OIDC tests use mocks. The real GCCF flow must be validated in TEST: discovery and authentication, callback and account linking, return to each RP, GCKey-only selection, and logout if enabled.
+Local GCCF credentials or connectivity are not required for the mock tests.
 
 #### IBM_VERIFY_MIGRATION_CLIENT_ID and IBM_VERIFY_MIGRATION_SECRET
 
