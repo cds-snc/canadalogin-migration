@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.12.15](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.14...v1.12.15) (2026-09-22)
+
+
+### Bug Fixes
+
+* implemented CSRF tokens ([#391](https://github.com/cds-snc/canadalogin-migration/issues/391)) ([d16a6db](https://github.com/cds-snc/canadalogin-migration/commit/d16a6db432ef1a9111df4d507bb80a9579d75979))
+
+
+### Continuous Integration
+
+* deploy 1.12.14 to staging ([#372](https://github.com/cds-snc/canadalogin-migration/issues/372)) ([f0d9751](https://github.com/cds-snc/canadalogin-migration/commit/f0d97518009273d6d7c70243572016a116565482))
+* release 1.12.14 to prod ([#378](https://github.com/cds-snc/canadalogin-migration/issues/378)) ([d44d204](https://github.com/cds-snc/canadalogin-migration/commit/d44d204f841bc6d09048fb70d25ee2b8edd3d52e))
+
 ## [1.12.14](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.13...v1.12.14) (2026-08-19)
 
 
