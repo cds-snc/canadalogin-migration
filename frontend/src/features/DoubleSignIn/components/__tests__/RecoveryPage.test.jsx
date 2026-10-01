@@ -29,14 +29,16 @@ vi.mock("@gcds-core/components-react", () => ({
   GcdsHeading: ({ children }) => <h1>{children}</h1>,
   GcdsText: ({ children }) => <p>{children}</p>,
   GcdsLink: ({ children, href }) => <a href={href}>{children}</a>,
+  GcdsButton: ({ children, href }) => <a href={href}>{children}</a>,
+  GcdsIcon: () => <span />,
 }));
 
 describe("public recovery pages", () => {
   it.each([
-    ["en", "missing-rp-context", "Start again from your service"],
+    ["en", "missing-rp-context", "Service not found"],
     ["en", "session-ended", "Your session has ended"],
     ["en", "service-unavailable", "This service is temporarily unavailable"],
-    ["fr", "missing-rp-context", "Recommencez à partir de votre service"],
+    ["fr", "missing-rp-context", "Service introuvable"],
     ["fr", "session-ended", "Votre session est terminée"],
     ["fr", "service-unavailable", "Ce service est temporairement indisponible"],
   ])(

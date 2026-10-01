@@ -504,9 +504,15 @@
     "helpUrl": "https://connexion.canada.ca/fr/utilisateurs/",
     "reasons": {
       "missing-rp-context": {
-        "title": "Recommencez à partir de votre service",
-        "description": "Nous n’avons pas pu déterminer le service auquel vous voulez accéder.",
-        "nextStep": "Retournez sur le site Web de ce service et connectez-vous de nouveau pour poursuivre la mise à jour de votre méthode de connexion."
+        "title": "Service introuvable",
+        "description": "Nous n’avons pas pu identifier le service auquel vous tentez d’accéder.",
+        "nextStep": "Pour poursuivre la mise à jour de votre méthode de connexion :",
+        "navigateStep": "Rendez-vous sur le site Web du service auquel vous tentez d’accéder",
+        "signInStep": "Sélectionnez",
+        "signInLabel": "Se connecter",
+        "servicesLabel": "Trouver un service participant",
+        "servicesUrl": "https://connexion.canada.ca/fr/utilisateurs/a-propos/services-participants/",
+        "helpLabel": "Obtenir de l’aide concernant ConnexionCanada"
       },
       "session-ended": {
         "title": "Votre session est terminée",
