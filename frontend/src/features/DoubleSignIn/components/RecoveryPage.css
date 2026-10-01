@@ -1,0 +1,50 @@
+.gcds-page.recovery-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: 80px 24px 56px;
+}
+
+.gcds-content.recovery-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 950px;
+  margin-inline: auto;
+  padding: 48px 24px;
+  border: 1px solid var(--gcds-color-grayscale-300, #a8adb4);
+  border-radius: 48px;
+  background: #fff;
+}
+
+.recovery-card main {
+  max-width: 550px;
+  margin-inline: auto;
+}
+
+.recovery-icon {
+  margin-bottom: 24px;
+  color: var(--gcds-color-red-600, #b3192e);
+  text-align: center;
+}
+
+.recovery-steps {
+  margin: 0 0 24px;
+  padding-inline-start: 28px;
+  list-style-type: disc;
+}
+
+.recovery-action {
+  margin-bottom: 24px;
+}
+
+@media screen and (max-width: 767px) {
+  .gcds-page.recovery-page {
+    padding: 32px 16px;
+  }
+
+  .gcds-content.recovery-card {
+    padding: 32px 24px;
+    border-radius: 24px;
+  }
+}
