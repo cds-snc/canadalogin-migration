@@ -1,0 +1,50 @@
+[
+  {
+    "rp_client_id": "your-verify-test-gccf-rp-client-id",
+    "rp_client_name": "GCCF migration RP",
+    "rp_client_name_en": "GCCF migration RP",
+    "rp_client_name_fr": "PR de migration GCCF",
+    "rp_redirect_uri_en": "https://rp-sim.migration.test.login-connexion.alpha.canada.ca/auth/client7/en",
+    "rp_redirect_uri_fr": "https://rp-sim.migration.test.login-connexion.alpha.canada.ca/auth/client7/fr",
+    "dependentClientIds": [],
+    "acr_values": "",
+    "IDP": [
+      {
+        "client_id": "your-gccf-test-client-id",
+        "client_name": "GCCF",
+        "openid_configuration": "https://your-gccf-test-issuer.example.invalid/.well-known/openid-configuration",
+        "redirect_uris": [
+          "https://api.migration.test.login-connexion.alpha.canada.ca/v1/auth/legacy/callback"
+        ],
+        "scope": "openid",
+        "max_age": 3600,
+        "code_challenge_method": "S256",
+        "token_endpoint_auth_method": "client_secret_basic"
+      }
+    ]
+  },
+  {
+    "rp_client_id": "your-verify-test-gccf-gckey-only-rp-client-id",
+    "rp_client_name": "GCCF GCKey-only migration RP",
+    "rp_client_name_en": "GCCF GCKey-only migration RP",
+    "rp_client_name_fr": "PR de migration GCCF avec CléGC seulement",
+    "rp_redirect_uri_en": "https://rp-sim.migration.test.login-connexion.alpha.canada.ca/auth/client8/en",
+    "rp_redirect_uri_fr": "https://rp-sim.migration.test.login-connexion.alpha.canada.ca/auth/client8/fr",
+    "dependentClientIds": [],
+    "acr_values": "gckey",
+    "IDP": [
+      {
+        "client_id": "your-gccf-test-client-id",
+        "client_name": "GCCF",
+        "openid_configuration": "https://your-gccf-test-issuer.example.invalid/.well-known/openid-configuration",
+        "redirect_uris": [
+          "https://api.migration.test.login-connexion.alpha.canada.ca/v1/auth/legacy/callback"
+        ],
+        "scope": "openid",
+        "max_age": 3600,
+        "code_challenge_method": "S256",
+        "token_endpoint_auth_method": "client_secret_basic"
+      }
+    ]
+  }
+]

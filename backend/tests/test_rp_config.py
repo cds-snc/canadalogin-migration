@@ -58,6 +58,51 @@ async def test_get_config_returns_matching_rp(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_gccf_rps_share_idp_credentials_with_independent_acr_values(monkeypatch):
+    configs = []
+    for rp_client_id, acr_values in [
+        ("verify-gccf-rp", ""),
+        ("verify-gccf-gckey-rp", "gckey"),
+    ]:
+        rp_config = _sample_rp_config()[0]
+        rp_config.update(
+            rp_client_id=rp_client_id,
+            rp_client_name=rp_client_id,
+            acr_values=acr_values,
+        )
+        rp_config["IDP"][0].update(
+            client_id="gccf-consolidator-client",
+            client_name="GCCF",
+            token_endpoint_auth_method="client_secret_post",
+        )
+        configs.append(rp_config)
+
+    monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(configs))
+    monkeypatch.setenv(
+        "RP_MIGRATION_CONFIG_SECRETS",
+        json.dumps(
+            [{"client_id": "gccf-consolidator-client", "client_secret": "gccf-secret"}]
+        ),
+    )
+
+    with patch("app.rp.services.config._CONFIG_JSON_CACHE", None):
+        gccf_rp = await get_config("verify-gccf-rp")
+        gckey_rp = await get_config("verify-gccf-gckey-rp")
+        gccf_details = await get_rp_config_details("verify-gccf-rp")
+        gckey_details = await get_rp_config_details("verify-gccf-gckey-rp")
+
+    for rp in (gccf_rp, gckey_rp):
+        assert rp.IDP[0].client_name == "GCCF"
+        assert rp.IDP[0].client_id == "gccf-consolidator-client"
+        assert rp.IDP[0].client_secret == "gccf-secret"
+        assert rp.IDP[0].token_endpoint_auth_method == "client_secret_post"
+    assert gccf_rp.acr_values == ""
+    assert gckey_rp.acr_values == "gckey"
+    assert gccf_details["is_gckey_only"] is False
+    assert gckey_details["is_gckey_only"] is True
+
+
+@pytest.mark.asyncio
 async def test_get_config_raises_when_missing(monkeypatch):
     monkeypatch.setenv("RP_MIGRATION_CONFIG", json.dumps(_sample_rp_config()))
     monkeypatch.setenv("RP_MIGRATION_CONFIG_SECRETS", json.dumps(_sample_rp_secrets()))

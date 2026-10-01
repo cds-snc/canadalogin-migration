@@ -59,15 +59,20 @@ async def legacy_login(
     lang: str = "en",
 ):
     try:
-        # RP with SIC only has 1 IDP
-        rp = await get_config(rp_client_id)
+        if not rp_client_id:
+            raise HTTPException(status_code=400, detail="Missing RP client id")
 
-        # the [0] is the only value returned, just looks odd
+        rp = await get_config(rp_client_id)
+        if not rp.IDP:
+            raise HTTPException(
+                status_code=400, detail="Legacy IDP configuration not found"
+            )
+
+        # Each RP config selects one legacy provider.
         legacy_idp = rp.IDP[0]
 
-        # handle SIC legacy login
-        if legacy_idp.client_name == "SIC":
-            return await SIC_legacy_login_auth(
+        if legacy_idp.client_name.strip().upper() in {"SIC", "GCCF"}:
+            return await oidc_legacy_login_auth(
                 request,
                 user_access_token,
                 session_user_token,
@@ -75,11 +80,7 @@ async def legacy_login(
                 lang,
             )
 
-        # handle GCCF legacy login
-
-        # handle GCKey legacy login
-
-        # handle Interac legacy login
+        raise HTTPException(status_code=400, detail="Unsupported legacy IDP provider")
 
     except Exception:
         logger.exception(
@@ -89,7 +90,7 @@ async def legacy_login(
         raise
 
 
-async def SIC_legacy_login_auth(
+async def oidc_legacy_login_auth(
     request: Request,
     user_access_token: str,
     session_user_token: str,
@@ -102,7 +103,7 @@ async def SIC_legacy_login_auth(
 
         global_http_client = request.app.state.request_client
 
-        # RP with SIC only has 1 IDP
+        # SIC and GCCF use the same configured OIDC flow.
         rp = await get_config(rp_client_id)
         if not getattr(rp, "IDP", None):
             raise HTTPException(
@@ -206,7 +207,7 @@ async def SIC_legacy_login_auth(
 
     except Exception:
         logger.exception(
-            "Unexpected error during SIC legacy login for rp_client_id=%s",
+            "Unexpected error during legacy OIDC login for rp_client_id=%s",
             rp_client_id,
         )
         raise
