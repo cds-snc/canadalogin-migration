@@ -8,6 +8,10 @@ import {
   GcdsNotice,
 } from "@gcds-core/components-react";
 import { getPageContent } from "../../../utils/functions.jsx";
+import {
+  getRecoveryReason,
+  redirectToRecovery,
+} from "../../../utils/recoveryErrors.js";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
 import { useSkipLink } from "../hooks/useSkipLink.js";
@@ -37,6 +41,7 @@ export default function LinkPrompt() {
     language,
     isLoading: true,
     data: null,
+    error: null,
   });
 
   const pageContentJson = getPageContent(language, PAGES.LinkPrompt);
@@ -56,25 +61,43 @@ export default function LinkPrompt() {
         language,
         isLoading: true,
         data: null,
+        error: null,
       });
 
       try {
         const data = await updateLinkStateAPI.getRPAuthUrl();
         if (isCurrent) {
+          if (
+            typeof data?.rp_client_id !== "string" ||
+            !data.rp_client_id.trim()
+          ) {
+            setRpLoadState({
+              language,
+              isLoading: false,
+              data: null,
+              error: "missing-rp-context",
+            });
+            redirectToRecovery("missing-rp-context", language);
+            return;
+          }
           setRpLoadState({
             language,
             isLoading: false,
-            data: data || {},
+            data,
+            error: null,
           });
         }
       } catch (e) {
         console.error("Failed loading RP data", e);
         if (isCurrent) {
+          const reason = getRecoveryReason(e) || "service-unavailable";
           setRpLoadState({
             language,
             isLoading: false,
-            data: {},
+            data: null,
+            error: reason,
           });
+          redirectToRecovery(reason, language);
         }
       }
     }
@@ -87,7 +110,9 @@ export default function LinkPrompt() {
   }, [language]);
 
   const isPageReady =
-    !rpLoadState.isLoading && rpLoadState.language === language;
+    !rpLoadState.isLoading &&
+    !rpLoadState.error &&
+    rpLoadState.language === language;
   const rpData = isPageReady ? rpLoadState.data : null;
 
   useEffect(() => {

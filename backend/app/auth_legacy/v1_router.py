@@ -35,7 +35,7 @@ async def handle_legacy_login(
         request,
         user_access_token,
         request.session[SessionKeys.SESSION_USER_TOKEN.value],
-        rp_client_id=request.session[SessionKeys.RP_CLIENT_ID_KEY.value],
+        rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),
         lang=lang,
     )
 
@@ -53,7 +53,7 @@ async def handle_legacy_callback(
         request,
         user_access_token,
         request.session[SessionKeys.SESSION_USER_TOKEN.value],
-        rp_client_id=request.session[SessionKeys.RP_CLIENT_ID_KEY.value],
+        rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),
     )
 
 
@@ -91,5 +91,5 @@ async def handle_skip_account_linking(
         request,
         user_access_token,
         request.session[SessionKeys.SESSION_USER_TOKEN.value],
-        rp_client_id=request.session[SessionKeys.RP_CLIENT_ID_KEY.value],
+        rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),
     )

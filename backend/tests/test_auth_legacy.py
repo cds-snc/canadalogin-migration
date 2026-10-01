@@ -11,6 +11,7 @@ from authlib.integrations.starlette_client import OAuthError
 
 from app.auth_legacy.services.login import legacy_login, SIC_legacy_login_auth
 from app.auth_legacy.services.skip import skip_account_linking
+from app.auth_legacy.v1_router import handle_skip_account_linking
 from app.auth_legacy.services.callback import (
     get_target_rp_client_ids,
     legacy_callback,
@@ -182,6 +183,72 @@ async def test_sic_legacy_login_auth_raises_when_processing_patch_returns_dict_e
 
     assert raised.value.status_code == 502
     assert raised.value.detail == "HTTP error: 500"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("client_id", [None, "", " \t "])
+async def test_skip_account_linking_rejects_missing_rp_before_profile_access(client_id):
+    request = build_request()
+
+    with (
+        patch(
+            "app.auth_legacy.services.skip.get_user_custom_attributes",
+            new=AsyncMock(),
+        ) as mock_attributes,
+        patch(
+            "app.auth_legacy.services.skip.patch_audit_data", new=AsyncMock()
+        ) as mock_audit,
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await skip_account_linking(request, "user-at", "user-token", client_id)
+
+    assert raised.value.status_code == 400
+    assert raised.value.detail == "Missing RP client id"
+    mock_attributes.assert_not_awaited()
+    mock_audit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_skip_route_handles_absent_rp_session_key():
+    request = build_request()
+    request.session[SessionKeys.SESSION_USER_TOKEN.value] = "user-token"
+
+    with pytest.raises(HTTPException) as raised:
+        await handle_skip_account_linking(
+            request, lang="en", user_access_token="user-at"
+        )
+
+    assert raised.value.status_code == 400
+    assert raised.value.detail == "Missing RP client id"
+
+
+@pytest.mark.asyncio
+async def test_skip_account_linking_resolves_rp_before_profile_access():
+    request = build_request()
+
+    with (
+        patch(
+            "app.auth_legacy.services.skip.get_config",
+            new=AsyncMock(
+                side_effect=HTTPException(
+                    status_code=404, detail="Legacy IdP configuration not found"
+                )
+            ),
+        ),
+        patch(
+            "app.auth_legacy.services.skip.get_user_custom_attributes",
+            new=AsyncMock(),
+        ) as mock_attributes,
+        patch(
+            "app.auth_legacy.services.skip.patch_audit_data", new=AsyncMock()
+        ) as mock_audit,
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await skip_account_linking(request, "user-at", "user-token", "unknown-rp")
+
+    assert raised.value.status_code == 404
+    mock_attributes.assert_not_awaited()
+    mock_audit.assert_not_awaited()
 
 
 @pytest.mark.asyncio

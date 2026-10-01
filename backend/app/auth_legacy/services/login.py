@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import HTTPException, Request
+from app.utils.recovery_errors import RecoveryError
 from httpx import Response
 
 from app.rp.services.config import get_config
@@ -98,7 +99,7 @@ async def SIC_legacy_login_auth(
 ):
     try:
         if not rp_client_id:
-            raise HTTPException(status_code=400, detail="Missing RP client id")
+            raise RecoveryError("missing-rp-context")
 
         global_http_client = request.app.state.request_client
 

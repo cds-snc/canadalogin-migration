@@ -29,6 +29,7 @@ from app.constants.session_keys import SessionKeys
 from app.users.schemas import ProfileResponse
 from app.users.services.get_my_profile import get_my_profile
 from app.rp.services.config import get_config
+from app.utils.recovery_errors import AuthenticationRequiredError
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -44,6 +45,20 @@ async def csrf_token(request: Request, response: Response):
     return CSRFTokenResponse(csrf_token=await get_or_create_csrf_token(request))
 
 
+async def get_rp_context_user_session(
+    request: Request, context: RPContextRequest
+) -> str:
+    # A fresh Verify entry posts RP context before reading its profile. It must
+    # start OIDC authentication before this endpoint can store that context.
+    if (
+        context.rp_client_id.strip()
+        and not request.session.get(SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value)
+        and not request.session.get(SessionKeys.SESSION_USER_TOKEN.value)
+    ):
+        raise AuthenticationRequiredError("Authentication required")
+    return await get_users_current_session(request)
+
+
 @router.post(
     path="/rp-context",
     summary="Set the relying party for the authenticated browser session",
@@ -51,7 +66,7 @@ async def csrf_token(request: Request, response: Response):
 async def set_rp_context(
     request: Request,
     context: RPContextRequest,
-    user_access_token: str = Depends(get_users_current_session),
+    user_access_token: str = Depends(get_rp_context_user_session),
 ):
     await get_config(context.rp_client_id)
     request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = context.rp_client_id

@@ -218,17 +218,25 @@ def test_cors_preflight_does_not_require_token(browser_app):
     "path", ["/logout", "/keep-alive", "/rp-context", "/legacy/skip"]
 )
 def test_browser_actions_reject_missing_token_before_auth_or_service(
-    browser_app, path, monkeypatch
+    browser_app, path, monkeypatch, caplog
 ):
     authenticate(browser_app)
     refresh = AsyncMock()
-    monkeypatch.setattr("app.utils.standardized_logging.get_user_info", refresh)
+    monkeypatch.setattr(auth_user_session, "get_user_info", refresh)
     response = browser_app.client.post(f"{API}{path}", json={"rp_client_id": "new-rp"})
 
     assert response.status_code == 403
     browser_app.introspect.assert_not_awaited()
     refresh.assert_not_awaited()
     assert session_data(browser_app)["rp_client_id"] == "original-rp"
+    request_logs = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "app.utils.standardized_logging"
+    ]
+    assert len(request_logs) == 1
+    assert request_logs[0]["context"]["response"]["status_code"] == 403
+    assert "user" not in request_logs[0]["context"]
 
 
 def test_keep_alive_accepts_valid_token(browser_app):
@@ -330,15 +338,78 @@ def test_rp_context_can_only_be_changed_by_authenticated_protected_post(
     get_config.assert_awaited_once_with("new-rp")
 
 
-def test_rp_context_token_does_not_replace_authentication(browser_app):
+def test_fresh_rp_context_requires_initial_authentication(browser_app, monkeypatch):
     token = token_for(browser_app.client)
+    get_config = AsyncMock()
+    monkeypatch.setattr(auth_router, "get_config", get_config)
+
     response = browser_app.client.post(
         f"{API}/rp-context",
         json={"rp_client_id": "new-rp"},
         headers={"X-CSRF-Token": token, "Accept": "application/json"},
     )
+
     assert response.status_code == 401
+    assert response.json()["code"] == "authentication-required"
     assert "rp_client_id" not in session_data(browser_app)
+    browser_app.introspect.assert_not_awaited()
+    get_config.assert_not_awaited()
+
+
+@pytest.mark.parametrize("context", [{}, {"rp_client_id": ""}])
+def test_fresh_rp_context_requires_valid_body(browser_app, context):
+    token = token_for(browser_app.client)
+
+    response = browser_app.client.post(
+        f"{API}/rp-context",
+        json=context,
+        headers={"X-CSRF-Token": token, "Accept": "application/json"},
+    )
+
+    assert response.status_code == 400
+    assert "rp_client_id" not in session_data(browser_app)
+    browser_app.introspect.assert_not_awaited()
+
+
+def test_expired_rp_context_session_requires_recovery(browser_app, monkeypatch):
+    token = authenticate(browser_app)
+    browser_app.introspect.return_value = {"active": False}
+    get_config = AsyncMock()
+    monkeypatch.setattr(auth_router, "get_config", get_config)
+
+    response = browser_app.client.post(
+        f"{API}/rp-context",
+        json={"rp_client_id": "new-rp"},
+        headers={"X-CSRF-Token": token, "Accept": "application/json"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "session-ended"
+    assert browser_app.store.data == {}
+    browser_app.introspect.assert_awaited_once()
+    get_config.assert_not_awaited()
+
+
+def test_partial_rp_context_session_requires_recovery(browser_app, monkeypatch):
+    token = authenticate(browser_app)
+    sid = browser_app.client.cookies.get("session")
+    data = session_data(browser_app)
+    del data[SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value]
+    browser_app.store.data[sid] = json.dumps(data).encode()
+    get_config = AsyncMock()
+    monkeypatch.setattr(auth_router, "get_config", get_config)
+
+    response = browser_app.client.post(
+        f"{API}/rp-context",
+        json={"rp_client_id": "new-rp"},
+        headers={"X-CSRF-Token": token, "Accept": "application/json"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "session-ended"
+    assert session_data(browser_app)["rp_client_id"] == "original-rp"
+    browser_app.introspect.assert_not_awaited()
+    get_config.assert_not_awaited()
 
 
 def test_oidc_callback_accepts_get_and_rotates_token(browser_app, monkeypatch):

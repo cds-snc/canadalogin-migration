@@ -8,6 +8,7 @@ import pytest
 from app.auth.services.auth import redirect_user_to_idp_verify
 from app.constants.session_keys import SessionKeys
 from app.utils.auth_flow_logging import hash_identifier
+from app.utils.recovery_errors import RecoveryError
 
 
 def build_request():
@@ -67,6 +68,84 @@ async def test_redirect_user_to_idp_verify_reuses_existing_session_correlation_i
 
     assert request.session[SessionKeys.CORRELATION_ID.value] == "corr-existing"
     assert request.state.correlation_id == "corr-existing"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("client_id", [None, "", " \t "])
+async def test_redirect_user_to_idp_verify_preserves_rp_during_recovery(client_id):
+    request = build_request()
+    request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = "rp-existing"
+    oauth = SimpleNamespace(
+        verify=SimpleNamespace(authorize_redirect=AsyncMock(return_value="ok"))
+    )
+
+    with (
+        patch(
+            "app.auth.services.auth.get_configuration",
+            return_value=SimpleNamespace(ENVIRONMENT="local"),
+        ),
+        patch("app.auth.services.auth.oauth", new=oauth),
+    ):
+        result = await redirect_user_to_idp_verify(request, client_id, "en")
+
+    assert result == "ok"
+    assert request.session[SessionKeys.RP_CLIENT_ID_KEY.value] == "rp-existing"
+    oauth.verify.authorize_redirect.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("client_id", [None, "", " \t "])
+@pytest.mark.parametrize(
+    "session_values",
+    [
+        {},
+        {SessionKeys.RP_CLIENT_ID_KEY.value: None},
+        {SessionKeys.RP_CLIENT_ID_KEY.value: ""},
+        {SessionKeys.RP_CLIENT_ID_KEY.value: " \t "},
+    ],
+)
+async def test_redirect_user_to_idp_verify_without_rp_stops_before_oauth(
+    client_id, session_values
+):
+    request = build_request()
+    request.session.update(session_values)
+    oauth = SimpleNamespace(
+        verify=SimpleNamespace(authorize_redirect=AsyncMock(return_value="ok"))
+    )
+
+    with (
+        patch(
+            "app.auth.services.auth.get_configuration",
+            return_value=SimpleNamespace(ENVIRONMENT="local"),
+        ),
+        patch("app.auth.services.auth.oauth", new=oauth),
+    ):
+        with pytest.raises(RecoveryError) as raised:
+            await redirect_user_to_idp_verify(request, client_id, "en")
+
+    assert raised.value.code == "missing-rp-context"
+    assert request.session == session_values
+    oauth.verify.authorize_redirect.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_redirect_user_to_idp_verify_accepts_new_rp():
+    request = build_request()
+    request.session[SessionKeys.RP_CLIENT_ID_KEY.value] = "rp-existing"
+    oauth = SimpleNamespace(
+        verify=SimpleNamespace(authorize_redirect=AsyncMock(return_value="ok"))
+    )
+
+    with (
+        patch(
+            "app.auth.services.auth.get_configuration",
+            return_value=SimpleNamespace(ENVIRONMENT="local"),
+        ),
+        patch("app.auth.services.auth.oauth", new=oauth),
+    ):
+        await redirect_user_to_idp_verify(request, "rp-new", "en")
+
+    assert request.session[SessionKeys.RP_CLIENT_ID_KEY.value] == "rp-new"
 
 
 @pytest.mark.asyncio

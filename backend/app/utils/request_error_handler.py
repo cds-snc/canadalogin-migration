@@ -3,6 +3,8 @@ from fastapi import HTTPException, status
 from httpx import HTTPStatusError, TimeoutException
 from authlib.integrations.starlette_client import OAuthError
 from pydantic import ValidationError
+from redis.exceptions import ConnectionError, TimeoutError
+from app.utils.recovery_errors import RecoveryError
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,14 @@ class RequestErrorHandler:
             raise HTTPException(
                 status_code=response_status_code, detail=f"{context} failed"
             ) from exc
+
+        elif isinstance(exc, (ConnectionError, TimeoutError)):
+            logger.error(
+                "Redis unavailable during %s",
+                context,
+                exc_info=(type(exc), exc, exc.__traceback__),
+            )
+            raise RecoveryError("service-unavailable") from exc
 
         elif isinstance(exc, TimeoutException):
             logger.error("%s timed out", context)
