@@ -71,16 +71,16 @@ vitest docs:
 
 - [Vitest CLI Documentation](https://vitest.dev/guide/cli.html)
 
-## Migration recovery scaffold
+## Migration recovery pages
 
-The recovery pages use provisional English and French text. The content/UI team
-can finalize the wording, next steps, and help links without changing the error
-handling. Edit the `Recovery` section in
+The missing-service recovery page uses the approved English and French content,
+with links to participating services and CanadaLogin help. The session-ended and
+service-unavailable pages still use provisional content. Edit the `Recovery` section in
 [`en.json`](src/locales/en/en.json) and [`fr.json`](src/locales/fr/fr.json).
 
-| Reason                | When it applies                                                  | Provisional English heading             |
+| Reason                | When it applies                                                  | English heading                         |
 | --------------------- | ---------------------------------------------------------------- | --------------------------------------- |
-| `missing-rp-context`  | No usable client ID is available for the migration flow.         | Start again from your service           |
+| `missing-rp-context`  | No usable client ID is available for the migration flow.         | Service not found                       |
 | `session-ended`       | The authenticated session has expired or is no longer available. | Your session has ended                  |
 | `service-unavailable` | A service failure prevents the request from completing.          | This service is temporarily unavailable |
 
@@ -96,5 +96,4 @@ authenticated session. Keep them outside the user/session providers so the error
 page remains available when session loading fails.
 
 Keep the reason codes stable when updating copy; they connect backend responses,
-frontend recovery routing, and regression tests. The current wording and links
-are placeholders for team review.
+frontend recovery routing, and regression tests.

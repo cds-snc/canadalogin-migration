@@ -507,9 +507,14 @@
     "helpUrl": "https://login.canada.ca/en/users/",
     "reasons": {
       "missing-rp-context": {
-        "title": "Start again from your service",
-        "description": "We couldn’t identify the service you want to access.",
-        "nextStep": "Return to that service’s website and sign in again to continue updating your sign-in method."
+        "title": "Service not found",
+        "description": "We could not identify what service you are trying to access.",
+        "nextStep": "To continue updating your sign-in method:",
+        "navigateStep": "Navigate to the service you are trying to access",
+        "signInStep": "Select",
+        "signInLabel": "Sign in",
+        "servicesLabel": "Find a participating service",
+        "servicesUrl": "https://login.canada.ca/en/users/what-is-canadalogin/participating-services/"
       },
       "session-ended": {
         "title": "Your session has ended",
