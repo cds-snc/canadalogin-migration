@@ -499,6 +499,27 @@
     "list_text_2": "Vous devrez mettre à jour votre méthode de connexion (CléGC ou partenaire de connexion Interac) afin d'utiliser ConnexionCanada pour chaque service.",
     "btn_1": "Accéder à votre compte"
   },
+  "Recovery": {
+    "helpLabel": "Obtenir de l’aide avec ConnexionCanada",
+    "helpUrl": "https://connexion.canada.ca/fr/utilisateurs/",
+    "reasons": {
+      "missing-rp-context": {
+        "title": "Recommencez à partir de votre service",
+        "description": "Nous n’avons pas pu déterminer le service auquel vous voulez accéder.",
+        "nextStep": "Retournez sur le site Web de ce service et connectez-vous de nouveau pour poursuivre la mise à jour de votre méthode de connexion."
+      },
+      "session-ended": {
+        "title": "Votre session est terminée",
+        "description": "Votre session a expiré ou n’est plus disponible.",
+        "nextStep": "Retournez sur le site Web du service auquel vous voulez accéder et connectez-vous de nouveau."
+      },
+      "service-unavailable": {
+        "title": "Ce service est temporairement indisponible",
+        "description": "Nous n’avons pas pu traiter votre demande. Veuillez réessayer plus tard.",
+        "nextStep": "Lorsque vous réessayerez, commencez à partir du site Web du service auquel vous voulez accéder."
+      }
+    }
+  },
   "MigrationStepper": {
     "aria_label": "Progression de la migration de connexion",
     "sr_current_prefix": "Étape actuelle : ",

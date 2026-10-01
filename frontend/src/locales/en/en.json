@@ -502,6 +502,27 @@
     "list_text_2": "you'll need to update your sign-in method from GCKey or Interac sign-in to your CanadaLogin on each service",
     "btn_1": "Access your account"
   },
+  "Recovery": {
+    "helpLabel": "Get help with CanadaLogin",
+    "helpUrl": "https://login.canada.ca/en/users/",
+    "reasons": {
+      "missing-rp-context": {
+        "title": "Start again from your service",
+        "description": "We couldn’t identify the service you want to access.",
+        "nextStep": "Return to that service’s website and sign in again to continue updating your sign-in method."
+      },
+      "session-ended": {
+        "title": "Your session has ended",
+        "description": "Your session has expired or is no longer available.",
+        "nextStep": "Return to the website of the service you want to access and sign in again."
+      },
+      "service-unavailable": {
+        "title": "This service is temporarily unavailable",
+        "description": "We couldn’t complete your request. Please try again later.",
+        "nextStep": "When you try again, start from the website of the service you want to access."
+      }
+    }
+  },
   "MigrationStepper": {
     "aria_label": "Sign-in migration progress",
     "sr_current_prefix": "Current step: ",

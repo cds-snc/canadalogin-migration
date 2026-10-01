@@ -29,3 +29,4 @@ class SSEventData(BaseModel):
     status: str
     expire: Optional[int] = None
     error: Optional[str] = None
+    code: Optional[str] = None
