@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.12.16](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.15...v1.12.16) (2026-10-01)
+
+
+### Bug Fixes
+
+* handle missing migration context and session failures ([#390](https://github.com/cds-snc/canadalogin-migration/issues/390)) ([3eddeb3](https://github.com/cds-snc/canadalogin-migration/commit/3eddeb308d91d5e94aea661d9a684fcb6c061776))
+* handle missing migration context and session failures ([#390](https://github.com/cds-snc/canadalogin-migration/issues/390)) ([3eddeb3](https://github.com/cds-snc/canadalogin-migration/commit/3eddeb308d91d5e94aea661d9a684fcb6c061776))
+* prevent stale release pipeline reruns ([#400](https://github.com/cds-snc/canadalogin-migration/issues/400)) ([39cb91f](https://github.com/cds-snc/canadalogin-migration/commit/39cb91f755f633db2e1deb3c6dfdcb163e2c87bb))
+
 ## [1.12.15](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.14...v1.12.15) (2026-09-22)
 
 
