@@ -168,7 +168,7 @@ async def test_sic_legacy_login_auth_raises_when_processing_patch_returns_dict_e
             new=MagicMock(return_value="ibm1"),
         ),
         patch(
-            "app.auth_legacy.services.login.get_user_custom_attributes",
+            "app.auth_legacy.services.login.get_migration_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch(
@@ -192,7 +192,7 @@ async def test_skip_account_linking_rejects_missing_rp_before_profile_access(cli
 
     with (
         patch(
-            "app.auth_legacy.services.skip.get_user_custom_attributes",
+            "app.auth_legacy.services.skip.get_migration_attributes",
             new=AsyncMock(),
         ) as mock_attributes,
         patch(
@@ -236,7 +236,7 @@ async def test_skip_account_linking_resolves_rp_before_profile_access():
             ),
         ),
         patch(
-            "app.auth_legacy.services.skip.get_user_custom_attributes",
+            "app.auth_legacy.services.skip.get_migration_attributes",
             new=AsyncMock(),
         ) as mock_attributes,
         patch(
@@ -272,12 +272,12 @@ async def test_skip_account_linking_returns_rp_redirect_url():
             new=MagicMock(return_value="ibm1"),
         ),
         patch(
-            "app.auth_legacy.services.skip.get_user_custom_attributes",
+            "app.auth_legacy.services.skip.get_migration_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch(
             "app.auth_legacy.services.skip.patch_audit_data",
-            new=AsyncMock(),
+            new=AsyncMock(return_value=httpx.Response(204)),
         ) as mock_patch_audit,
         patch(
             "app.auth_legacy.services.skip.get_config", new=AsyncMock(return_value=rp)
@@ -319,12 +319,12 @@ async def test_skip_account_linking_logs_auth_flow_events(caplog):
             new=MagicMock(return_value="ibm1"),
         ),
         patch(
-            "app.auth_legacy.services.skip.get_user_custom_attributes",
+            "app.auth_legacy.services.skip.get_migration_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch(
             "app.auth_legacy.services.skip.patch_audit_data",
-            new=AsyncMock(),
+            new=AsyncMock(return_value=httpx.Response(204)),
         ),
         patch(
             "app.auth_legacy.services.skip.get_config",
@@ -354,6 +354,53 @@ async def test_skip_account_linking_logs_auth_flow_events(caplog):
     assert auth_flow_logs[2]["step"] == "skip_linking"
     assert auth_flow_logs[2]["outcome"] == "succeeded"
     assert auth_flow_logs[2]["context"]["lang"] == "fr"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "patch_response",
+    [
+        {"error": "HTTP error: 503"},
+        httpx.Response(500, json={"detail": "Upstream failure"}),
+        httpx.Response(200, json={}),
+    ],
+    ids=["handled-error", "error-response", "unexpected-success-status"],
+)
+async def test_skip_account_linking_rejects_unconfirmed_audit_patch(patch_response):
+    request = build_request()
+    seed_legacy_session(request)
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    rp = SimpleNamespace(rp_redirect_uri="https://rp.example.test/landing")
+
+    with (
+        patch(
+            "app.auth_legacy.services.skip.get_ibm_id",
+            return_value="ibm1",
+        ),
+        patch(
+            "app.auth_legacy.services.skip.get_migration_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.skip.patch_audit_data",
+            new=AsyncMock(return_value=patch_response),
+        ),
+        patch(
+            "app.auth_legacy.services.skip.get_config", new=AsyncMock(return_value=rp)
+        ),
+        patch("app.auth_legacy.services.skip.log_auth_flow_event") as mock_log,
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await skip_account_linking(request, "user-at", "user-token", "rp-123")
+
+    assert raised.value.status_code == 502
+    assert raised.value.detail == "Unable to update migration audit status"
+    assert request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] == "attempt-123"
+    assert request.session["legacy_client_name"] == "rpname_SIC"
+    assert request.session["rpname_SIC_state"] == "state"
+    assert not any(
+        call.kwargs["outcome"] == "succeeded" for call in mock_log.call_args_list
+    )
 
 
 @pytest.mark.asyncio
@@ -940,7 +987,7 @@ async def test_sic_legacy_login_auth_sets_session_and_state():
             new=MagicMock(return_value="ibm1"),
         ),
         patch(
-            "app.auth_legacy.services.login.get_user_custom_attributes",
+            "app.auth_legacy.services.login.get_migration_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch(

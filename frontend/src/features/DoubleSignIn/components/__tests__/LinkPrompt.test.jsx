@@ -18,6 +18,7 @@ import {
 
 let mockLanguage = "en";
 const mockTrackEvent = vi.hoisted(() => vi.fn());
+const mockLegacyClick = vi.hoisted(() => vi.fn());
 const localizedHelpLinks = {
   en: "https://example.test/en/sign-in-method",
   fr: "https://example.test/fr/methode-connexion",
@@ -29,8 +30,13 @@ vi.mock("@gcds-core/components-react", () => ({
   GcdsDetails: ({ children }) => <div>{children}</div>,
   GcdsInput: ({ children }) => <div>{children}</div>,
   GcdsStepper: ({ children }) => <div>{children}</div>,
-  GcdsLink: ({ children, id, href, onGcdsClick }) => (
-    <a id={id} href={href} onClick={onGcdsClick}>
+  GcdsLink: ({ children, id, href, onGcdsClick, ...props }) => (
+    <a
+      id={id}
+      href={href}
+      aria-disabled={props["aria-disabled"]}
+      onClick={onGcdsClick}
+    >
       {children}
     </a>
   ),
@@ -40,9 +46,15 @@ vi.mock("@gcds-core/components-react", () => ({
     href ? (
       <a
         href={href}
+        aria-disabled={props["aria-disabled"]}
         onClick={(event) => {
+          const gcdsClick = new CustomEvent("gcdsClick", {
+            cancelable: true,
+          });
+          onGcdsClick?.(gcdsClick);
+          mockLegacyClick(gcdsClick);
+          // jsdom cannot navigate. Assert cancellation on the custom event.
           event.preventDefault();
-          onGcdsClick?.(event);
         }}
       >
         {children}
@@ -109,6 +121,7 @@ vi.mock("../../api/UpdateLinkState.jsx", () => ({
 
 import { updateLinkStateAPI } from "../../api/UpdateLinkState.jsx";
 import { redirectToRecovery } from "../../../../utils/recoveryErrors.js";
+import { MigrationReturnContext } from "../../utils/MigrationReturnContext.js";
 
 vi.mock("../../../../utils/recoveryErrors.js", async (importOriginal) => ({
   ...(await importOriginal()),
@@ -124,10 +137,12 @@ describe("LinkPrompt", () => {
     }),
   );
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    window.sessionStorage.clear();
+    window.history.replaceState(null, "");
     mockLanguage = "en";
     Object.defineProperty(window, "location", {
-      value: { assign: vi.fn() },
+      value: { assign: vi.fn(), replace: vi.fn() },
       writable: true,
     });
     updateLinkStateAPI.skipLinking.mockResolvedValue({
@@ -255,6 +270,140 @@ describe("LinkPrompt", () => {
     });
   });
 
+  it("keeps both choices locked when Back restores a legacy navigation", async () => {
+    render(<LinkPrompt />);
+    const linkNow = await screen.findByText("Link now");
+    const skipLink = screen.getByRole("link", { name: "Skip for now" });
+
+    fireEvent.click(linkNow);
+    expect(mockLegacyClick.mock.lastCall[0].defaultPrevented).toBe(false);
+    expect(linkNow).toHaveAttribute("aria-disabled", "true");
+    expect(skipLink).toHaveAttribute("aria-disabled", "true");
+    expect(skipLink.parentElement).toHaveAttribute("aria-busy", "true");
+
+    fireEvent.click(linkNow);
+    expect(mockLegacyClick.mock.lastCall[0].defaultPrevented).toBe(true);
+    fireEvent.click(skipLink);
+    expect(updateLinkStateAPI.skipLinking).not.toHaveBeenCalled();
+    expect(mockTrackEvent).toHaveBeenCalledTimes(1);
+
+    fireEvent(
+      window,
+      new PageTransitionEvent("pageshow", { persisted: false }),
+    );
+    fireEvent.click(linkNow);
+    expect(mockLegacyClick.mock.lastCall[0].defaultPrevented).toBe(true);
+    expect(mockTrackEvent).toHaveBeenCalledTimes(1);
+
+    fireEvent(window, new PageTransitionEvent("pageshow", { persisted: true }));
+    expect(linkNow).toHaveAttribute("aria-disabled", "true");
+    expect(skipLink).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(linkNow);
+    fireEvent.click(skipLink);
+    expect(mockLegacyClick.mock.lastCall[0].defaultPrevented).toBe(true);
+    expect(mockTrackEvent).toHaveBeenCalledTimes(1);
+    expect(updateLinkStateAPI.skipLinking).not.toHaveBeenCalled();
+  });
+
+  it("cancels legacy navigation during a pending skip, including after Back", async () => {
+    let resolveSkip;
+    updateLinkStateAPI.skipLinking.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSkip = resolve;
+      }),
+    );
+    render(<LinkPrompt />);
+    const linkNow = await screen.findByText("Link now");
+    const skipLink = screen.getByRole("link", { name: "Skip for now" });
+
+    fireEvent.click(skipLink);
+    fireEvent.click(linkNow);
+    expect(mockLegacyClick.mock.lastCall[0].defaultPrevented).toBe(true);
+    fireEvent(window, new PageTransitionEvent("pageshow", { persisted: true }));
+    fireEvent.click(linkNow);
+    expect(mockLegacyClick.mock.lastCall[0].defaultPrevented).toBe(true);
+    expect(linkNow).toHaveAttribute("aria-disabled", "true");
+    expect(skipLink).toHaveAttribute("aria-disabled", "true");
+    expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledTimes(1);
+    expect(mockTrackEvent).not.toHaveBeenCalled();
+
+    await act(async () =>
+      resolveSkip({ redirect_url: "https://rp.example/continue" }),
+    );
+    expect(window.location.assign).toHaveBeenCalledTimes(1);
+    expect(mockTrackEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks both actions synchronously while a return status check is pending", async () => {
+    let allowed = true;
+    render(
+      <MigrationReturnContext.Provider
+        value={{
+          checking: false,
+          resumeVersion: 0,
+          canActivate: () => allowed,
+        }}
+      >
+        <LinkPrompt />
+      </MigrationReturnContext.Provider>,
+    );
+    const linkNow = await screen.findByText("Link now");
+    // Simulate pageshow starting a check before React has rendered checking=true.
+    allowed = false;
+    fireEvent.click(screen.getByRole("link", { name: "Skip for now" }));
+    fireEvent.click(linkNow);
+    expect(mockLegacyClick.mock.lastCall[0].defaultPrevented).toBe(true);
+    expect(updateLinkStateAPI.skipLinking).not.toHaveBeenCalled();
+    expect(mockTrackEvent).not.toHaveBeenCalled();
+  });
+
+  it("allows changing the choice only after the return check confirms incomplete", async () => {
+    const ui = (resumeVersion) => (
+      <MigrationReturnContext.Provider
+        value={{ checking: false, resumeVersion, canActivate: () => true }}
+      >
+        <LinkPrompt />
+      </MigrationReturnContext.Provider>
+    );
+    const { rerender } = render(ui(0));
+    fireEvent.click(await screen.findByText("Link now"));
+    fireEvent(window, new PageTransitionEvent("pageshow", { persisted: true }));
+    fireEvent.click(screen.getByRole("link", { name: "Skip for now" }));
+    expect(updateLinkStateAPI.skipLinking).not.toHaveBeenCalled();
+
+    rerender(ui(1));
+    fireEvent.click(screen.getByRole("link", { name: "Skip for now" }));
+    await waitFor(() =>
+      expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it("does not release a pending Skip POST after an incomplete return check", async () => {
+    let resolveSkip;
+    updateLinkStateAPI.skipLinking.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSkip = resolve;
+      }),
+    );
+    const ui = (resumeVersion) => (
+      <MigrationReturnContext.Provider
+        value={{ checking: false, resumeVersion, canActivate: () => true }}
+      >
+        <LinkPrompt />
+      </MigrationReturnContext.Provider>
+    );
+    const { rerender } = render(ui(0));
+    fireEvent.click(await screen.findByRole("link", { name: "Skip for now" }));
+    rerender(ui(1));
+    fireEvent.click(screen.getByRole("link", { name: "Skip for now" }));
+    fireEvent.click(screen.getByText("Link now"));
+    expect(mockLegacyClick.mock.lastCall[0].defaultPrevented).toBe(true);
+    expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledTimes(1);
+    await act(async () =>
+      resolveSkip({ redirect_url: "https://rp.example/continue" }),
+    );
+  });
+
   it("blocks duplicate actions and waits for success before tracking or redirecting", async () => {
     let resolveSkip;
     updateLinkStateAPI.skipLinking.mockReturnValue(
@@ -278,6 +427,60 @@ describe("LinkPrompt", () => {
       "https://rp.example/continue",
     );
   });
+
+  it.each(["en", "fr"])(
+    "keeps a completed %s Skip locked until the return guard shows recovery",
+    async (language) => {
+      mockLanguage = language;
+      render(<LinkPrompt />);
+      const skipLink = await screen.findByRole("link", {
+        name: "Skip for now",
+      });
+      fireEvent.click(skipLink);
+      await waitFor(() =>
+        expect(window.location.assign).toHaveBeenCalledTimes(1),
+      );
+      fireEvent(
+        window,
+        new PageTransitionEvent("pageshow", { persisted: true }),
+      );
+      fireEvent.click(skipLink);
+      fireEvent.click(screen.getByText("Link now"));
+      expect(mockLegacyClick.mock.lastCall[0].defaultPrevented).toBe(true);
+      expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledTimes(1);
+      expect(window.location.assign).toHaveBeenCalledTimes(1);
+      expect(mockTrackEvent).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([false, true])(
+    "keeps an active skip locked on pageshow (persisted: %s)",
+    async (persisted) => {
+      let resolveSkip;
+      updateLinkStateAPI.skipLinking.mockReturnValue(
+        new Promise((resolve) => {
+          resolveSkip = resolve;
+        }),
+      );
+      render(<LinkPrompt />);
+      const skipLink = await screen.findByRole("link", {
+        name: "Skip for now",
+      });
+
+      fireEvent.click(skipLink);
+      fireEvent(window, new PageTransitionEvent("pageshow", { persisted }));
+      fireEvent.click(skipLink);
+
+      expect(skipLink.parentElement).toHaveAttribute("aria-busy", "true");
+      expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledTimes(1);
+      expect(window.location.assign).not.toHaveBeenCalled();
+
+      await act(async () =>
+        resolveSkip({ redirect_url: "https://rp.example/continue" }),
+      );
+      expect(window.location.assign).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it.each(["en", "fr"])(
     "shows an accessible %s error and permits a manual retry",
@@ -307,6 +510,26 @@ describe("LinkPrompt", () => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     },
   );
+
+  it("reuses a completed skip if navigation fails and the user retries", async () => {
+    window.location.assign.mockImplementationOnce(() => {
+      throw new Error("Navigation failed");
+    });
+    render(<LinkPrompt />);
+    const skipLink = await screen.findByRole("link", { name: "Skip for now" });
+
+    fireEvent.click(skipLink);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    fireEvent.click(skipLink);
+
+    expect(window.location.assign).toHaveBeenCalledTimes(2);
+    expect(window.location.assign).toHaveBeenLastCalledWith(
+      "https://rp.example/continue",
+    );
+    expect(updateLinkStateAPI.skipLinking).toHaveBeenCalledTimes(1);
+    expect(mockTrackEvent).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 
   it("links the info notice to the English sign-in method help page", async () => {
     render(<LinkPrompt />);

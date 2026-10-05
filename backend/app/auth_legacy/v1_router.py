@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Query
-from fastapi import Request, Depends
+from fastapi import Request, Response, Depends
 
 from app.auth_legacy.services.callback import (
     legacy_callback,
@@ -9,12 +9,32 @@ from app.auth_legacy.services.callback import (
 )
 from app.auth_legacy.services.login import legacy_login
 from app.auth_legacy.services.skip import skip_account_linking
+from app.auth_legacy.services.status import get_migration_status
+from app.auth_legacy.schemas import MigrationStatusResponse
 from app.auth.services.auth_user_session import get_users_current_session
 from app.auth.schemas import RedirectResponseModel
 from app.constants.session_keys import SessionKeys
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+@router.get(
+    path="/status",
+    response_model=MigrationStatusResponse,
+    summary="Read migration completion status for the current relying party",
+)
+async def handle_migration_status(
+    request: Request,
+    response: Response,
+    user_access_token: str = Depends(get_users_current_session),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return await get_migration_status(
+        request,
+        user_access_token,
+        rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),
+    )
 
 
 @router.get(

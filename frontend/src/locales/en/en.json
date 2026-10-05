@@ -521,6 +521,12 @@
         "description": "Your session has expired or is no longer available.",
         "nextStep": "Return to the website of the service you want to access and sign in again."
       },
+      "migration-completed": {
+        "title": "This step is already complete",
+        "description": "You have already linked your old sign-in method or chosen to create a new account.",
+        "continueStep": "You can now continue to your account.",
+        "nextStep": "To continue, return to the website of the service you want to access and sign in again."
+      },
       "service-unavailable": {
         "title": "This service is temporarily unavailable",
         "description": "We couldn’t complete your request. Please try again later.",
