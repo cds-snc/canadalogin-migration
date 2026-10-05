@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router";
 import {
   GcdsButton,
@@ -12,12 +12,14 @@ import {
 import Header from "../../../components/Layout/Header.jsx";
 import Footer from "../../../components/Layout/Footer.jsx";
 import { getLangValues, getPageContent } from "../../../utils/functions.jsx";
+import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
 import "./RecoveryPage.css";
 
-// This page must render without a user profile, session, or backend request.
+// Recovery always renders without a user profile or working backend. Completed
+// migrations may also offer the configured RP destination when context matches.
 export default function RecoveryPage() {
   const { language, reason } = useParams();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { langHref, currentLang } = getLangValues(language, pathname);
   // Session-ended and service-unavailable copy is still provisional.
   const content = getPageContent(currentLang, "Recovery");
@@ -26,6 +28,45 @@ export default function RecoveryPage() {
     : content.reasons["service-unavailable"];
   const productTitle = currentLang === "fr" ? "ConnexionCanada" : "CanadaLogin";
   const isMissingService = reason === "missing-rp-context";
+  const expectedRpId = new URLSearchParams(search).get("rp_client_id");
+  const [destination, setDestination] = useState(null);
+  const navigationStarted = useRef(false);
+  const canContinue =
+    reason === "migration-completed" &&
+    destination?.language === currentLang &&
+    destination?.rpClientId === expectedRpId;
+
+  useEffect(() => {
+    let current = true;
+    setDestination(null);
+    navigationStarted.current = false;
+    if (reason !== "migration-completed" || !expectedRpId) return;
+
+    updateLinkStateAPI
+      .getRecoveryRPDetails(currentLang)
+      .then((data) => {
+        if (!current || data?.rp_client_id !== expectedRpId) return;
+        const url = new URL(data.rp_redirect_url);
+        if (
+          !["https:", "http:"].includes(url.protocol) ||
+          url.username ||
+          url.password
+        )
+          return;
+        setDestination({
+          language: currentLang,
+          rpClientId: expectedRpId,
+          url: url.href,
+        });
+      })
+      .catch(() => {
+        // Keep the restart instructions when configuration/session is unavailable.
+      });
+
+    return () => {
+      current = false;
+    };
+  }, [reason, currentLang, expectedRpId]);
 
   useEffect(() => {
     document.documentElement.lang = currentLang;
@@ -35,7 +76,7 @@ export default function RecoveryPage() {
   return (
     <div className="mainBody">
       <Header
-        langHref={langHref}
+        langHref={`${langHref}${reason === "migration-completed" && expectedRpId ? `?rp_client_id=${encodeURIComponent(expectedRpId)}` : ""}`}
         currentLang={currentLang}
         showBreadcrumbs={false}
       />
@@ -57,8 +98,24 @@ export default function RecoveryPage() {
             </GcdsHeading>
             <GcdsText>{message.description}</GcdsText>
             <GcdsText marginBottom={isMissingService ? "0" : undefined}>
-              {message.nextStep}
+              {canContinue ? message.continueStep : message.nextStep}
             </GcdsText>
+            {canContinue && (
+              <div className="recovery-action">
+                <GcdsButton
+                  id="recovery-access-account-button"
+                  buttonId="recovery-access-account-button-control"
+                  onGcdsClick={(event) => {
+                    event.preventDefault();
+                    if (navigationStarted.current) return;
+                    navigationStarted.current = true;
+                    window.location.replace(destination.url);
+                  }}
+                >
+                  {getPageContent(currentLang, "LinkSuccess")["btn_1"]}
+                </GcdsButton>
+              </div>
+            )}
             {isMissingService && (
               <>
                 <ul className="recovery-steps">

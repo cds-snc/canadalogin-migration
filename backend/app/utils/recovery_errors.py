@@ -1,6 +1,7 @@
 """Responses that let the frontend offer a safe way to restart migration."""
 
 import logging
+from urllib.parse import urlencode
 
 from authlib.integrations.starlette_client import OAuthError
 from fastapi import HTTPException, Request
@@ -18,6 +19,10 @@ RECOVERY_ERRORS = {
     "missing-rp-context": (400, "Missing RP client id"),
     "session-ended": (401, "Your session has ended. Start again from your service."),
     "service-unavailable": (503, "The service is temporarily unavailable."),
+    "migration-completed": (
+        409,
+        "Migration has already been completed for this service.",
+    ),
 }
 
 
@@ -49,6 +54,13 @@ def recovery_response(request: Request, code: str):
         request.url.path,
     )
     headers = {"Cache-Control": "no-store"}
+    # Avoid touching an unloaded starsessions LoadGuard during recovery.
+    session = request.scope.get("session")
+    expected_rp_client_id = None
+    if code == "migration-completed" and issubclass(type(session), dict):
+        rp_client_id = session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+        if isinstance(rp_client_id, str) and rp_client_id.strip():
+            expected_rp_client_id = rp_client_id
     accept = request.headers.get("accept", "")
     config = get_configuration()
     if (
@@ -66,7 +78,6 @@ def recovery_response(request: Request, code: str):
         )
     if "text/html" in accept and "application/json" not in accept:
         # Accept dict subclasses without touching starsessions' unloaded LoadGuard.
-        session = request.scope.get("session")
         session_language = (
             session.get(SessionKeys.CURRENT_LANGUAGE.value)
             if issubclass(type(session), dict)
@@ -79,12 +90,18 @@ def recovery_response(request: Request, code: str):
         base_url = config.MIGRATION_SOLUTION_DOMAIN.rstrip("/")
         if config.ENVIRONMENT != "local":
             base_url = f"https://{base_url}"
-        return RedirectResponse(
-            f"{base_url}/{language}/error/{code}", status_code=303, headers=headers
-        )
+        redirect_url = f"{base_url}/{language}/error/{code}"
+        if expected_rp_client_id is not None:
+            # The public page uses this only to confirm its optional access
+            # link still belongs to the RP that triggered this recovery.
+            redirect_url += f"?{urlencode({'rp_client_id': expected_rp_client_id})}"
+        return RedirectResponse(redirect_url, status_code=303, headers=headers)
+    content = {"success": False, "message": message, "code": code}
+    if expected_rp_client_id is not None:
+        content["rp_client_id"] = expected_rp_client_id
     return JSONResponse(
         status_code=status_code,
-        content={"success": False, "message": message, "code": code},
+        content=content,
         headers=headers,
     )
 

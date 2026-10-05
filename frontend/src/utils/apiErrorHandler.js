@@ -23,7 +23,8 @@ export const handleApiError = (error) => {
     else redirectToRecovery("session-ended");
   } else {
     const reason = getRecoveryReason(error);
-    if (reason) redirectToRecovery(reason);
+    if (reason)
+      redirectToRecovery(reason, undefined, response.data?.rp_client_id);
   }
   throw response;
 };

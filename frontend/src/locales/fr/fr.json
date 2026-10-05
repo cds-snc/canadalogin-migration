@@ -519,6 +519,12 @@
         "description": "Votre session a expiré ou n’est plus disponible.",
         "nextStep": "Retournez sur le site Web du service auquel vous voulez accéder et connectez-vous de nouveau."
       },
+      "migration-completed": {
+        "title": "Cette étape est déjà terminée",
+        "description": "Vous avez déjà lié votre ancienne méthode de connexion ou choisi de créer un nouveau compte.",
+        "continueStep": "Vous pouvez maintenant accéder à votre compte.",
+        "nextStep": "Pour continuer, retournez sur le site Web du service auquel vous voulez accéder et connectez-vous de nouveau."
+      },
       "service-unavailable": {
         "title": "Ce service est temporairement indisponible",
         "description": "Nous n’avons pas pu traiter votre demande. Veuillez réessayer plus tard.",

@@ -17,6 +17,9 @@ from app.auth.services import auth, auth_user_session
 from app.auth import v1_router as auth_router
 from app.auth.services.csrf import validate_csrf_token
 from app.auth_legacy.services import skip
+from app.auth_legacy.services import status as migration_status
+from app.users.schemas import CustomAttribute
+from app.constants.patch_keys import PatchKeys
 from app.constants.session_keys import SessionKeys
 from app.constants.redis_keys import RedisKeys
 from app.main import app
@@ -280,9 +283,9 @@ def test_logout_clears_token_and_session(browser_app, monkeypatch):
 
 def test_skip_requires_post_and_returns_json_without_redirect(browser_app, monkeypatch):
     token = authenticate(browser_app)
-    patch_audit = AsyncMock()
+    patch_audit = AsyncMock(return_value=SimpleNamespace(status_code=204))
     monkeypatch.setattr(skip, "get_ibm_id", MagicMock(return_value="ibm-id"))
-    monkeypatch.setattr(skip, "get_user_custom_attributes", AsyncMock(return_value=[]))
+    monkeypatch.setattr(skip, "get_migration_attributes", AsyncMock(return_value=[]))
     monkeypatch.setattr(skip, "patch_audit_data", patch_audit)
     monkeypatch.setattr(
         skip,
@@ -307,6 +310,113 @@ def test_skip_requires_post_and_returns_json_without_redirect(browser_app, monke
     assert "lang=fr" in response.json()["redirect_url"]
     assert "location" not in response.headers
     patch_audit.assert_awaited_once()
+
+
+@pytest.mark.parametrize("completed", [False, True])
+def test_migration_status_reads_current_rp_without_writing_profile(
+    browser_app, monkeypatch, completed
+):
+    authenticate(browser_app)
+    attributes = (
+        [
+            CustomAttribute(
+                name=PatchKeys.LEGACY_PAI_DATA_KEY.value,
+                values=['{"client_id":"original-rp","pai":"legacy-user"}'],
+            )
+        ]
+        if completed
+        else []
+    )
+    read = AsyncMock(return_value=attributes)
+    config = AsyncMock()
+    monkeypatch.setattr(migration_status, "get_migration_attributes", read)
+    monkeypatch.setattr(migration_status, "get_config", config)
+
+    response = browser_app.client.get(f"{API}/legacy/status?rp_client_id=another-rp")
+
+    assert response.status_code == 200
+    assert response.json() == {"rp_client_id": "original-rp", "completed": completed}
+    assert response.headers["cache-control"] == "no-store"
+    config.assert_awaited_once_with("original-rp")
+    read.assert_awaited_once()
+    browser_app.introspect.assert_awaited_once()
+    assert session_data(browser_app)["rp_client_id"] == "original-rp"
+
+
+def test_migration_status_requires_authentication(browser_app, monkeypatch):
+    read = AsyncMock()
+    monkeypatch.setattr(migration_status, "get_migration_attributes", read)
+
+    response = browser_app.client.get(f"{API}/legacy/status")
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "session-ended"
+    read.assert_not_awaited()
+
+
+def test_migration_status_read_failure_returns_recovery_instead_of_ready(
+    browser_app, monkeypatch
+):
+    authenticate(browser_app)
+    monkeypatch.setattr(migration_status, "get_config", AsyncMock())
+    monkeypatch.setattr(
+        migration_status,
+        "get_user_custom_attributes",
+        AsyncMock(side_effect=ValueError("Unreadable profile")),
+    )
+
+    response = browser_app.client.get(f"{API}/legacy/status")
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "service-unavailable"
+    assert "completed" not in response.json()
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("language", ["en", "fr"])
+def test_recovery_rp_details_use_requested_language_without_ibm_calls(
+    browser_app, monkeypatch, language
+):
+    authenticate(browser_app)
+    config = SimpleNamespace(
+        rp_client_id="original-rp",
+        rp_client_name="Example service",
+        rp_client_name_en="Example service",
+        rp_client_name_fr="Service exemple",
+        rp_redirect_uri="https://rp.example.test/",
+        rp_redirect_uri_en="https://rp.example.test/en",
+        rp_redirect_uri_fr="https://rp.example.test/fr",
+        acr_values="gckey",
+    )
+    monkeypatch.setattr(
+        "app.rp.services.config.get_config", AsyncMock(return_value=config)
+    )
+
+    response = browser_app.client.get(f"/v1/rp/rpConfigDetails?lang={language}")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json()["rp_redirect_url"] == (
+        f"https://rp.example.test/{language}?lang={language}&ui_locales={language}-CA"
+    )
+    assert "lang" not in session_data(browser_app)
+    browser_app.introspect.assert_not_awaited()
+    app.state.request_client.get.assert_not_called()
+    app.state.request_client.post.assert_not_called()
+    app.state.request_client.patch.assert_not_called()
+
+
+@pytest.mark.parametrize("language", ["en-US", "FR", "es"])
+def test_recovery_rp_details_reject_unsupported_language(
+    browser_app, monkeypatch, language
+):
+    config = AsyncMock()
+    monkeypatch.setattr("app.rp.services.config.get_config", config)
+
+    response = browser_app.client.get(f"/v1/rp/rpConfigDetails?lang={language}")
+
+    assert response.status_code == 400
+    config.assert_not_awaited()
 
 
 def test_rp_context_can_only_be_changed_by_authenticated_protected_post(

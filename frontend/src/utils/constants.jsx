@@ -124,6 +124,7 @@ export const SUBMIT_END_POINTS = {
 };
 
 export const MIGRATION_END_POINTS = {
+  status: `${config.apiUrl}/v1/auth/legacy/status`,
   login: `${config.apiUrl}/v1/auth/legacy/login`,
   skip: `${config.apiUrl}/v1/auth/legacy/skip`,
   rpcallback: `${config.apiUrl}/v1/rp/rpConfigDetails`,

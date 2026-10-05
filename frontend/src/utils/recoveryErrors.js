@@ -1,6 +1,7 @@
 const RECOVERY_REASONS = new Set([
   "missing-rp-context",
   "session-ended",
+  "migration-completed",
   "service-unavailable",
 ]);
 
@@ -17,15 +18,23 @@ export const getRecoveryReason = (error) => {
   return null;
 };
 
-export const getRecoveryPath = (reason, language) => {
+export const getRecoveryPath = (reason, language, rpClientId) => {
   const routeLanguage = window.location.pathname?.split("/")[1];
   const lang = (language || routeLanguage) === "fr" ? "fr" : "en";
   const safeReason = RECOVERY_REASONS.has(reason)
     ? reason
     : "service-unavailable";
-  return `/${lang}/error/${safeReason}`;
+  const path = `/${lang}/error/${safeReason}`;
+  if (
+    safeReason === "migration-completed" &&
+    typeof rpClientId === "string" &&
+    rpClientId.trim()
+  ) {
+    return `${path}?rp_client_id=${encodeURIComponent(rpClientId.trim())}`;
+  }
+  return path;
 };
 
-export const redirectToRecovery = (reason, language) => {
-  window.location.href = getRecoveryPath(reason, language);
+export const redirectToRecovery = (reason, language, rpClientId) => {
+  window.location.href = getRecoveryPath(reason, language, rpClientId);
 };
