@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.18](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.17...v1.12.18) (2026-10-07)
+
+
+### Continuous Integration
+
+* deploy to staging 1.12.17 ([#416](https://github.com/cds-snc/canadalogin-migration/issues/416)) ([048d5fd](https://github.com/cds-snc/canadalogin-migration/commit/048d5fd9555dae6609a6e734a481ab28f9cfa952))
+
 ## [1.12.17](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.16...v1.12.17) (2026-10-07)
 
 
