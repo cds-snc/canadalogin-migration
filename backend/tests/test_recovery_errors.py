@@ -184,13 +184,70 @@ async def test_session_store_write_failure_replaces_response_before_headers():
 
 
 @pytest.mark.asyncio
-async def test_expired_redis_session_becomes_session_ended_without_external_requests():
+@pytest.mark.parametrize("query", ["", "?rp_client_id=", "?rp_client_id=%20%09%20"])
+async def test_fresh_contextless_profile_request_reports_missing_service(query):
+    with patch.object(
+        auth_user_session, "get_http_client", new=AsyncMock()
+    ) as http_client:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+        ) as client:
+            response = await client.get(f"/v1/auth/me{query}")
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "missing-rp-context"
+    assert response.headers["cache-control"] == "no-store"
+    http_client.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_fresh_profile_request_with_rp_can_start_authentication():
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        response = await client.get("/v1/auth/me?rp_client_id=rp-123")
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "authentication-required"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "session",
+    [
+        {"rp_client_id": "saved-rp"},
+        {"token": {"userinfo": {"sub": "user"}}},
+    ],
+)
+async def test_profile_request_with_existing_context_keeps_session_ended(session):
+    request = request_for(session=session)
+
+    with pytest.raises(SessionEndedError):
+        await auth_user_session.get_users_current_session(request)
+
+
+@pytest.mark.asyncio
+async def test_contextless_protected_request_keeps_session_ended():
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        response = await client.get("/v1/auth/reauth")
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "session-ended"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["", "?rp_client_id=", "?rp_client_id=%20%09%20"])
+async def test_expired_redis_session_becomes_session_ended_without_external_requests(
+    query,
+):
     with patch.object(session_store, "read", new=AsyncMock(return_value=b"")):
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://testserver"
         ) as client:
             response = await client.get(
-                "/v1/auth/me",
+                f"/v1/auth/me{query}",
                 headers={
                     "Cookie": f"{configuration.session_config.SESSION_COOKIE_NAME}=expired"
                 },
