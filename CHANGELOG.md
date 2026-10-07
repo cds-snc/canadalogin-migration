@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.17](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.16...v1.12.17) (2026-10-07)
+
+
+### Bug Fixes
+
+* update missing service recovery page ([#407](https://github.com/cds-snc/canadalogin-migration/issues/407)) ([f883d6d](https://github.com/cds-snc/canadalogin-migration/commit/f883d6dc96d0c77cef41743a845c15e9b5a1601b))
+
+
+### Miscellaneous Chores
+
+* **1.12.16:** release to staging ([#406](https://github.com/cds-snc/canadalogin-migration/issues/406)) ([b5d2607](https://github.com/cds-snc/canadalogin-migration/commit/b5d26077c057de00ed39b898a184547aa535ab39))
+
 ## [1.12.16](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.15...v1.12.16) (2026-10-01)
 
 
