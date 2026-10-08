@@ -62,11 +62,14 @@ describe("profile RP context", () => {
     );
   });
 
-  it("only reads the profile when no RP context is supplied", async () => {
-    await authService.get_my_user_profile();
-    expect(apiClient.post).not.toHaveBeenCalled();
-    expect(apiClient.get).toHaveBeenCalledWith(`${config.apiUrl}/v1/auth/me`);
-  });
+  it.each([undefined, null, "", " ", "\t\n"])(
+    "only reads the profile when RP context is absent or blank: %s",
+    async (clientId) => {
+      await authService.get_my_user_profile(clientId);
+      expect(apiClient.post).not.toHaveBeenCalled();
+      expect(apiClient.get).toHaveBeenCalledWith(`${config.apiUrl}/v1/auth/me`);
+    },
+  );
 
   it("does not continue after a failed context change", async () => {
     apiClient.post.mockRejectedValueOnce(new Error("Forbidden"));

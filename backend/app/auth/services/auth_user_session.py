@@ -83,13 +83,21 @@ async def get_users_current_session(request: Request):
     if not user_access_token:
         logger.info("Not authenticated - no user access token found")
         rp_client_id = request.query_params.get(SessionKeys.RP_CLIENT_ID_KEY.value)
-        if (
-            request.url.path.endswith("/auth/me")
-            and isinstance(rp_client_id, str)
-            and rp_client_id.strip()
-            and not request.session.get(SessionKeys.SESSION_USER_TOKEN.value)
+        if request.url.path.endswith("/auth/me") and not request.session.get(
+            SessionKeys.SESSION_USER_TOKEN.value
         ):
-            raise AuthenticationRequiredError("Authentication required")
+            if isinstance(rp_client_id, str) and rp_client_id.strip():
+                raise AuthenticationRequiredError("Authentication required")
+            saved_rp_client_id = request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+            session_cookie = request.cookies.get(
+                get_configuration().session_config.SESSION_COOKIE_NAME
+            )
+            # An empty loaded session can also be an expired Redis session.
+            # Only a cookie-free entry without RP context is a missing service.
+            if not session_cookie and not (
+                isinstance(saved_rp_client_id, str) and saved_rp_client_id.strip()
+            ):
+                raise RecoveryError("missing-rp-context")
         raise SessionEndedError("user access token not found")
     http_client = await get_http_client(request)
     validate_user_token_response = await introspect_user_token(

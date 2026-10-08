@@ -99,7 +99,7 @@ export const authService = {
 
   get_my_user_profile: async (rp_client_id) => {
     try {
-      if (rp_client_id) {
+      if (typeof rp_client_id === "string" && rp_client_id.trim()) {
         await apiClient.post(`${config.apiUrl}/v1/auth/rp-context`, {
           rp_client_id,
         });
