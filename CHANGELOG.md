@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.19](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.18...v1.12.19) (2026-10-08)
+
+
+### Bug Fixes
+
+* Rename production.json to prod.json in CODEOWNERS ([#423](https://github.com/cds-snc/canadalogin-migration/issues/423)) ([93e421d](https://github.com/cds-snc/canadalogin-migration/commit/93e421d4cb148d482266c2cb8f53872122c84e2f))
+
+
+### Continuous Integration
+
+* deploy to prod 1.12.17 ([#421](https://github.com/cds-snc/canadalogin-migration/issues/421)) ([ca8ad71](https://github.com/cds-snc/canadalogin-migration/commit/ca8ad71d50dba953d4255edc5005453dc5733840))
+
 ## [1.12.18](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.17...v1.12.18) (2026-10-07)
 
 
