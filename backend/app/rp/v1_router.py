@@ -1,6 +1,7 @@
 import logging
+from typing import Literal
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 
 from app.constants.session_keys import SessionKeys
 from app.rp.services.config import get_rp_config_details
@@ -17,8 +18,13 @@ logger = logging.getLogger(__name__)
 )
 async def handle_get_rp_config_details(
     request: Request,
+    response: Response,
+    lang: Literal["en", "fr"] | None = None,
 ):
+    response.headers["Cache-Control"] = "no-store"
     return_parameters = get_rp_return_parameters_from_session(request)
+    if lang is not None:
+        return_parameters.update({"lang": lang, "ui_locales": f"{lang}-CA"})
 
     return await get_rp_config_details(
         rp_client_id=request.session.get(SessionKeys.RP_CLIENT_ID_KEY.value),

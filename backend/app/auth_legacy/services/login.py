@@ -6,7 +6,10 @@ from httpx import Response
 
 from app.rp.services.config import get_config
 from app.constants.session_keys import SessionKeys
-from app.users.services.custom_attributes import get_user_custom_attributes
+from app.auth_legacy.services.status import (
+    get_migration_attributes,
+    is_migration_completed,
+)
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_processing_data
 from app.utils.auth_flow_logging import log_auth_flow_event
@@ -112,6 +115,19 @@ async def SIC_legacy_login_auth(
 
         legacy_idp = rp.IDP[0]
 
+        redirect_uris = getattr(legacy_idp, "redirect_uris", None) or []
+        if not redirect_uris:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Legacy IDP '{legacy_idp.client_name}' has no redirect_uris configured",
+            )
+
+        custom_attributes = await get_migration_attributes(
+            global_http_client, user_access_token
+        )
+        if is_migration_completed(custom_attributes, rp_client_id):
+            raise RecoveryError("migration-completed")
+
         # Unique for RP / IDP combo
         client_name = f"{rp.rp_client_name}_{legacy_idp.client_name}"
 
@@ -124,14 +140,6 @@ async def SIC_legacy_login_auth(
         # Register
         await register_client(request, client_name, legacy_idp, ui_locales, acr_values)
         client = await create_client(client_name)
-        redirect_uris = getattr(legacy_idp, "redirect_uris", None) or []
-
-        if not redirect_uris:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Legacy IDP '{legacy_idp.client_name}' has no redirect_uris configured",
-            )
-
         redirect_uri = redirect_uris[0]
         # redirect_uri = f"{redirect_uri}?lang={lang}"
         state = generate_secure_token()
@@ -157,10 +165,6 @@ async def SIC_legacy_login_auth(
             user_id=ibm_id,
             legacy_provider=legacy_idp.client_name,
             lang=lang,
-        )
-        # Get Users Custom Attributes
-        custom_attributes = await get_user_custom_attributes(
-            global_http_client, user_access_token
         )
         # AUDIT DATA LOGIC + PATCH
         patch_processing_data_response = await patch_processing_data(

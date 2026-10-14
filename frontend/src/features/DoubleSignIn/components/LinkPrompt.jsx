@@ -15,6 +15,7 @@ import {
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
 import { useSkipLink } from "../hooks/useSkipLink.js";
+import { rememberPromptRpId } from "../utils/legacyNavigation.js";
 import {
   getLocalizedRpName,
   getRpAnalyticsParams,
@@ -80,6 +81,7 @@ export default function LinkPrompt() {
             redirectToRecovery("missing-rp-context", language);
             return;
           }
+          rememberPromptRpId(data.rp_client_id);
           setRpLoadState({
             language,
             isLoading: false,
@@ -132,7 +134,14 @@ export default function LinkPrompt() {
   const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
   const rpName = getLocalizedRpName(rpData, language);
   const rpAnalyticsParams = getRpAnalyticsParams(rpData);
-  const { skipLink, isSkipping, skipFailed } = useSkipLink(language, () => {
+  const {
+    skipLink,
+    startLinking,
+    isSkipping,
+    isLinking,
+    isChecking,
+    skipFailed,
+  } = useSkipLink(language, () => {
     trackEvent({
       category: GA_CATEGORIES.formSubmit,
       action: GA_FORM_EVENTS.formSubmitComplete,
@@ -178,8 +187,12 @@ export default function LinkPrompt() {
         buttonId="sign-in-old-method-button-control"
         type="link"
         href={linkingLink}
-        disabled={isSkipping}
-        onGcdsClick={() => {
+        aria-disabled={isSkipping || isLinking || isChecking}
+        onGcdsClick={(event) => {
+          if (!startLinking()) {
+            event.preventDefault();
+            return;
+          }
           trackEvent({
             category: GA_CATEGORIES.formSubmit,
             action: GA_FORM_EVENTS.formSubmitComplete,
@@ -216,10 +229,11 @@ export default function LinkPrompt() {
         </GcdsHeading>
       ) : null}
       <GcdsText>{skipHelpText}</GcdsText>
-      <GcdsText aria-busy={isSkipping}>
+      <GcdsText aria-busy={isSkipping || isLinking || isChecking}>
         <GcdsLink
           id="skip-create-new-account-link"
           href="#skip-create-new-account-link"
+          aria-disabled={isSkipping || isLinking || isChecking}
           onGcdsClick={(event) => {
             // Keep the link appearance while submitting the protected action.
             event.preventDefault();

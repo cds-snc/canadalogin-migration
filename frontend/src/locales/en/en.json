@@ -521,6 +521,13 @@
         "description": "Your session has expired or is no longer available.",
         "nextStep": "Return to the website of the service you want to access and sign in again."
       },
+      "migration-completed": {
+        "title": "You have already completed this step",
+        "description": "You have already linked your old sign-in method or chosen to create a new account.",
+        "descriptionWithRpName": "You have already linked your old sign-in method or chosen to create a new {RP_Name} account.",
+        "accountLabel": "Go to your account",
+        "nextStep": "To continue, return to the website of the service you want to access and sign in again."
+      },
       "service-unavailable": {
         "title": "This service is temporarily unavailable",
         "description": "We couldn’t complete your request. Please try again later.",

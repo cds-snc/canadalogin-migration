@@ -1,0 +1,2 @@
+# Keep the scanner isolated from application OpenTelemetry dependencies.
+semgrep==1.179.0
