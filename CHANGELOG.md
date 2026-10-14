@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.12.19](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.18...v1.12.19) (2026-10-14)
+
+
+### Bug Fixes
+
+* **deps:** consolidate dependency updates and restore compatible tooling ([#424](https://github.com/cds-snc/canadalogin-migration/issues/424)) ([240e853](https://github.com/cds-snc/canadalogin-migration/commit/240e8538e388d05132b72304e7d9ebb5ab5dddf0))
+* prevent migration replay and improve recovery ([#410](https://github.com/cds-snc/canadalogin-migration/issues/410)) ([81ba102](https://github.com/cds-snc/canadalogin-migration/commit/81ba102bc30b7b493631eae47d9e34ee84ed34bf))
+* Rename production.json to prod.json in CODEOWNERS ([#423](https://github.com/cds-snc/canadalogin-migration/issues/423)) ([93e421d](https://github.com/cds-snc/canadalogin-migration/commit/93e421d4cb148d482266c2cb8f53872122c84e2f))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump pyjwt from 2.13.0 to 2.15.0 in /backend ([#411](https://github.com/cds-snc/canadalogin-migration/issues/411)) ([099ece4](https://github.com/cds-snc/canadalogin-migration/commit/099ece4261f6af7fd893a92c5ffd87efbe285a6f))
+* **deps:** bump tinypool, @vitest/browser, vitest and @vitest/coverage-istanbul in /frontend ([#413](https://github.com/cds-snc/canadalogin-migration/issues/413)) ([392afca](https://github.com/cds-snc/canadalogin-migration/commit/392afcac1860af8527aabe023b42add99075d24e))
+* **deps:** update all patch dependencies ([#356](https://github.com/cds-snc/canadalogin-migration/issues/356)) ([a6126e9](https://github.com/cds-snc/canadalogin-migration/commit/a6126e9ff5859369fdbd72adc6c0368ed4c74581))
+
+
+### Continuous Integration
+
+* deploy to prod 1.12.17 ([#421](https://github.com/cds-snc/canadalogin-migration/issues/421)) ([ca8ad71](https://github.com/cds-snc/canadalogin-migration/commit/ca8ad71d50dba953d4255edc5005453dc5733840))
+
 ## [1.12.18](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.17...v1.12.18) (2026-10-07)
 
 
