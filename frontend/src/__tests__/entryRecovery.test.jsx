@@ -46,6 +46,7 @@ function visit(entry) {
 }
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/");
   vi.resetAllMocks();
   Object.defineProperty(window, "location", {
     value: { href: "original", pathname: "/", search: "" },
