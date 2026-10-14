@@ -1,5 +1,6 @@
 import json
 import logging
+from urllib.parse import parse_qs, urlsplit
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -38,6 +39,70 @@ def request_for(path="/v1/auth/me", query=b"", session=None, accept="application
             "session": session if session is not None else {},
         }
     )
+
+
+def test_completed_recovery_navigation_encodes_expected_rp_context():
+    rp_client_id = "rp&other=value+name/é"
+    request = request_for(
+        path="/v1/auth/legacy/login",
+        query=b"lang=fr",
+        session=SessionDict({"rp_client_id": rp_client_id}),
+        accept="text/html",
+    )
+
+    response = recovery_response(request, "migration-completed")
+    destination = urlsplit(response.headers["location"])
+
+    assert destination.path.endswith("/fr/error/migration-completed")
+    assert parse_qs(destination.query) == {"rp_client_id": [rp_client_id]}
+    assert "rp%26other%3Dvalue%2Bname%2F%C3%A9" in destination.query
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("rp_client_id", [None, "", "  "])
+def test_completed_recovery_without_rp_omits_optional_context(rp_client_id):
+    request = request_for(session={"rp_client_id": rp_client_id}, accept="text/html")
+
+    response = recovery_response(request, "migration-completed")
+
+    assert urlsplit(response.headers["location"]).query == ""
+
+
+@pytest.mark.parametrize(
+    "reason", ["missing-rp-context", "session-ended", "service-unavailable"]
+)
+def test_other_recovery_navigation_does_not_include_rp_context(reason):
+    request = request_for(session={"rp_client_id": "rp-123"}, accept="text/html")
+
+    response = recovery_response(request, reason)
+
+    assert urlsplit(response.headers["location"]).query == ""
+
+
+@pytest.mark.parametrize(
+    "reason,rp_client_id,includes_context",
+    [
+        ("migration-completed", "rp&value=é", True),
+        ("migration-completed", None, False),
+        ("migration-completed", "  ", False),
+        ("missing-rp-context", "rp-123", False),
+        ("session-ended", "rp-123", False),
+        ("service-unavailable", "rp-123", False),
+    ],
+)
+def test_json_recovery_context_is_only_included_for_completed_migration(
+    reason, rp_client_id, includes_context
+):
+    request = request_for(session={"rp_client_id": rp_client_id})
+
+    response = recovery_response(request, reason)
+    payload = json.loads(response.body)
+
+    if includes_context:
+        assert payload["rp_client_id"] == rp_client_id
+    else:
+        assert "rp_client_id" not in payload
+    assert response.headers["cache-control"] == "no-store"
 
 
 @pytest.mark.asyncio
@@ -482,6 +547,7 @@ async def test_metadata_client_initialization_failure_keeps_lookup_context(caplo
         ("missing-rp-context", 400, logging.WARNING),
         ("session-ended", 401, logging.WARNING),
         ("service-unavailable", 503, logging.ERROR),
+        ("migration-completed", 409, logging.WARNING),
     ],
 )
 @pytest.mark.parametrize(

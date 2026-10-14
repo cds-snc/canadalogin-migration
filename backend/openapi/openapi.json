@@ -210,6 +210,24 @@
         "title": "MetaDataTypeValue",
         "type": "object"
       },
+      "MigrationStatusResponse": {
+        "properties": {
+          "completed": {
+            "title": "Completed",
+            "type": "boolean"
+          },
+          "rp_client_id": {
+            "title": "Rp Client Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rp_client_id",
+          "completed"
+        ],
+        "title": "MigrationStatusResponse",
+        "type": "object"
+      },
       "ProfileResponse": {
         "properties": {
           "data": {
@@ -685,6 +703,27 @@
         ]
       }
     },
+    "/v1/auth/legacy/status": {
+      "get": {
+        "operationId": "handle_migration_status_v1_auth_legacy_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read migration completion status for the current relying party",
+        "tags": [
+          "Legacy Auth"
+        ]
+      }
+    },
     "/v1/auth/login": {
       "get": {
         "operationId": "redirect_url_v1_auth_login_get",
@@ -925,6 +964,28 @@
       "get": {
         "description": "Returns the RP Configuration Details for redirection post migration and display purposes.",
         "operationId": "handle_get_rp_config_details_v1_rp_rpConfigDetails_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "en",
+                    "fr"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lang"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -933,6 +994,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "RP Configuration Details",

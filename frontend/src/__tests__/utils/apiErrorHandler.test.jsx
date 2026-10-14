@@ -118,4 +118,18 @@ describe("API recovery", () => {
     redirectToRecovery("missing-rp-context", "fr");
     expect(window.location.href).toBe("/fr/error/missing-rp-context");
   });
+
+  it("preserves the confirmed RP from a rejected repeat action for recovery", () => {
+    const response = {
+      status: 409,
+      data: { code: "migration-completed", rp_client_id: "rp+with&special" },
+    };
+    expect(() => handleApiError({ response })).toThrow();
+    expect(window.location.href).toBe(
+      "/fr/error/migration-completed?rp_client_id=rp%2Bwith%26special",
+    );
+    expect(getRecoveryPath("session-ended", "fr", "rp-123")).toBe(
+      "/fr/error/session-ended",
+    );
+  });
 });

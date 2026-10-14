@@ -1,13 +1,16 @@
 import logging
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 from app.auth.schemas import RedirectResponseModel
 from app.auth_legacy.services.session_state import clear_legacy_oidc_session
+from app.auth_legacy.services.status import (
+    get_migration_attributes,
+    is_migration_completed,
+)
 from app.rp.services.config import get_config
 from app.rp.services.config import resolve_rp_redirect_uri
 from app.constants.audit_status_keys import AuditStatusKeys
-from app.users.services.custom_attributes import get_user_custom_attributes
 from app.users.services.get_my_profile import get_ibm_id
 from app.users.services.patch import patch_audit_data
 from app.utils.auth_flow_logging import log_auth_flow_event
@@ -19,6 +22,7 @@ from app.utils.custom_parameters import (
     append_customparameters_to_url,
     get_rp_return_parameters_from_session,
 )
+from app.utils.recovery_errors import RecoveryError
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +34,17 @@ async def skip_account_linking(
     session_user_token: str,
     rp_client_id: str | None,
 ):
-    correlation_id = ensure_session_correlation_id(request)
-    attempt_id = ensure_linking_attempt_id(request)
-
     rp = await get_config(rp_client_id)
 
+    global_http_client = request.app.state.request_client
+    custom_attributes = await get_migration_attributes(
+        global_http_client, user_access_token
+    )
+    if is_migration_completed(custom_attributes, rp_client_id):
+        raise RecoveryError("migration-completed")
+
+    correlation_id = ensure_session_correlation_id(request)
+    attempt_id = ensure_linking_attempt_id(request)
     ibm_id = get_ibm_id(session_user_token)
     log_auth_flow_event(
         logger,
@@ -45,13 +55,8 @@ async def skip_account_linking(
         user_id=ibm_id,
     )
 
-    global_http_client = request.app.state.request_client
-    custom_attributes = await get_user_custom_attributes(
-        global_http_client, user_access_token
-    )
-
     # AUDIT DATA LOGIC + PATCH
-    await patch_audit_data(
+    audit_patch_response = await patch_audit_data(
         global_http_client=global_http_client,
         ibm_id=ibm_id,
         rp_client_id=rp_client_id,
@@ -60,6 +65,15 @@ async def skip_account_linking(
         correlation_id=correlation_id,
         attempt_id=attempt_id,
     )
+    # The patch helper can return a handled error instead of raising. Only a
+    # confirmed write may complete the skip or provide a redirect to reuse.
+    if (
+        isinstance(audit_patch_response, dict)
+        or audit_patch_response.status_code != 204
+    ):
+        raise HTTPException(
+            status_code=502, detail="Unable to update migration audit status"
+        )
     log_auth_flow_event(
         logger,
         flow="migration",
