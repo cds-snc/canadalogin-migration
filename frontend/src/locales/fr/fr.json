@@ -520,9 +520,10 @@
         "nextStep": "Retournez sur le site Web du service auquel vous voulez accéder et connectez-vous de nouveau."
       },
       "migration-completed": {
-        "title": "Cette étape est déjà terminée",
+        "title": "Vous avez déjà terminé cette étape",
         "description": "Vous avez déjà lié votre ancienne méthode de connexion ou choisi de créer un nouveau compte.",
-        "continueStep": "Vous pouvez maintenant accéder à votre compte.",
+        "descriptionWithRpName": "Vous avez déjà lié votre ancienne méthode de connexion ou choisi de créer un nouveau compte {RP_Name}.",
+        "accountLabel": "Accéder à votre compte",
         "nextStep": "Pour continuer, retournez sur le site Web du service auquel vous voulez accéder et connectez-vous de nouveau."
       },
       "service-unavailable": {

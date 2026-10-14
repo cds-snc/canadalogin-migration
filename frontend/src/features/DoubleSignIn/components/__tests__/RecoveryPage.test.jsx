@@ -73,11 +73,11 @@ describe("public recovery pages", () => {
   it.each([
     ["en", "missing-rp-context", "Service not found"],
     ["en", "session-ended", "Your session has ended"],
-    ["en", "migration-completed", "This step is already complete"],
+    ["en", "migration-completed", "You have already completed this step"],
     ["en", "service-unavailable", "This service is temporarily unavailable"],
     ["fr", "missing-rp-context", "Service introuvable"],
     ["fr", "session-ended", "Votre session est terminée"],
-    ["fr", "migration-completed", "Cette étape est déjà terminée"],
+    ["fr", "migration-completed", "Vous avez déjà terminé cette étape"],
     ["fr", "service-unavailable", "Ce service est temporairement indisponible"],
   ])(
     "renders %s/%s without authentication",
@@ -111,7 +111,7 @@ describe("public recovery pages", () => {
   it.each([
     [
       "en",
-      "This step is already complete",
+      "You have already completed this step",
       "You have already linked your old sign-in method or chosen to create a new account.",
       "To continue, return to the website of the service you want to access and sign in again.",
       "Get help with CanadaLogin",
@@ -119,7 +119,7 @@ describe("public recovery pages", () => {
     ],
     [
       "fr",
-      "Cette étape est déjà terminée",
+      "Vous avez déjà terminé cette étape",
       "Vous avez déjà lié votre ancienne méthode de connexion ou choisi de créer un nouveau compte.",
       "Pour continuer, retournez sur le site Web du service auquel vous voulez accéder et connectez-vous de nouveau.",
       "Obtenir de l’aide avec ConnexionCanada",
@@ -168,19 +168,17 @@ describe("public recovery pages", () => {
   });
 
   it.each([
-    ["en", "Access your account", "You can now continue to your account."],
-    [
-      "fr",
-      "Accéder à votre compte",
-      "Vous pouvez maintenant accéder à votre compte.",
-    ],
+    ["en", "Go to your account", "Example Service"],
+    ["fr", "Accéder à votre compte", "Service exemple"],
   ])(
-    "offers the same access button in %s without another migration action",
-    async (language, label, nextStep) => {
+    "shows the localized RP name and returns to its configured destination in %s",
+    async (language, label, rpName) => {
       const destination = `https://service.example/${language}/continue?lang=${language}&state=preserved`;
       updateLinkStateAPI.getRecoveryRPDetails.mockResolvedValue({
         rp_client_id: "rp-123",
         rp_redirect_url: destination,
+        rp_client_name_en: "Example Service",
+        rp_client_name_fr: "Service exemple",
       });
       const router = createMemoryRouter(appRoutes, {
         initialEntries: [
@@ -189,7 +187,28 @@ describe("public recovery pages", () => {
       });
       render(<RouterProvider router={router} />);
       const button = await screen.findByRole("button", { name: label });
-      expect(screen.getByText(nextStep)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          language === "en"
+            ? `You have already linked your old sign-in method or chosen to create a new ${rpName} account.`
+            : `Vous avez déjà lié votre ancienne méthode de connexion ou choisi de créer un nouveau compte ${rpName}.`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/sign in again|connectez-vous de nouveau/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/You can now continue|Vous pouvez maintenant/),
+      ).not.toBeInTheDocument();
+      const help = screen.getByRole("link", {
+        name:
+          language === "en"
+            ? "Get help with CanadaLogin"
+            : "Obtenir de l’aide avec ConnexionCanada",
+      });
+      expect(
+        help.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
       expect(updateLinkStateAPI.getRecoveryRPDetails).toHaveBeenCalledWith(
         language,
       );
@@ -207,6 +226,34 @@ describe("public recovery pages", () => {
         destination,
       );
       expect(updateLinkStateAPI.getRecoveryRPDetails).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([{}, { rp_client_name_en: "", rp_client_name: "   " }])(
+    "keeps a usable return button when the RP name is unavailable",
+    async (names) => {
+      updateLinkStateAPI.getRecoveryRPDetails.mockResolvedValue({
+        rp_client_id: "rp-123",
+        rp_redirect_url: "https://service.example/continue",
+        ...names,
+      });
+      const router = createMemoryRouter(appRoutes, {
+        initialEntries: ["/en/error/migration-completed?rp_client_id=rp-123"],
+      });
+      render(<RouterProvider router={router} />);
+      const button = await screen.findByRole("button", {
+        name: "Go to your account",
+      });
+      expect(
+        screen.getByText(
+          "You have already linked your old sign-in method or chosen to create a new account.",
+        ),
+      ).toBeInTheDocument();
+      expect(document.body.textContent).not.toContain("{RP_Name}");
+      fireEvent.click(button);
+      expect(window.location.replace).toHaveBeenCalledExactlyOnceWith(
+        "https://service.example/continue",
+      );
     },
   );
 
@@ -248,7 +295,9 @@ describe("public recovery pages", () => {
     });
     await act(async () => render(<RouterProvider router={router} />));
     expect(
-      screen.getByRole("heading", { name: "This step is already complete" }),
+      screen.getByRole("heading", {
+        name: "You have already completed this step",
+      }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(window.location.replace).not.toHaveBeenCalled();
@@ -276,6 +325,7 @@ describe("public recovery pages", () => {
       .mockResolvedValueOnce({
         rp_client_id: "rp-123",
         rp_redirect_url: "https://service.example/fr",
+        rp_client_name_fr: "Service français",
       });
     const router = createMemoryRouter(appRoutes, {
       initialEntries: ["/en/error/migration-completed?rp_client_id=rp-123"],
@@ -296,11 +346,55 @@ describe("public recovery pages", () => {
       resolveEnglish({
         rp_client_id: "rp-123",
         rp_redirect_url: "https://service.example/en",
+        rp_client_name_en: "English Service",
       }),
     );
+    expect(
+      screen.getByText(/nouveau compte Service français/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/English Service/)).not.toBeInTheDocument();
     fireEvent.click(button);
     expect(window.location.replace).toHaveBeenCalledWith(
       "https://service.example/fr",
+    );
+  });
+
+  it("clears the previous RP name and destination when the RP context changes", async () => {
+    let resolveNewRp;
+    updateLinkStateAPI.getRecoveryRPDetails
+      .mockResolvedValueOnce({
+        rp_client_id: "rp-123",
+        rp_client_name_en: "First Service",
+        rp_redirect_url: "https://first.example/continue",
+      })
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveNewRp = resolve;
+        }),
+      );
+    const router = createMemoryRouter(appRoutes, {
+      initialEntries: ["/en/error/migration-completed?rp_client_id=rp-123"],
+    });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole("button", { name: "Go to your account" });
+    expect(screen.getByText(/new First Service account/)).toBeInTheDocument();
+
+    await act(() =>
+      router.navigate("/en/error/migration-completed?rp_client_id=rp-456"),
+    );
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByText(/First Service/)).not.toBeInTheDocument();
+    await act(async () =>
+      resolveNewRp({
+        rp_client_id: "rp-456",
+        rp_client_name_en: "Second Service",
+        rp_redirect_url: "https://second.example/continue",
+      }),
+    );
+    expect(screen.getByText(/new Second Service account/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Go to your account" }));
+    expect(window.location.replace).toHaveBeenCalledExactlyOnceWith(
+      "https://second.example/continue",
     );
   });
 });

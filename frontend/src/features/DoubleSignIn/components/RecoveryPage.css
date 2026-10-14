@@ -38,6 +38,14 @@
   margin-bottom: 24px;
 }
 
+.gcds-content.recovery-completed-card {
+  border-radius: 10px;
+}
+
+.recovery-completed-card .recovery-action {
+  margin-bottom: 0;
+}
+
 @media screen and (max-width: 767px) {
   .gcds-page.recovery-page {
     padding: 32px 16px;

@@ -13,6 +13,7 @@ import Header from "../../../components/Layout/Header.jsx";
 import Footer from "../../../components/Layout/Footer.jsx";
 import { getLangValues, getPageContent } from "../../../utils/functions.jsx";
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
+import { getLocalizedRpName } from "../utils/relyingParty.js";
 import "./RecoveryPage.css";
 
 // Recovery always renders without a user profile or working backend. Completed
@@ -28,13 +29,19 @@ export default function RecoveryPage() {
     : content.reasons["service-unavailable"];
   const productTitle = currentLang === "fr" ? "ConnexionCanada" : "CanadaLogin";
   const isMissingService = reason === "missing-rp-context";
+  const isCompleted = reason === "migration-completed";
+  const isRecoveryCard = isMissingService || isCompleted;
   const expectedRpId = new URLSearchParams(search).get("rp_client_id");
   const [destination, setDestination] = useState(null);
   const navigationStarted = useRef(false);
   const canContinue =
-    reason === "migration-completed" &&
+    isCompleted &&
     destination?.language === currentLang &&
     destination?.rpClientId === expectedRpId;
+  const description =
+    canContinue && destination.rpName
+      ? message.descriptionWithRpName.replace("{RP_Name}", destination.rpName)
+      : message.description;
 
   useEffect(() => {
     let current = true;
@@ -57,6 +64,7 @@ export default function RecoveryPage() {
           language: currentLang,
           rpClientId: expectedRpId,
           url: url.href,
+          rpName: getLocalizedRpName(data, currentLang),
         });
       })
       .catch(() => {
@@ -81,11 +89,11 @@ export default function RecoveryPage() {
         showBreadcrumbs={false}
       />
       <GcdsContainer
-        className={`gcds-page${isMissingService ? " recovery-page" : ""}`}
+        className={`gcds-page${isRecoveryCard ? " recovery-page" : ""}`}
       >
         <GcdsContainer
-          size={isMissingService ? "md" : "sm"}
-          className={`gcds-content${isMissingService ? " recovery-card" : ""}`}
+          size={isRecoveryCard ? "md" : "sm"}
+          className={`gcds-content${isRecoveryCard ? " recovery-card" : ""}${isCompleted ? " recovery-completed-card" : ""}`}
         >
           <main id="main-content">
             {isMissingService && (
@@ -96,15 +104,25 @@ export default function RecoveryPage() {
             <GcdsHeading tag="h1" lang={currentLang}>
               {message.title}
             </GcdsHeading>
-            <GcdsText>{message.description}</GcdsText>
-            <GcdsText marginBottom={isMissingService ? "0" : undefined}>
-              {canContinue ? message.continueStep : message.nextStep}
-            </GcdsText>
+            <GcdsText>{description}</GcdsText>
+            {!canContinue && (
+              <GcdsText marginBottom={isMissingService ? "0" : undefined}>
+                {message.nextStep}
+              </GcdsText>
+            )}
+            {isCompleted && (
+              <GcdsText>
+                <GcdsLink href={content.helpUrl} external lang={currentLang}>
+                  {content.helpLabel}
+                </GcdsLink>
+              </GcdsText>
+            )}
             {canContinue && (
               <div className="recovery-action">
                 <GcdsButton
                   id="recovery-access-account-button"
                   buttonId="recovery-access-account-button-control"
+                  lang={currentLang}
                   onGcdsClick={(event) => {
                     event.preventDefault();
                     if (navigationStarted.current) return;
@@ -112,7 +130,7 @@ export default function RecoveryPage() {
                     window.location.replace(destination.url);
                   }}
                 >
-                  {getPageContent(currentLang, "LinkSuccess")["btn_1"]}
+                  {message.accountLabel}
                 </GcdsButton>
               </div>
             )}
@@ -135,9 +153,11 @@ export default function RecoveryPage() {
                 </div>
               </>
             )}
-            <GcdsLink href={content.helpUrl}>
-              {message.helpLabel || content.helpLabel}
-            </GcdsLink>
+            {!isCompleted && (
+              <GcdsLink href={content.helpUrl}>
+                {message.helpLabel || content.helpLabel}
+              </GcdsLink>
+            )}
           </main>
         </GcdsContainer>
       </GcdsContainer>
