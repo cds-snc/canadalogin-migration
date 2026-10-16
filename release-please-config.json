@@ -3,6 +3,7 @@
   "release-type": "simple",
   "packages": {
     ".": {
+      "exclude-paths": [".deployed_versions"],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
