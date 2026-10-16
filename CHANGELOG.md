@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.20](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.19...v1.12.20) (2026-10-16)
+
+
+### Bug Fixes
+
+* restore approved bilingual footer links ([#429](https://github.com/cds-snc/canadalogin-migration/issues/429)) ([7892b7e](https://github.com/cds-snc/canadalogin-migration/commit/7892b7e55762b0b1cbb4b4296bca0db281beb752))
+
 ## [1.12.19](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.18...v1.12.19) (2026-10-14)
 
 
