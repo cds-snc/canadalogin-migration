@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.21](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.20...v1.12.21) (2026-10-16)
+
+
+### Bug Fixes
+
+* deploy 1.12.20 to staging ([#431](https://github.com/cds-snc/canadalogin-migration/issues/431)) ([a269016](https://github.com/cds-snc/canadalogin-migration/commit/a269016e69f83747839f84d92614c8cc01b26177))
+
 ## [1.12.20](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.19...v1.12.20) (2026-10-16)
 
 
