@@ -81,8 +81,8 @@ export const PAGES = {
 
 export const FOOTERS = {
   default: {
-    en: '{ "About GC Sign in": "https://login.canada.ca/en/users/what-is-canadalogin/", "Help": "https://login.canada.ca/en/users/", "Terms": "https://login.canada.ca/en/users/terms/" }',
-    fr: '{ "À propos": "https://connexion.canada.ca/fr/utilisateurs/a-propos/", "Aide": "https://connexion.canada.ca/fr/utilisateurs/", "Avis": "https://connexion.canada.ca/fr/utilisateurs/avis/" }',
+    en: '{ "About CanadaLogin": "https://login.canada.ca/en/users/what-is-canadalogin/", "Help": "https://login.canada.ca/en/users/", "Privacy": "https://login.canada.ca/en/users/privacy/", "Terms and Conditions": "https://login.canada.ca/en/users/terms/" }',
+    fr: '{ "À propos de ConnexionCanada": "https://connexion.canada.ca/fr/utilisateurs/a-propos/", "Aide": "https://connexion.canada.ca/fr/utilisateurs/", "Confidentialité": "https://connexion.canada.ca/fr/utilisateurs/confidentialite/", "Avis": "https://connexion.canada.ca/fr/utilisateurs/avis/" }',
   },
 };
 
