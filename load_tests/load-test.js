@@ -13,7 +13,7 @@ export const options = {
       startRate: 0,
       timeUnit: "1s",
       preAllocatedVUs: 50 * LOAD_MULTIPLIER,
-      maxVUs: 300 * LOAD_MULTIPLIER,
+      maxVUs: 500 * LOAD_MULTIPLIER,
       stages: [
         { target: 50 * LOAD_MULTIPLIER, duration: "1m" }, // warmup
         { target: 500 * LOAD_MULTIPLIER, duration: "2m" }, // ramp to target
