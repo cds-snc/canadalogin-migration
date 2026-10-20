@@ -16,8 +16,8 @@ export const options = {
       maxVUs: 300 * LOAD_MULTIPLIER,
       stages: [
         { target: 50 * LOAD_MULTIPLIER, duration: "1m" }, // warmup
-        { target: 300 * LOAD_MULTIPLIER, duration: "2m" }, // ramp to target
-        { target: 300 * LOAD_MULTIPLIER, duration: "10m" }, // steady state
+        { target: 500 * LOAD_MULTIPLIER, duration: "2m" }, // ramp to target
+        { target: 500 * LOAD_MULTIPLIER, duration: "10m" }, // steady state
         { target: 0, duration: "2m" }, // ramp down
       ],
     },
