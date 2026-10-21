@@ -64,7 +64,7 @@ async def legacy_login(
 ):
     try:
         if not rp_client_id:
-            raise HTTPException(status_code=400, detail="Missing RP client id")
+            raise RecoveryError("missing-rp-context")
 
         rp = await get_config(rp_client_id)
         if not rp.IDP:
