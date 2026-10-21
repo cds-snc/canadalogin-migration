@@ -34,7 +34,8 @@ $(SEMGREP_VENV)/.installed: backend/requirements-semgrep.txt
 	touch $@
 
 check-local-state: install-semgrep
-	$(SEMGREP_VENV)/bin/semgrep --config .semgrep/no-local-state.yml --error backend/app/
+	# Keep the small scan within CI worker-thread limits without reducing coverage.
+	$(SEMGREP_VENV)/bin/semgrep --jobs 1 --config .semgrep/no-local-state.yml --error backend/app/
 
 run-pytest:
 	pytest
