@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from fastapi import HTTPException, Response
 
 from app.auth import v1_router as auth_router
 from app.auth_legacy import v1_router as legacy_router
@@ -193,6 +194,40 @@ async def test_legacy_skip_calls_service():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "handler",
+    [
+        legacy_router.handle_legacy_login,
+        legacy_router.handle_legacy_callback,
+        legacy_router.handle_skip_account_linking,
+        rp_router.handle_get_rp_config_details,
+    ],
+)
+@pytest.mark.parametrize("rp_session", [{}, {"rp_client_id": None}])
+async def test_rp_routes_handle_missing_client_context(handler, rp_session):
+    request = MagicMock()
+    request.session = {
+        SessionKeys.SESSION_USER_TOKEN.value: "user-token",
+        **rp_session,
+    }
+    kwargs = {}
+    if handler is not rp_router.handle_get_rp_config_details:
+        kwargs["user_access_token"] = "user-at"
+    else:
+        kwargs["response"] = Response()
+    if handler is legacy_router.handle_legacy_login:
+        kwargs["lang"] = "en"
+
+    with patch("app.rp.services.config.get_config_json", new=AsyncMock()) as mock_load:
+        with pytest.raises(HTTPException) as raised:
+            await handler(request, **kwargs)
+
+    assert raised.value.status_code == 400
+    assert raised.value.detail == "Missing RP client id"
+    mock_load.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_rp_config_details_calls_service():
     request = MagicMock()
     request.session = {SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1"}
@@ -206,10 +241,45 @@ async def test_rp_config_details_calls_service():
             new=AsyncMock(return_value={"ok": True}),
         ) as mocked,
     ):
-        result = await rp_router.handle_get_rp_config_details(request)
+        response = Response()
+        result = await rp_router.handle_get_rp_config_details(request, response)
         assert result == {"ok": True}
+        assert response.headers["Cache-Control"] == "no-store"
         mocked.assert_awaited_once_with(
             rp_client_id="rp-1",
             custom_parameters={"foo": "bar"},
             language=None,
         )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("language", ["en", "fr", None])
+async def test_rp_config_details_localizes_return_without_mutating_session(language):
+    request = MagicMock()
+    request.session = {
+        SessionKeys.RP_CLIENT_ID_KEY.value: "rp-1",
+        SessionKeys.CURRENT_LANGUAGE.value: "fr",
+        SessionKeys.CUSTOM_PARAMETERS.value: {"transaction": "original"},
+    }
+    original_session = {
+        **request.session,
+        SessionKeys.CUSTOM_PARAMETERS.value: {"transaction": "original"},
+    }
+    response = Response()
+    with patch(
+        "app.rp.v1_router.get_rp_config_details", new=AsyncMock(return_value={})
+    ) as mocked:
+        await rp_router.handle_get_rp_config_details(request, response, lang=language)
+
+    resolved_language = language or "fr"
+    mocked.assert_awaited_once_with(
+        rp_client_id="rp-1",
+        custom_parameters={
+            "transaction": "original",
+            "lang": resolved_language,
+            "ui_locales": f"{resolved_language}-CA",
+        },
+        language=resolved_language,
+    )
+    assert request.session == original_session
+    assert response.headers["Cache-Control"] == "no-store"

@@ -9,6 +9,7 @@ import pytest
 from authlib.jose import JsonWebKey, jwt
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.testclient import TestClient
 from starsessions import SessionMiddleware
 from starsessions.stores.memory import InMemoryStore
@@ -16,7 +17,11 @@ from starsessions.stores.memory import InMemoryStore
 from app.auth.services import auth, auth_user_session
 from app.auth import v1_router as auth_router
 from app.auth.services.csrf import validate_csrf_token
+from app.auth_legacy.services import login as legacy_login
 from app.auth_legacy.services import skip
+from app.auth_legacy.services import status as migration_status
+from app.users.schemas import CustomAttribute
+from app.constants.patch_keys import PatchKeys
 from app.constants.session_keys import SessionKeys
 from app.constants.redis_keys import RedisKeys
 from app.main import app
@@ -218,17 +223,25 @@ def test_cors_preflight_does_not_require_token(browser_app):
     "path", ["/logout", "/keep-alive", "/rp-context", "/legacy/skip"]
 )
 def test_browser_actions_reject_missing_token_before_auth_or_service(
-    browser_app, path, monkeypatch
+    browser_app, path, monkeypatch, caplog
 ):
     authenticate(browser_app)
     refresh = AsyncMock()
-    monkeypatch.setattr("app.utils.standardized_logging.get_user_info", refresh)
+    monkeypatch.setattr(auth_user_session, "get_user_info", refresh)
     response = browser_app.client.post(f"{API}{path}", json={"rp_client_id": "new-rp"})
 
     assert response.status_code == 403
     browser_app.introspect.assert_not_awaited()
     refresh.assert_not_awaited()
     assert session_data(browser_app)["rp_client_id"] == "original-rp"
+    request_logs = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "app.utils.standardized_logging"
+    ]
+    assert len(request_logs) == 1
+    assert request_logs[0]["context"]["response"]["status_code"] == 403
+    assert "user" not in request_logs[0]["context"]
 
 
 def test_keep_alive_accepts_valid_token(browser_app):
@@ -272,9 +285,9 @@ def test_logout_clears_token_and_session(browser_app, monkeypatch):
 
 def test_skip_requires_post_and_returns_json_without_redirect(browser_app, monkeypatch):
     token = authenticate(browser_app)
-    patch_audit = AsyncMock()
+    patch_audit = AsyncMock(return_value=SimpleNamespace(status_code=204))
     monkeypatch.setattr(skip, "get_ibm_id", MagicMock(return_value="ibm-id"))
-    monkeypatch.setattr(skip, "get_user_custom_attributes", AsyncMock(return_value=[]))
+    monkeypatch.setattr(skip, "get_migration_attributes", AsyncMock(return_value=[]))
     monkeypatch.setattr(skip, "patch_audit_data", patch_audit)
     monkeypatch.setattr(
         skip,
@@ -299,6 +312,218 @@ def test_skip_requires_post_and_returns_json_without_redirect(browser_app, monke
     assert "lang=fr" in response.json()["redirect_url"]
     assert "location" not in response.headers
     patch_audit.assert_awaited_once()
+
+
+@pytest.mark.parametrize("acr_values", ["", "gckey"])
+def test_gccf_navigation_preserves_csrf_protection_for_skip(
+    browser_app, monkeypatch, acr_values
+):
+    token = authenticate(browser_app)
+    rp = SimpleNamespace(
+        rp_client_name="gccf_migration",
+        rp_redirect_uri="https://rp.example.test/",
+        acr_values=acr_values,
+        IDP=[
+            SimpleNamespace(
+                client_name="GCCF",
+                redirect_uris=["https://migration.example.test/legacy/callback"],
+                code_challenge_method="S256",
+            )
+        ],
+    )
+    authorize = AsyncMock(
+        return_value=RedirectResponse("https://gccf.example.test/authorize")
+    )
+    register = AsyncMock()
+    processing_patch = AsyncMock(return_value=SimpleNamespace(status_code=204))
+    audit_patch = AsyncMock(return_value=SimpleNamespace(status_code=204))
+    for service in (legacy_login, skip):
+        monkeypatch.setattr(service, "get_config", AsyncMock(return_value=rp))
+        monkeypatch.setattr(service, "get_ibm_id", MagicMock(return_value="ibm-id"))
+        monkeypatch.setattr(
+            service, "get_migration_attributes", AsyncMock(return_value=[])
+        )
+    monkeypatch.setattr(legacy_login, "register_client", register)
+    monkeypatch.setattr(
+        legacy_login,
+        "create_client",
+        AsyncMock(return_value=SimpleNamespace(authorize_redirect=authorize)),
+    )
+    monkeypatch.setattr(legacy_login, "patch_processing_data", processing_patch)
+    monkeypatch.setattr(skip, "patch_audit_data", audit_patch)
+
+    response = browser_app.client.get(
+        f"{API}/legacy/login?lang=fr",
+        headers={"Accept": "text/html"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://gccf.example.test/authorize"
+    assert session_data(browser_app)[SessionKeys.CSRF_TOKEN.value] == token
+    assert session_data(browser_app)["legacy_provider"] == "GCCF"
+    register.assert_awaited_once()
+    assert register.await_args.args[-1] == acr_values
+    authorize.assert_awaited_once()
+    processing_patch.assert_awaited_once()
+    assert processing_patch.await_args.kwargs["rp_client_id"] == "original-rp"
+
+    browser_app.introspect.reset_mock()
+    stored = dict(browser_app.store.data)
+    writes = browser_app.store.writes
+    for headers in ({}, {"X-CSRF-Token": "wrong-token"}):
+        response = browser_app.client.post(f"{API}/legacy/skip", headers=headers)
+        assert response.status_code == 403
+        assert browser_app.store.data == stored
+        assert browser_app.store.writes == writes
+    browser_app.introspect.assert_not_awaited()
+    audit_patch.assert_not_awaited()
+
+    response = browser_app.client.post(
+        f"{API}/legacy/skip", headers={"X-CSRF-Token": token}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["redirect_url"] == (
+        "https://rp.example.test/?lang=fr&ui_locales=fr-CA"
+    )
+    browser_app.introspect.assert_awaited_once()
+    audit_patch.assert_awaited_once()
+    assert session_data(browser_app)[SessionKeys.CSRF_TOKEN.value] == token
+
+
+@pytest.mark.parametrize("accept", ["application/json", "text/html"])
+def test_legacy_login_without_rp_returns_recovery(browser_app, monkeypatch, accept):
+    token = authenticate(browser_app)
+    sid = browser_app.client.cookies.get("session")
+    data = session_data(browser_app)
+    del data[SessionKeys.RP_CLIENT_ID_KEY.value]
+    browser_app.store.data[sid] = json.dumps(data).encode()
+    get_config = AsyncMock()
+    monkeypatch.setattr(legacy_login, "get_config", get_config)
+
+    response = browser_app.client.get(
+        f"{API}/legacy/login?lang=fr",
+        headers={"Accept": accept},
+        follow_redirects=False,
+    )
+
+    if accept == "text/html":
+        assert response.status_code == 303
+        assert response.headers["location"].endswith("/fr/error/missing-rp-context")
+    else:
+        assert response.status_code == 400
+        assert response.json()["code"] == "missing-rp-context"
+    assert response.headers["cache-control"] == "no-store"
+    assert session_data(browser_app)[SessionKeys.CSRF_TOKEN.value] == token
+    get_config.assert_not_awaited()
+
+
+@pytest.mark.parametrize("completed", [False, True])
+def test_migration_status_reads_current_rp_without_writing_profile(
+    browser_app, monkeypatch, completed
+):
+    authenticate(browser_app)
+    attributes = (
+        [
+            CustomAttribute(
+                name=PatchKeys.LEGACY_PAI_DATA_KEY.value,
+                values=['{"client_id":"original-rp","pai":"legacy-user"}'],
+            )
+        ]
+        if completed
+        else []
+    )
+    read = AsyncMock(return_value=attributes)
+    config = AsyncMock()
+    monkeypatch.setattr(migration_status, "get_migration_attributes", read)
+    monkeypatch.setattr(migration_status, "get_config", config)
+
+    response = browser_app.client.get(f"{API}/legacy/status?rp_client_id=another-rp")
+
+    assert response.status_code == 200
+    assert response.json() == {"rp_client_id": "original-rp", "completed": completed}
+    assert response.headers["cache-control"] == "no-store"
+    config.assert_awaited_once_with("original-rp")
+    read.assert_awaited_once()
+    browser_app.introspect.assert_awaited_once()
+    assert session_data(browser_app)["rp_client_id"] == "original-rp"
+
+
+def test_migration_status_requires_authentication(browser_app, monkeypatch):
+    read = AsyncMock()
+    monkeypatch.setattr(migration_status, "get_migration_attributes", read)
+
+    response = browser_app.client.get(f"{API}/legacy/status")
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "session-ended"
+    read.assert_not_awaited()
+
+
+def test_migration_status_read_failure_returns_recovery_instead_of_ready(
+    browser_app, monkeypatch
+):
+    authenticate(browser_app)
+    monkeypatch.setattr(migration_status, "get_config", AsyncMock())
+    monkeypatch.setattr(
+        migration_status,
+        "get_user_custom_attributes",
+        AsyncMock(side_effect=ValueError("Unreadable profile")),
+    )
+
+    response = browser_app.client.get(f"{API}/legacy/status")
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "service-unavailable"
+    assert "completed" not in response.json()
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("language", ["en", "fr"])
+def test_recovery_rp_details_use_requested_language_without_ibm_calls(
+    browser_app, monkeypatch, language
+):
+    authenticate(browser_app)
+    config = SimpleNamespace(
+        rp_client_id="original-rp",
+        rp_client_name="Example service",
+        rp_client_name_en="Example service",
+        rp_client_name_fr="Service exemple",
+        rp_redirect_uri="https://rp.example.test/",
+        rp_redirect_uri_en="https://rp.example.test/en",
+        rp_redirect_uri_fr="https://rp.example.test/fr",
+        acr_values="gckey",
+    )
+    monkeypatch.setattr(
+        "app.rp.services.config.get_config", AsyncMock(return_value=config)
+    )
+
+    response = browser_app.client.get(f"/v1/rp/rpConfigDetails?lang={language}")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json()["rp_redirect_url"] == (
+        f"https://rp.example.test/{language}?lang={language}&ui_locales={language}-CA"
+    )
+    assert "lang" not in session_data(browser_app)
+    browser_app.introspect.assert_not_awaited()
+    app.state.request_client.get.assert_not_called()
+    app.state.request_client.post.assert_not_called()
+    app.state.request_client.patch.assert_not_called()
+
+
+@pytest.mark.parametrize("language", ["en-US", "FR", "es"])
+def test_recovery_rp_details_reject_unsupported_language(
+    browser_app, monkeypatch, language
+):
+    config = AsyncMock()
+    monkeypatch.setattr("app.rp.services.config.get_config", config)
+
+    response = browser_app.client.get(f"/v1/rp/rpConfigDetails?lang={language}")
+
+    assert response.status_code == 400
+    config.assert_not_awaited()
 
 
 def test_rp_context_can_only_be_changed_by_authenticated_protected_post(
@@ -330,15 +555,78 @@ def test_rp_context_can_only_be_changed_by_authenticated_protected_post(
     get_config.assert_awaited_once_with("new-rp")
 
 
-def test_rp_context_token_does_not_replace_authentication(browser_app):
+def test_fresh_rp_context_requires_initial_authentication(browser_app, monkeypatch):
     token = token_for(browser_app.client)
+    get_config = AsyncMock()
+    monkeypatch.setattr(auth_router, "get_config", get_config)
+
     response = browser_app.client.post(
         f"{API}/rp-context",
         json={"rp_client_id": "new-rp"},
         headers={"X-CSRF-Token": token, "Accept": "application/json"},
     )
+
     assert response.status_code == 401
+    assert response.json()["code"] == "authentication-required"
     assert "rp_client_id" not in session_data(browser_app)
+    browser_app.introspect.assert_not_awaited()
+    get_config.assert_not_awaited()
+
+
+@pytest.mark.parametrize("context", [{}, {"rp_client_id": ""}])
+def test_fresh_rp_context_requires_valid_body(browser_app, context):
+    token = token_for(browser_app.client)
+
+    response = browser_app.client.post(
+        f"{API}/rp-context",
+        json=context,
+        headers={"X-CSRF-Token": token, "Accept": "application/json"},
+    )
+
+    assert response.status_code == 400
+    assert "rp_client_id" not in session_data(browser_app)
+    browser_app.introspect.assert_not_awaited()
+
+
+def test_expired_rp_context_session_requires_recovery(browser_app, monkeypatch):
+    token = authenticate(browser_app)
+    browser_app.introspect.return_value = {"active": False}
+    get_config = AsyncMock()
+    monkeypatch.setattr(auth_router, "get_config", get_config)
+
+    response = browser_app.client.post(
+        f"{API}/rp-context",
+        json={"rp_client_id": "new-rp"},
+        headers={"X-CSRF-Token": token, "Accept": "application/json"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "session-ended"
+    assert browser_app.store.data == {}
+    browser_app.introspect.assert_awaited_once()
+    get_config.assert_not_awaited()
+
+
+def test_partial_rp_context_session_requires_recovery(browser_app, monkeypatch):
+    token = authenticate(browser_app)
+    sid = browser_app.client.cookies.get("session")
+    data = session_data(browser_app)
+    del data[SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value]
+    browser_app.store.data[sid] = json.dumps(data).encode()
+    get_config = AsyncMock()
+    monkeypatch.setattr(auth_router, "get_config", get_config)
+
+    response = browser_app.client.post(
+        f"{API}/rp-context",
+        json={"rp_client_id": "new-rp"},
+        headers={"X-CSRF-Token": token, "Accept": "application/json"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "session-ended"
+    assert session_data(browser_app)["rp_client_id"] == "original-rp"
+    browser_app.introspect.assert_not_awaited()
+    get_config.assert_not_awaited()
 
 
 def test_oidc_callback_accepts_get_and_rotates_token(browser_app, monkeypatch):

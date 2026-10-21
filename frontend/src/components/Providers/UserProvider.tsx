@@ -1,5 +1,17 @@
-import { useReducer, useEffect, ReactNode, useRef, useMemo } from "react";
-import { useSearchParams, useParams, useLocation } from "react-router";
+import {
+  useReducer,
+  useEffect,
+  ReactNode,
+  useRef,
+  useMemo,
+  useState,
+} from "react";
+import {
+  Navigate,
+  useSearchParams,
+  useParams,
+  useLocation,
+} from "react-router";
 import {
   useEventSource,
   useEventSourceListener,
@@ -16,6 +28,11 @@ import { authService } from "../../services/authService.jsx";
 import Loader from "../Layout/Loading.jsx";
 import SessionTimeoutModal from "../Layout/SessionTimeoutModal.jsx";
 import { getPageContent } from "../../utils/functions.jsx";
+import { redirectToLogin } from "../../utils/apiErrorHandler.js";
+import {
+  getRecoveryPath,
+  getRecoveryReason,
+} from "../../utils/recoveryErrors.js";
 
 interface Action {
   type: string;
@@ -191,6 +208,11 @@ export function UserProvider({
   initialSessionTimeoutState = initialSessionState,
 }: UserProviderProps) {
   const [userState, userDispatch] = useReducer(userReducer, initial);
+  const [recoveryReason, setRecoveryReason] = useState<string | null>(null);
+  const [loginPending, setLoginPending] = useState(false);
+  const recoveryStartedRef = useRef(false);
+  const logoutStartedRef = useRef(false);
+  const authenticatedRef = useRef(Boolean(initial.userProfile));
   const [sessionTimeoutState, sessionTimeoutDispatch] = useReducer(
     sessionTimeoutReducer,
     initialSessionTimeoutState,
@@ -219,8 +241,11 @@ export function UserProvider({
   // Session timeout configuration (in milliseconds)
   const WARNING_TIME = 5 * 60 * 1000; // 5 minutes before expiry
 
-  const [eventSource, eventSourceStatus] = useEventSource(
-    `${config.apiUrl}${SUBMIT_END_POINTS.sessionStatus}`,
+  // A new Verify entry authenticates through /me before it has an SSE session.
+  const [eventSource] = useEventSource(
+    userState.userProfile && !recoveryReason && !loginPending
+      ? `${config.apiUrl}${SUBMIT_END_POINTS.sessionStatus}`
+      : "",
     true,
   );
 
@@ -236,9 +261,18 @@ export function UserProvider({
     }
   };
 
+  const showRecovery = (reason: string) => {
+    if (recoveryStartedRef.current) return;
+    recoveryStartedRef.current = true;
+    clearTimers();
+    if (eventSource) eventSource.close();
+    setRecoveryReason(reason);
+  };
+
   // Start session timers with specific expire time from SSE
   const resetSessionTimers = (expireTimestamp: number) => {
     clearTimers();
+    if (!authenticatedRef.current || recoveryStartedRef.current) return;
 
     // Convert expire timestamp to milliseconds if it's in seconds
     const expireTimeMs = expireTimestamp * 1000;
@@ -246,9 +280,9 @@ export function UserProvider({
     const timeUntilExpire = expireTimeMs - currentTime;
 
     // Only set timers if expire time is in the future
-    if (userState.userProfile && timeUntilExpire <= 0) {
+    if (timeUntilExpire <= 0) {
       console.warn("Session already expired based on provided expire time");
-      handleLogout();
+      showRecovery("session-ended");
       return;
     }
 
@@ -271,8 +305,8 @@ export function UserProvider({
     }
 
     // Set expire timer
-    expireTimerRef.current = setTimeout(async () => {
-      await handleLogout();
+    expireTimerRef.current = setTimeout(() => {
+      showRecovery("session-ended");
     }, timeUntilExpire);
 
     console.log(
@@ -284,6 +318,17 @@ export function UserProvider({
   const handleKeepSession = async () => {
     try {
       const response = await authService.keepAlive();
+      if (
+        response?.success === false ||
+        ["terminated", "expired"].includes(response?.data?.status)
+      ) {
+        showRecovery("session-ended");
+        return;
+      }
+      if (!Number.isFinite(response?.data?.expire)) {
+        showRecovery("service-unavailable");
+        return;
+      }
       sessionTimeoutDispatch({
         type: CONTEXT_ACTIONS.hide_session_timeout_modal,
         payload: null,
@@ -294,35 +339,25 @@ export function UserProvider({
       });
     } catch (error) {
       console.error("Error keeping session alive:", error);
-      // If keepAlive fails, proceed with logout
-      handleLogout();
+      showRecovery(getRecoveryReason(error) || "service-unavailable");
     }
   };
   // Handle logout
   const handleLogout = async () => {
+    logoutStartedRef.current = true;
+    clearTimers();
+    if (eventSource) eventSource.close();
     try {
       const response = await authService.logout();
       // Check if response has redirect_url and redirect
       if (response && response.data && response.data.redirect_url) {
         window.location.href = response.data.redirect_url;
       } else {
-        // Fallback redirect if no redirect_url provided
-        window.location.href = "/";
+        showRecovery("session-ended");
       }
     } catch (error) {
       console.error("Error during logout:", error);
-      // Update loading text to show error
-      userDispatch({
-        type: CONTEXT_ACTIONS.set_loading,
-        payload: { isLoading: true, text: pageContentJson["10"] },
-      });
-      clearTimers();
-      if (eventSource) eventSource.close();
-
-      // Redirect after error
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 2000);
+      showRecovery(getRecoveryReason(error) || "service-unavailable");
     }
   };
 
@@ -330,26 +365,28 @@ export function UserProvider({
     eventSource,
     ["expired", "error", "notification", "terminated"],
     (event) => {
-      if (event.type === "expired") {
-        // Session expired - proceed with logout button
-        if (eventSource) eventSource.close();
-        clearTimers();
-      }
-      if (event.type === "terminated") {
-        // Handle backchannel logout
-        console.log("Session terminated by backchannel logout");
-        userDispatch({
-          type: CONTEXT_ACTIONS.set_loading,
-          payload: { isLoading: true, text: pageContentJson["7"] },
-        });
-        // Redirect after backchannel logout with a slight delay to show loading message
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 2000);
+      if (
+        !authenticatedRef.current ||
+        recoveryStartedRef.current ||
+        logoutStartedRef.current
+      )
+        return;
+      if (event.type === "expired" || event.type === "terminated") {
+        showRecovery("session-ended");
+        return;
       }
       if (event.type === "error") {
-        // for debugging purpose. No need to handle it.
-        console.error("SSE error:", event.data);
+        // Native connection errors have no payload and can reconnect. Only a
+        // coded server event establishes that recovery is needed.
+        if (!event.data) return;
+        try {
+          const eventData = JSON.parse(event.data);
+          const reason = getRecoveryReason({ data: eventData });
+          if (eventData.code && reason) showRecovery(reason);
+        } catch (error) {
+          console.error("Error parsing SSE error data:", error);
+        }
+        return;
       }
       if (event.type === "notification") {
         // Parse the event data and check status
@@ -357,7 +394,10 @@ export function UserProvider({
           const eventData = JSON.parse(event.data);
           console.debug("SSE notification:", eventData);
 
-          if (eventData.status === "active" && eventData.expire) {
+          if (
+            eventData.status === "active" &&
+            Number.isFinite(eventData.expire)
+          ) {
             // Only dispatch if expire changed to avoid unnecessary re-renders
             if (latestExpireRef.current !== eventData.expire) {
               console.debug(
@@ -393,24 +433,6 @@ export function UserProvider({
   );
 
   useEffect(() => {
-    const getRelyingPartyInfo = async () => {
-      try {
-        const response = await authService.get_rp_info();
-        if (response && response.data && response.data.id) {
-          userDispatch({
-            type: CONTEXT_ACTIONS.set_relying_party_data,
-            payload: response.data,
-          });
-        } else {
-          console.error("Error in getting relying party info:", response);
-        }
-      } catch (err) {
-        console.error("Error in getting relying party info:", err);
-      }
-    };
-
-    // Simple authentication check - if we're not loading and don't have a profile,
-    // we let PrivateRoute handle the OIDC redirect
     const fetchProfileAndRelyingPartyInfo = async () => {
       try {
         // After an OIDC redirect, store any RP context from the redirect URL
@@ -421,18 +443,35 @@ export function UserProvider({
         const response = await authService.get_my_user_profile(rp_client_id);
         if (response && response.data) {
           // User is authenticated, set the profile
+          authenticatedRef.current = true;
           userDispatch({
             type: CONTEXT_ACTIONS.updated_profile_success,
             payload: response.data,
           });
-          // Now that we have the profile, we can get the relying party info if not already set
-          //await getRelyingPartyInfo();
+        } else {
+          showRecovery("service-unavailable");
         }
       } catch (err) {
-        console.log("User not authenticated:", err);
-        // User not authenticated - this will trigger OIDC redirect in PrivateRoute
+        const response = (err as any)?.response || err;
+        const clientId = searchParams.get(RP_CLIENT_ID_KEY);
+        if (
+          response?.status === 401 &&
+          response?.data?.code === "authentication-required" &&
+          clientId
+        ) {
+          // Preserve the RP supplied by Verify when starting OIDC authentication.
+          setLoginPending(true);
+          redirectToLogin(clientId, language);
+        } else {
+          showRecovery(
+            getRecoveryReason(err) ||
+              (response?.data?.code === "authentication-required"
+                ? "session-ended"
+                : "service-unavailable"),
+          );
+        }
       } finally {
-        // Always set loading to false and reset loading text so PrivateRoute can handle the logic
+        // Recovery/login state takes precedence over rendering PrivateRoute.
         userDispatch({
           type: CONTEXT_ACTIONS.set_loading,
           payload: { isLoading: false, text: pageContentJson["9"] },
@@ -458,7 +497,11 @@ export function UserProvider({
     return () => {};
   }, [sessionTimeoutState.newServerSideExpirationTime]);
 
-  if (userState.isLoading) {
+  if (recoveryReason) {
+    return <Navigate to={getRecoveryPath(recoveryReason, language)} replace />;
+  }
+
+  if (userState.isLoading || loginPending) {
     return (
       <Loader
         text={

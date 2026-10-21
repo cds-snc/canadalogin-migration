@@ -14,6 +14,7 @@ from authlib.integrations.starlette_client import OAuthError
 
 from app.auth_legacy.services.login import legacy_login, oidc_legacy_login_auth
 from app.auth_legacy.services.skip import skip_account_linking
+from app.auth_legacy.v1_router import handle_skip_account_linking
 from app.auth_legacy.services.callback import (
     get_target_rp_client_ids,
     legacy_callback,
@@ -22,6 +23,7 @@ from app.auth_legacy.services.callback import (
 from app.constants.session_keys import SessionKeys
 from app.constants.audit_status_keys import AuditStatusKeys
 from app.utils.auth_flow_logging import hash_identifier
+from app.utils.recovery_errors import RecoveryError
 
 
 def build_request():
@@ -38,11 +40,12 @@ def seed_legacy_session(
     request,
     *,
     client_name: str = "rpname_SIC",
+    provider: str = "SIC",
     state: str = "state",
     nonce: str = "nonce",
     verifier: str = "verifier",
 ):
-    request.session["legacy_provider"] = "SIC"
+    request.session["legacy_provider"] = provider
     request.session["legacy_client_name"] = client_name
     request.session[f"{client_name}_code_verifier"] = verifier
     request.session[f"{client_name}_nonce"] = nonce
@@ -88,10 +91,15 @@ async def test_legacy_login_routes_supported_providers_to_oidc_handler(provider)
 @pytest.mark.asyncio
 @pytest.mark.parametrize("rp_client_id", [None, ""])
 async def test_legacy_login_rejects_missing_rp_client_id(rp_client_id):
-    with pytest.raises(HTTPException) as raised:
-        await legacy_login(build_request(), "user-at", "user-token", rp_client_id)
+    request = build_request()
+    with patch("app.auth_legacy.services.login.get_config", new=AsyncMock()) as config:
+        with pytest.raises(RecoveryError) as raised:
+            await legacy_login(request, "user-at", "user-token", rp_client_id)
 
     assert raised.value.status_code == 400
+    assert raised.value.code == "missing-rp-context"
+    config.assert_not_awaited()
+    assert request.session == {}
 
 
 @pytest.mark.asyncio
@@ -193,7 +201,7 @@ async def test_oidc_legacy_login_auth_raises_when_processing_patch_returns_dict_
             new=MagicMock(return_value="ibm1"),
         ),
         patch(
-            "app.auth_legacy.services.login.get_user_custom_attributes",
+            "app.auth_legacy.services.login.get_migration_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch(
@@ -208,6 +216,72 @@ async def test_oidc_legacy_login_auth_raises_when_processing_patch_returns_dict_
 
     assert raised.value.status_code == 502
     assert raised.value.detail == "HTTP error: 500"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("client_id", [None, "", " \t "])
+async def test_skip_account_linking_rejects_missing_rp_before_profile_access(client_id):
+    request = build_request()
+
+    with (
+        patch(
+            "app.auth_legacy.services.skip.get_migration_attributes",
+            new=AsyncMock(),
+        ) as mock_attributes,
+        patch(
+            "app.auth_legacy.services.skip.patch_audit_data", new=AsyncMock()
+        ) as mock_audit,
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await skip_account_linking(request, "user-at", "user-token", client_id)
+
+    assert raised.value.status_code == 400
+    assert raised.value.detail == "Missing RP client id"
+    mock_attributes.assert_not_awaited()
+    mock_audit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_skip_route_handles_absent_rp_session_key():
+    request = build_request()
+    request.session[SessionKeys.SESSION_USER_TOKEN.value] = "user-token"
+
+    with pytest.raises(HTTPException) as raised:
+        await handle_skip_account_linking(
+            request, lang="en", user_access_token="user-at"
+        )
+
+    assert raised.value.status_code == 400
+    assert raised.value.detail == "Missing RP client id"
+
+
+@pytest.mark.asyncio
+async def test_skip_account_linking_resolves_rp_before_profile_access():
+    request = build_request()
+
+    with (
+        patch(
+            "app.auth_legacy.services.skip.get_config",
+            new=AsyncMock(
+                side_effect=HTTPException(
+                    status_code=404, detail="Legacy IdP configuration not found"
+                )
+            ),
+        ),
+        patch(
+            "app.auth_legacy.services.skip.get_migration_attributes",
+            new=AsyncMock(),
+        ) as mock_attributes,
+        patch(
+            "app.auth_legacy.services.skip.patch_audit_data", new=AsyncMock()
+        ) as mock_audit,
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await skip_account_linking(request, "user-at", "user-token", "unknown-rp")
+
+    assert raised.value.status_code == 404
+    mock_attributes.assert_not_awaited()
+    mock_audit.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -231,12 +305,12 @@ async def test_skip_account_linking_returns_rp_redirect_url():
             new=MagicMock(return_value="ibm1"),
         ),
         patch(
-            "app.auth_legacy.services.skip.get_user_custom_attributes",
+            "app.auth_legacy.services.skip.get_migration_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch(
             "app.auth_legacy.services.skip.patch_audit_data",
-            new=AsyncMock(),
+            new=AsyncMock(return_value=httpx.Response(204)),
         ) as mock_patch_audit,
         patch(
             "app.auth_legacy.services.skip.get_config", new=AsyncMock(return_value=rp)
@@ -278,12 +352,12 @@ async def test_skip_account_linking_logs_auth_flow_events(caplog):
             new=MagicMock(return_value="ibm1"),
         ),
         patch(
-            "app.auth_legacy.services.skip.get_user_custom_attributes",
+            "app.auth_legacy.services.skip.get_migration_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch(
             "app.auth_legacy.services.skip.patch_audit_data",
-            new=AsyncMock(),
+            new=AsyncMock(return_value=httpx.Response(204)),
         ),
         patch(
             "app.auth_legacy.services.skip.get_config",
@@ -313,6 +387,53 @@ async def test_skip_account_linking_logs_auth_flow_events(caplog):
     assert auth_flow_logs[2]["step"] == "skip_linking"
     assert auth_flow_logs[2]["outcome"] == "succeeded"
     assert auth_flow_logs[2]["context"]["lang"] == "fr"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "patch_response",
+    [
+        {"error": "HTTP error: 503"},
+        httpx.Response(500, json={"detail": "Upstream failure"}),
+        httpx.Response(200, json={}),
+    ],
+    ids=["handled-error", "error-response", "unexpected-success-status"],
+)
+async def test_skip_account_linking_rejects_unconfirmed_audit_patch(patch_response):
+    request = build_request()
+    seed_legacy_session(request)
+    request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
+    rp = SimpleNamespace(rp_redirect_uri="https://rp.example.test/landing")
+
+    with (
+        patch(
+            "app.auth_legacy.services.skip.get_ibm_id",
+            return_value="ibm1",
+        ),
+        patch(
+            "app.auth_legacy.services.skip.get_migration_attributes",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.auth_legacy.services.skip.patch_audit_data",
+            new=AsyncMock(return_value=patch_response),
+        ),
+        patch(
+            "app.auth_legacy.services.skip.get_config", new=AsyncMock(return_value=rp)
+        ),
+        patch("app.auth_legacy.services.skip.log_auth_flow_event") as mock_log,
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await skip_account_linking(request, "user-at", "user-token", "rp-123")
+
+    assert raised.value.status_code == 502
+    assert raised.value.detail == "Unable to update migration audit status"
+    assert request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] == "attempt-123"
+    assert request.session["legacy_client_name"] == "rpname_SIC"
+    assert request.session["rpname_SIC_state"] == "state"
+    assert not any(
+        call.kwargs["outcome"] == "succeeded" for call in mock_log.call_args_list
+    )
 
 
 @pytest.mark.asyncio
@@ -748,14 +869,16 @@ async def test_legacy_callback_handles_oauth_error():
 
 
 @pytest.mark.asyncio
-async def test_legacy_callback_rejects_mismatched_state():
+@pytest.mark.parametrize("provider", ["SIC", "GCCF"])
+async def test_legacy_callback_rejects_mismatched_state(provider):
     request = build_request()
     request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
     request.query_params = {"state": "other-state"}
-    seed_legacy_session(request)
+    client_name = f"rpname_{provider}"
+    seed_legacy_session(request, client_name=client_name, provider=provider)
 
     client = MagicMock()
-    legacy_idp = SimpleNamespace(client_name="SIC", client_id="sic-client-id")
+    legacy_idp = SimpleNamespace(client_name=provider, client_id="legacy-client-id")
     rp = SimpleNamespace(
         IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
     )
@@ -785,23 +908,25 @@ async def test_legacy_callback_rejects_mismatched_state():
     assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
     assert "legacy_client_name" not in request.session
     assert "legacy_provider" not in request.session
-    assert "rpname_SIC_code_verifier" not in request.session
-    assert "rpname_SIC_nonce" not in request.session
-    assert "rpname_SIC_state" not in request.session
-    assert "_state_rpname_SIC_state" not in request.session
+    assert f"{client_name}_code_verifier" not in request.session
+    assert f"{client_name}_nonce" not in request.session
+    assert f"{client_name}_state" not in request.session
+    assert f"_state_{client_name}_state" not in request.session
 
 
 @pytest.mark.asyncio
-async def test_legacy_callback_rejects_invalid_id_token_nonce():
+@pytest.mark.parametrize("provider", ["SIC", "GCCF"])
+async def test_legacy_callback_rejects_invalid_id_token_nonce(provider):
     request = build_request()
     request.session[SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value] = "attempt-123"
-    seed_legacy_session(request)
+    client_name = f"rpname_{provider}"
+    seed_legacy_session(request, client_name=client_name, provider=provider)
 
     client = MagicMock()
     client.authorize_access_token = AsyncMock(return_value={"id_token": "idtok"})
     client.parse_id_token = AsyncMock(side_effect=ValueError("bad nonce"))
 
-    legacy_idp = SimpleNamespace(client_name="SIC", client_id="sic-client-id")
+    legacy_idp = SimpleNamespace(client_name=provider, client_id="legacy-client-id")
     rp = SimpleNamespace(
         IDP=[legacy_idp], rp_client_name="rpname", dependent_client_ids=[]
     )
@@ -831,10 +956,10 @@ async def test_legacy_callback_rejects_invalid_id_token_nonce():
     assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
     assert "legacy_client_name" not in request.session
     assert "legacy_provider" not in request.session
-    assert "rpname_SIC_code_verifier" not in request.session
-    assert "rpname_SIC_nonce" not in request.session
-    assert "rpname_SIC_state" not in request.session
-    assert "_state_rpname_SIC_state" not in request.session
+    assert f"{client_name}_code_verifier" not in request.session
+    assert f"{client_name}_nonce" not in request.session
+    assert f"{client_name}_state" not in request.session
+    assert f"_state_{client_name}_state" not in request.session
 
 
 @pytest.mark.asyncio
@@ -899,7 +1024,7 @@ async def test_oidc_legacy_login_auth_sets_session_and_state():
             new=MagicMock(return_value="ibm1"),
         ),
         patch(
-            "app.auth_legacy.services.login.get_user_custom_attributes",
+            "app.auth_legacy.services.login.get_migration_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch(
@@ -943,7 +1068,9 @@ async def test_oidc_legacy_login_auth_sets_session_and_state():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("acr_values", ["", "gckey"])
-@pytest.mark.parametrize("metadata_shape", ["nested", "flat", "missing_logout"])
+@pytest.mark.parametrize(
+    "metadata_shape", ["nested", "flat", "missing_logout", "existing_query"]
+)
 async def test_gccf_login_and_callback_link_configured_rp(acr_values, metadata_shape):
     request = build_request()
     rp_client_id = "verify-gccf-rp"
@@ -976,7 +1103,9 @@ async def test_gccf_login_and_callback_link_configured_rp(acr_values, metadata_s
     metadata = {"end_session_endpoint": "https://gccf.example.test/logout"}
     if metadata_shape == "nested":
         client.server_metadata = {"server_metadata": metadata}
-    elif metadata_shape == "flat":
+    elif metadata_shape in {"flat", "existing_query"}:
+        if metadata_shape == "existing_query":
+            metadata["end_session_endpoint"] += "?tenant=gccf"
         client.server_metadata = metadata
     else:
         client.server_metadata = {"server_metadata": {}}
@@ -996,7 +1125,7 @@ async def test_gccf_login_and_callback_link_configured_rp(acr_values, metadata_s
         ),
         patch("app.auth_legacy.services.login.get_ibm_id", return_value="ibm1"),
         patch(
-            "app.auth_legacy.services.login.get_user_custom_attributes",
+            "app.auth_legacy.services.login.get_migration_attributes",
             new=AsyncMock(return_value=[]),
         ),
         patch(
@@ -1047,7 +1176,7 @@ async def test_gccf_login_and_callback_link_configured_rp(acr_values, metadata_s
         patch(
             "app.auth_legacy.services.callback.has_registered_client",
             return_value=False,
-        ),
+        ) as registered_client,
         patch(
             "app.auth_legacy.services.callback.register_client", new=AsyncMock()
         ) as register_callback_client,
@@ -1075,6 +1204,11 @@ async def test_gccf_login_and_callback_link_configured_rp(acr_values, metadata_s
     ):
         response = await legacy_callback(request, "user-at", "user-token", rp_client_id)
 
+        # The successful callback consumes OIDC state; replay cannot link again.
+        registered_client.return_value = True
+        with pytest.raises(OAuthError):
+            await legacy_callback(request, "user-at", "user-token", rp_client_id)
+
     register_callback_client.assert_awaited_once_with(
         request, legacy_client_name, legacy_idp, "fr-CA", acr_values
     )
@@ -1082,6 +1216,8 @@ async def test_gccf_login_and_callback_link_configured_rp(acr_values, metadata_s
         request, code_verifier=verifier
     )
     client.parse_id_token.assert_awaited_once_with(token, nonce)
+    patch_pai.assert_awaited_once()
+    patch_audit.assert_awaited_once()
     assert patch_pai.await_args.kwargs["legacy_pai"] == "gccf-legacy-pai"
     assert patch_pai.await_args.kwargs["rp_client_id"] == rp_client_id
     assert patch_pai.await_args.kwargs["target_rp_client_ids"] == [rp_client_id]
@@ -1096,11 +1232,14 @@ async def test_gccf_login_and_callback_link_configured_rp(acr_values, metadata_s
         assert SessionKeys.LEGACY_LINKING_ATTEMPT_ID.value not in request.session
     else:
         logout_url = urlparse(response.headers["location"])
-        assert (
-            f"{logout_url.scheme}://{logout_url.netloc}{logout_url.path}"
-            == metadata["end_session_endpoint"]
+        endpoint = urlparse(metadata["end_session_endpoint"])
+        assert (logout_url.scheme, logout_url.netloc, logout_url.path) == (
+            endpoint.scheme,
+            endpoint.netloc,
+            endpoint.path,
         )
         assert parse_qs(logout_url.query) == {
+            **parse_qs(endpoint.query),
             "client_id": [legacy_idp.client_id],
             "id_token_hint": [token["id_token"]],
             "post_logout_redirect_uri": [

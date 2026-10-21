@@ -502,6 +502,39 @@
     "list_text_2": "you'll need to update your sign-in method from GCKey or Interac sign-in to your CanadaLogin on each service",
     "btn_1": "Access your account"
   },
+  "Recovery": {
+    "helpLabel": "Get help with CanadaLogin",
+    "helpUrl": "https://login.canada.ca/en/users/",
+    "reasons": {
+      "missing-rp-context": {
+        "title": "Service not found",
+        "description": "We could not identify what service you are trying to access.",
+        "nextStep": "To continue updating your sign-in method:",
+        "navigateStep": "Navigate to the service you are trying to access",
+        "signInStep": "Select",
+        "signInLabel": "Sign in",
+        "servicesLabel": "Find a participating service",
+        "servicesUrl": "https://login.canada.ca/en/users/what-is-canadalogin/participating-services/"
+      },
+      "session-ended": {
+        "title": "Your session has ended",
+        "description": "Your session has expired or is no longer available.",
+        "nextStep": "Return to the website of the service you want to access and sign in again."
+      },
+      "migration-completed": {
+        "title": "You have already completed this step",
+        "description": "You have already linked your old sign-in method or chosen to create a new account.",
+        "descriptionWithRpName": "You have already linked your old sign-in method or chosen to create a new {RP_Name} account.",
+        "accountLabel": "Go to your account",
+        "nextStep": "To continue, return to the website of the service you want to access and sign in again."
+      },
+      "service-unavailable": {
+        "title": "This service is temporarily unavailable",
+        "description": "We couldn’t complete your request. Please try again later.",
+        "nextStep": "When you try again, start from the website of the service you want to access."
+      }
+    }
+  },
   "MigrationStepper": {
     "aria_label": "Sign-in migration progress",
     "sr_current_prefix": "Current step: ",

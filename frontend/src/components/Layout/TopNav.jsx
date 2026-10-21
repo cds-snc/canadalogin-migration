@@ -14,7 +14,9 @@ export default function TopNav({ currentLang }) {
   if (mobile || tablet) {
     return (
       <GcdsContainer slot="menu" mainContainer padding="100 0">
-        <GcdsNavLink href={homeLink}>{pageContentJson["1"]}</GcdsNavLink>
+        <div role="list">
+          <GcdsNavLink href={homeLink}>{pageContentJson["1"]}</GcdsNavLink>
+        </div>
       </GcdsContainer>
     );
   }

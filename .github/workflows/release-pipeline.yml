@@ -3,6 +3,12 @@ on:
     branches:
       - main
   workflow_dispatch: # Added for ease of debugging for now.
+    inputs:
+      disable_old_code_protection:
+        description: "Disable protections against deploying old code"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -19,9 +25,26 @@ env:
 name: Release Pipeline - Frontend & Backend API
 
 jobs:
+  verify-current-main-sha:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify workflow SHA is current main
+        if: inputs.disable_old_code_protection != true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MAIN_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')
+
+          if [ "$GITHUB_SHA" != "$MAIN_SHA" ]; then
+            echo "This workflow is running at $GITHUB_SHA, but main is now at $MAIN_SHA."
+            echo "Re-run from current main, or manually dispatch with old-code protection disabled."
+            exit 1
+          fi
+
   # Runs the release-please action. This manages the open release PR and
   # creates the release when the PR is merged.
   release-please:
+    needs: [verify-current-main-sha]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
@@ -36,6 +59,7 @@ jobs:
           token: ${{ steps.sre_app_token.outputs.token }}
 
   notify-slack-about-deploy:
+    needs: [verify-current-main-sha]
     runs-on: ubuntu-latest
     outputs:
       envs: ${{ steps.check-envs.outputs.envs }}
@@ -85,7 +109,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "latest"
+          node-version: "22.23.3"
 
       - name: configure aws credentials using OIDC role
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
@@ -102,7 +126,7 @@ jobs:
       - name: Build application
         working-directory: frontend
         run: |
-          npm install
+          npm ci
           npm run build
 
       - name: Upload build artifacts to S3
@@ -131,7 +155,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -313,7 +337,7 @@ jobs:
       - name: Update ECS task image
         if: steps.check-deployment-needed.outputs.deployment_needed == 'true'
         id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@138c24f321fdbdf7edee4a685519d253cae2cdea # v1.9.0
+        uses: aws-actions/amazon-ecs-render-task-definition@8d79160660ad39c402a16e5fc7cd2a32e8f7d6b7 # v1.9.1
         with:
           task-definition: task-definition.json
           container-name: ${{ vars.ECS_SERVICE }}
@@ -321,7 +345,7 @@ jobs:
 
       - name: Deploy updated ECS task
         if: steps.check-deployment-needed.outputs.deployment_needed == 'true'
-        uses: aws-actions/amazon-ecs-deploy-task-definition@c465972ecbd160473f22e683363b422a5412a3de # v2.6.3
+        uses: aws-actions/amazon-ecs-deploy-task-definition@a00d4d57ac0de1a99b39fe469f3d898d38717c2b # v2.6.4
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: ${{ vars.ECS_SERVICE }}
@@ -372,7 +396,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
       - name: Build and push load test image
         working-directory: ./load_tests/

@@ -328,6 +328,11 @@ Expected response:
 
 ## Running Tests
 
+Semgrep is installed separately by `make check-local-state` into `venv/semgrep`.
+Its dependencies are pinned in `backend/requirements-semgrep.txt` so scanner and
+application OpenTelemetry requirements do not conflict. To install the scanner
+without running it, use `make install-semgrep`.
+
 To run the unit tests, follow these steps:
 
 1. Install the development dependencies (run this from root of the repo):

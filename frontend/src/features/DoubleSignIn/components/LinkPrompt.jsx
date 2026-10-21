@@ -8,9 +8,14 @@ import {
   GcdsNotice,
 } from "@gcds-core/components-react";
 import { getPageContent } from "../../../utils/functions.jsx";
+import {
+  getRecoveryReason,
+  redirectToRecovery,
+} from "../../../utils/recoveryErrors.js";
 
 import { updateLinkStateAPI } from "../api/UpdateLinkState.jsx";
 import { useSkipLink } from "../hooks/useSkipLink.js";
+import { rememberPromptRpId } from "../utils/legacyNavigation.js";
 import {
   getLocalizedRpName,
   getRpAnalyticsParams,
@@ -37,6 +42,7 @@ export default function LinkPrompt() {
     language,
     isLoading: true,
     data: null,
+    error: null,
   });
 
   const pageContentJson = getPageContent(language, PAGES.LinkPrompt);
@@ -56,25 +62,44 @@ export default function LinkPrompt() {
         language,
         isLoading: true,
         data: null,
+        error: null,
       });
 
       try {
         const data = await updateLinkStateAPI.getRPAuthUrl();
         if (isCurrent) {
+          if (
+            typeof data?.rp_client_id !== "string" ||
+            !data.rp_client_id.trim()
+          ) {
+            setRpLoadState({
+              language,
+              isLoading: false,
+              data: null,
+              error: "missing-rp-context",
+            });
+            redirectToRecovery("missing-rp-context", language);
+            return;
+          }
+          rememberPromptRpId(data.rp_client_id);
           setRpLoadState({
             language,
             isLoading: false,
-            data: data || {},
+            data,
+            error: null,
           });
         }
       } catch (e) {
         console.error("Failed loading RP data", e);
         if (isCurrent) {
+          const reason = getRecoveryReason(e) || "service-unavailable";
           setRpLoadState({
             language,
             isLoading: false,
-            data: {},
+            data: null,
+            error: reason,
           });
+          redirectToRecovery(reason, language);
         }
       }
     }
@@ -87,7 +112,9 @@ export default function LinkPrompt() {
   }, [language]);
 
   const isPageReady =
-    !rpLoadState.isLoading && rpLoadState.language === language;
+    !rpLoadState.isLoading &&
+    !rpLoadState.error &&
+    rpLoadState.language === language;
   const rpData = isPageReady ? rpLoadState.data : null;
 
   useEffect(() => {
@@ -107,7 +134,14 @@ export default function LinkPrompt() {
   const isGcKeyOnly = Boolean(rpData?.is_gckey_only);
   const rpName = getLocalizedRpName(rpData, language);
   const rpAnalyticsParams = getRpAnalyticsParams(rpData);
-  const { skipLink, isSkipping, skipFailed } = useSkipLink(language, () => {
+  const {
+    skipLink,
+    startLinking,
+    isSkipping,
+    isLinking,
+    isChecking,
+    skipFailed,
+  } = useSkipLink(language, () => {
     trackEvent({
       category: GA_CATEGORIES.formSubmit,
       action: GA_FORM_EVENTS.formSubmitComplete,
@@ -153,8 +187,12 @@ export default function LinkPrompt() {
         buttonId="sign-in-old-method-button-control"
         type="link"
         href={linkingLink}
-        disabled={isSkipping}
-        onGcdsClick={() => {
+        aria-disabled={isSkipping || isLinking || isChecking}
+        onGcdsClick={(event) => {
+          if (!startLinking()) {
+            event.preventDefault();
+            return;
+          }
           trackEvent({
             category: GA_CATEGORIES.formSubmit,
             action: GA_FORM_EVENTS.formSubmitComplete,
@@ -191,10 +229,11 @@ export default function LinkPrompt() {
         </GcdsHeading>
       ) : null}
       <GcdsText>{skipHelpText}</GcdsText>
-      <GcdsText aria-busy={isSkipping}>
+      <GcdsText aria-busy={isSkipping || isLinking || isChecking}>
         <GcdsLink
           id="skip-create-new-account-link"
           href="#skip-create-new-account-link"
+          aria-disabled={isSkipping || isLinking || isChecking}
           onGcdsClick={(event) => {
             // Keep the link appearance while submitting the protected action.
             event.preventDefault();

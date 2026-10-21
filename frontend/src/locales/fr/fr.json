@@ -499,6 +499,40 @@
     "list_text_2": "Vous devrez mettre à jour votre méthode de connexion (CléGC ou partenaire de connexion Interac) afin d'utiliser ConnexionCanada pour chaque service.",
     "btn_1": "Accéder à votre compte"
   },
+  "Recovery": {
+    "helpLabel": "Obtenir de l’aide avec ConnexionCanada",
+    "helpUrl": "https://connexion.canada.ca/fr/utilisateurs/",
+    "reasons": {
+      "missing-rp-context": {
+        "title": "Service introuvable",
+        "description": "Nous n’avons pas pu identifier le service auquel vous tentez d’accéder.",
+        "nextStep": "Pour poursuivre la mise à jour de votre méthode de connexion :",
+        "navigateStep": "Rendez-vous sur le site Web du service auquel vous tentez d’accéder",
+        "signInStep": "Sélectionnez",
+        "signInLabel": "Se connecter",
+        "servicesLabel": "Trouver un service participant",
+        "servicesUrl": "https://connexion.canada.ca/fr/utilisateurs/a-propos/services-participants/",
+        "helpLabel": "Obtenir de l’aide concernant ConnexionCanada"
+      },
+      "session-ended": {
+        "title": "Votre session est terminée",
+        "description": "Votre session a expiré ou n’est plus disponible.",
+        "nextStep": "Retournez sur le site Web du service auquel vous voulez accéder et connectez-vous de nouveau."
+      },
+      "migration-completed": {
+        "title": "Vous avez déjà terminé cette étape",
+        "description": "Vous avez déjà lié votre ancienne méthode de connexion ou choisi de créer un nouveau compte.",
+        "descriptionWithRpName": "Vous avez déjà lié votre ancienne méthode de connexion ou choisi de créer un nouveau compte {RP_Name}.",
+        "accountLabel": "Accéder à votre compte",
+        "nextStep": "Pour continuer, retournez sur le site Web du service auquel vous voulez accéder et connectez-vous de nouveau."
+      },
+      "service-unavailable": {
+        "title": "Ce service est temporairement indisponible",
+        "description": "Nous n’avons pas pu traiter votre demande. Veuillez réessayer plus tard.",
+        "nextStep": "Lorsque vous réessayerez, commencez à partir du site Web du service auquel vous voulez accéder."
+      }
+    }
+  },
   "MigrationStepper": {
     "aria_label": "Progression de la migration de connexion",
     "sr_current_prefix": "Étape actuelle : ",

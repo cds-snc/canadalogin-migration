@@ -66,6 +66,12 @@ vi.mock("../../api/UpdateLinkState.jsx", () => ({
 }));
 
 import { updateLinkStateAPI } from "../../api/UpdateLinkState.jsx";
+import { redirectToRecovery } from "../../../../utils/recoveryErrors.js";
+
+vi.mock("../../../../utils/recoveryErrors.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  redirectToRecovery: vi.fn(),
+}));
 
 describe("LinkSuccess", () => {
   const originalLocation = window.location;
@@ -116,5 +122,19 @@ describe("LinkSuccess", () => {
     expect(window.location.replace).toHaveBeenCalledWith(
       "https://rp.example.test/continue",
     );
+  });
+
+  it("does not offer an undefined return URL when loading fails", async () => {
+    updateLinkStateAPI.getRPAuthUrl.mockRejectedValue({
+      status: 401,
+      data: { code: "session-ended" },
+    });
+    render(<LinkSuccess />);
+
+    await waitFor(() =>
+      expect(redirectToRecovery).toHaveBeenCalledWith("session-ended", "en"),
+    );
+    expect(screen.queryByText("Continue")).not.toBeInTheDocument();
+    expect(window.location.replace).not.toHaveBeenCalled();
   });
 });

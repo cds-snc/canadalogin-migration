@@ -10,6 +10,7 @@ from fastapi import Request, HTTPException
 from fastapi.responses import StreamingResponse
 from starsessions.session import get_session_metadata
 from authlib.integrations.starlette_client import OAuthError
+from redis.exceptions import ConnectionError, TimeoutError
 
 from app.config import get_configuration
 from app.constants.session_keys import SessionKeys
@@ -20,13 +21,18 @@ from app.auth.schemas import SSEventData, KeepAliveData
 from app.utils.schemas import ResponseModel
 from app.utils.redis import get_redis_client
 from app.constants.redis_keys import RedisKeys
+from app.utils.recovery_errors import (
+    AuthenticationRequiredError,
+    RecoveryError,
+    SessionEndedError,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def _redis_unavailable() -> HTTPException:
-    logger.error("Redis unavailable during session status flow")
-    return HTTPException(status_code=503, detail="Redis unavailable")
+    logger.error("Redis unavailable during session status flow", exc_info=True)
+    return RecoveryError("service-unavailable")
 
 
 async def get_http_client(request: Request) -> AsyncClient:
@@ -76,7 +82,15 @@ async def get_users_current_session(request: Request):
     )
     if not user_access_token:
         logger.info("Not authenticated - no user access token found")
-        raise OAuthError("user access token not found")
+        rp_client_id = request.query_params.get(SessionKeys.RP_CLIENT_ID_KEY.value)
+        if (
+            request.url.path.endswith("/auth/me")
+            and isinstance(rp_client_id, str)
+            and rp_client_id.strip()
+            and not request.session.get(SessionKeys.SESSION_USER_TOKEN.value)
+        ):
+            raise AuthenticationRequiredError("Authentication required")
+        raise SessionEndedError("user access token not found")
     http_client = await get_http_client(request)
     validate_user_token_response = await introspect_user_token(
         http_client, user_access_token
@@ -84,7 +98,7 @@ async def get_users_current_session(request: Request):
     data = validate_user_token_response
     if not data.get("active"):
         request.session.clear()
-        raise OAuthError("Invalid or expired token")
+        raise SessionEndedError("Invalid or expired token")
     return user_access_token
 
 
@@ -95,15 +109,18 @@ async def ensure_user_token(request: Request):
     user_token = request.session.get(SessionKeys.SESSION_USER_TOKEN.value)
     if not user_token:
         logger.info("Not authenticated - no user token found")
-        raise OAuthError("user token not found")
+        raise SessionEndedError("user token not found")
     expire_time = user_token.get("expires_at")
     if (
         expire_time and datetime.now().timestamp() > expire_time - 120
     ):  # 2 minutes buffer
-        refresh_token = user_token.get("refresh_token")
-        if not refresh_token:
-            raise OAuthError("user token has expired")
-        user_token = await refresh_token(refresh_token)
+        refresh_token_value = user_token.get("refresh_token")
+        if not refresh_token_value:
+            raise SessionEndedError("user token has expired")
+        refreshed_tokens = await refresh_token(refresh_token_value)
+        # Refresh responses may omit identity and unchanged tokens. Keep the
+        # authenticated session's context while accepting rotated token values.
+        user_token = {**user_token, **refreshed_tokens}
         update_session_tokens(request, user_token)
         logger.info("User token refreshed and session updated")
     return user_token
@@ -159,7 +176,10 @@ async def get_session_data_by_id(request: Request, session_id: str):
         raise _redis_unavailable() from exc
     # read the session from Redis for the given session_id
     cache_key = f"{RedisKeys.REDIS_SESSION_KEY.value}{session_id}"
-    session = await redis_client.get(cache_key)
+    try:
+        session = await redis_client.get(cache_key)
+    except (ConnectionError, TimeoutError) as exc:
+        raise _redis_unavailable() from exc
     session_data = session if session else None
     if session_data is None:
         return None
@@ -181,7 +201,7 @@ async def session_event_sse_generator(request: Request):
         logger.error("OAuth error while fetching user info")
         return StreamingResponse(
             [
-                f"event: error\ndata: {SSEventData(status='error', error='Authentication error.').model_dump_json()}\n\n"
+                f"event: error\ndata: {SSEventData(status='error', error='Authentication error.', code='session-ended').model_dump_json()}\n\n"
             ],
             media_type="text/event-stream",
             headers={
@@ -199,7 +219,7 @@ async def session_event_sse_generator(request: Request):
         logger.error("No sid found in user info")
         return StreamingResponse(
             [
-                f"event: error\ndata: {SSEventData(status='error', error='No sid found').model_dump_json()}\n\n"
+                f"event: error\ndata: {SSEventData(status='error', error='No sid found', code='session-ended').model_dump_json()}\n\n"
             ],
             media_type="text/event-stream",
             headers={
@@ -225,10 +245,14 @@ async def session_event_sse_generator(request: Request):
                     logger.info("Session expired or terminated")
                     backchannellogout = await is_backchannel_logout(request, session_id)
                     if backchannellogout:
-                        message_data = SSEventData(status="terminated")
+                        message_data = SSEventData(
+                            status="terminated", code="session-ended"
+                        )
                         yield f"event: terminated\ndata: {message_data.model_dump_json()}\n\n"
                     else:
-                        message_data = SSEventData(status="expired")
+                        message_data = SSEventData(
+                            status="expired", code="session-ended"
+                        )
                         yield f"event: expired\ndata: {message_data.model_dump_json()}\n\n"
                     break
                 last_access_timestamp = session_data.get("__metadata__", {}).get(
@@ -248,7 +272,11 @@ async def session_event_sse_generator(request: Request):
             logger.info("SSE stream cancelled")
         except HTTPException as exc:
             logger.error("Session event stream unavailable: %s", exc.detail)
-            message_data = SSEventData(status="error", error=str(exc.detail))
+            message_data = SSEventData(
+                status="error",
+                error=str(exc.detail),
+                code=exc.code if isinstance(exc, RecoveryError) else None,
+            )
             yield f"event: error\ndata: {message_data.model_dump_json()}\n\n"
         except Exception:
             logger.exception("Error in event stream for session_id=%s", session_id)
@@ -339,5 +367,8 @@ async def is_backchannel_logout(request: Request, sid: str) -> bool:
 
     # Use Redis to check if token was processed
     cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
-    result = await redis_client.get(cache_key)
+    try:
+        result = await redis_client.get(cache_key)
+    except (ConnectionError, TimeoutError) as exc:
+        raise _redis_unavailable() from exc
     return result is not None and result.decode("utf-8") == "backchannel_logout"

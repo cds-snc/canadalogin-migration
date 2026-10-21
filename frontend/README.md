@@ -70,3 +70,30 @@ npx vitest src/features/ProfileName/__tests__/ProfileUpdateName.test.jsx -u
 vitest docs:
 
 - [Vitest CLI Documentation](https://vitest.dev/guide/cli.html)
+
+## Migration recovery pages
+
+The missing-service recovery page uses the approved English and French content,
+with links to participating services and CanadaLogin help. The session-ended and
+service-unavailable pages still use provisional content. Edit the `Recovery` section in
+[`en.json`](src/locales/en/en.json) and [`fr.json`](src/locales/fr/fr.json).
+
+| Reason                | When it applies                                                  | English heading                         |
+| --------------------- | ---------------------------------------------------------------- | --------------------------------------- |
+| `missing-rp-context`  | No usable client ID is available for the migration flow.         | Service not found                       |
+| `session-ended`       | The authenticated session has expired or is no longer available. | Your session has ended                  |
+| `service-unavailable` | A service failure prevents the request from completing.          | This service is temporarily unavailable |
+
+New authentication requires a nonblank client ID from the request or an existing
+saved session. Missing or blank request values do not overwrite a saved client ID.
+The backend also checks for a usable RP configuration before attempting the Skip
+audit update.
+
+With the frontend running locally, preview `/en/error/missing-rp-context`,
+`/en/error/session-ended`, and `/en/error/service-unavailable`. Replace `en` with
+`fr` to review the French copy. These public routes render without a backend or
+authenticated session. Keep them outside the user/session providers so the error
+page remains available when session loading fails.
+
+Keep the reason codes stable when updating copy; they connect backend responses,
+frontend recovery routing, and regression tests.
