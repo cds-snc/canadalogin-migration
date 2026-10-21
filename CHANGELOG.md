@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.13.0](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.21...v1.13.0) (2026-10-21)
+
+
+### Features
+
+* Set load test peak to 500 requests per second ([#439](https://github.com/cds-snc/canadalogin-migration/issues/439)) ([90aed75](https://github.com/cds-snc/canadalogin-migration/commit/90aed75a5d153963469ebf2f144a8de65241c057))
+
+
+### Bug Fixes
+
+* support configured GCCF OIDC migration ([#395](https://github.com/cds-snc/canadalogin-migration/issues/395)) ([762fddf](https://github.com/cds-snc/canadalogin-migration/commit/762fddf2e044d9475b1844f3982f35f1d19e70e3))
+
+
+### Miscellaneous Chores
+
+* **deps:** lock file maintenance ([#438](https://github.com/cds-snc/canadalogin-migration/issues/438)) ([2aee45e](https://github.com/cds-snc/canadalogin-migration/commit/2aee45e6841059c0138760c4a9a63e77cc2d3924))
+* **deps:** update all minor dependencies ([#437](https://github.com/cds-snc/canadalogin-migration/issues/437)) ([056c261](https://github.com/cds-snc/canadalogin-migration/commit/056c261abd44c24758b46aa3d9fa0b6886b5bb02))
+* **deps:** update all non-major github action dependencies ([#434](https://github.com/cds-snc/canadalogin-migration/issues/434)) ([41b2789](https://github.com/cds-snc/canadalogin-migration/commit/41b2789c128ae8f6f295cffb9979ce61f11052b5))
+* **deps:** update all patch dependencies ([#435](https://github.com/cds-snc/canadalogin-migration/issues/435)) ([19c66f9](https://github.com/cds-snc/canadalogin-migration/commit/19c66f9211188aac00ef0df4f901312cd52debd0))
+* **deps:** update dependency prettier to v3.9.10 ([#436](https://github.com/cds-snc/canadalogin-migration/issues/436)) ([3ff1e66](https://github.com/cds-snc/canadalogin-migration/commit/3ff1e6622b72809115520ef0b2cf3d2ce04ea65f))
+
 ## [1.12.21](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.20...v1.12.21) (2026-10-16)
 
 
