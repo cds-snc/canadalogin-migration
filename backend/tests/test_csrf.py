@@ -9,6 +9,7 @@ import pytest
 from authlib.jose import JsonWebKey, jwt
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.testclient import TestClient
 from starsessions import SessionMiddleware
 from starsessions.stores.memory import InMemoryStore
@@ -16,6 +17,7 @@ from starsessions.stores.memory import InMemoryStore
 from app.auth.services import auth, auth_user_session
 from app.auth import v1_router as auth_router
 from app.auth.services.csrf import validate_csrf_token
+from app.auth_legacy.services import login as legacy_login
 from app.auth_legacy.services import skip
 from app.auth_legacy.services import status as migration_status
 from app.users.schemas import CustomAttribute
@@ -310,6 +312,111 @@ def test_skip_requires_post_and_returns_json_without_redirect(browser_app, monke
     assert "lang=fr" in response.json()["redirect_url"]
     assert "location" not in response.headers
     patch_audit.assert_awaited_once()
+
+
+@pytest.mark.parametrize("acr_values", ["", "gckey"])
+def test_gccf_navigation_preserves_csrf_protection_for_skip(
+    browser_app, monkeypatch, acr_values
+):
+    token = authenticate(browser_app)
+    rp = SimpleNamespace(
+        rp_client_name="gccf_migration",
+        rp_redirect_uri="https://rp.example.test/",
+        acr_values=acr_values,
+        IDP=[
+            SimpleNamespace(
+                client_name="GCCF",
+                redirect_uris=["https://migration.example.test/legacy/callback"],
+                code_challenge_method="S256",
+            )
+        ],
+    )
+    authorize = AsyncMock(
+        return_value=RedirectResponse("https://gccf.example.test/authorize")
+    )
+    register = AsyncMock()
+    processing_patch = AsyncMock(return_value=SimpleNamespace(status_code=204))
+    audit_patch = AsyncMock(return_value=SimpleNamespace(status_code=204))
+    for service in (legacy_login, skip):
+        monkeypatch.setattr(service, "get_config", AsyncMock(return_value=rp))
+        monkeypatch.setattr(service, "get_ibm_id", MagicMock(return_value="ibm-id"))
+        monkeypatch.setattr(
+            service, "get_migration_attributes", AsyncMock(return_value=[])
+        )
+    monkeypatch.setattr(legacy_login, "register_client", register)
+    monkeypatch.setattr(
+        legacy_login,
+        "create_client",
+        AsyncMock(return_value=SimpleNamespace(authorize_redirect=authorize)),
+    )
+    monkeypatch.setattr(legacy_login, "patch_processing_data", processing_patch)
+    monkeypatch.setattr(skip, "patch_audit_data", audit_patch)
+
+    response = browser_app.client.get(
+        f"{API}/legacy/login?lang=fr",
+        headers={"Accept": "text/html"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://gccf.example.test/authorize"
+    assert session_data(browser_app)[SessionKeys.CSRF_TOKEN.value] == token
+    assert session_data(browser_app)["legacy_provider"] == "GCCF"
+    register.assert_awaited_once()
+    assert register.await_args.args[-1] == acr_values
+    authorize.assert_awaited_once()
+    processing_patch.assert_awaited_once()
+    assert processing_patch.await_args.kwargs["rp_client_id"] == "original-rp"
+
+    browser_app.introspect.reset_mock()
+    stored = dict(browser_app.store.data)
+    writes = browser_app.store.writes
+    for headers in ({}, {"X-CSRF-Token": "wrong-token"}):
+        response = browser_app.client.post(f"{API}/legacy/skip", headers=headers)
+        assert response.status_code == 403
+        assert browser_app.store.data == stored
+        assert browser_app.store.writes == writes
+    browser_app.introspect.assert_not_awaited()
+    audit_patch.assert_not_awaited()
+
+    response = browser_app.client.post(
+        f"{API}/legacy/skip", headers={"X-CSRF-Token": token}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["redirect_url"] == (
+        "https://rp.example.test/?lang=fr&ui_locales=fr-CA"
+    )
+    browser_app.introspect.assert_awaited_once()
+    audit_patch.assert_awaited_once()
+    assert session_data(browser_app)[SessionKeys.CSRF_TOKEN.value] == token
+
+
+@pytest.mark.parametrize("accept", ["application/json", "text/html"])
+def test_legacy_login_without_rp_returns_recovery(browser_app, monkeypatch, accept):
+    token = authenticate(browser_app)
+    sid = browser_app.client.cookies.get("session")
+    data = session_data(browser_app)
+    del data[SessionKeys.RP_CLIENT_ID_KEY.value]
+    browser_app.store.data[sid] = json.dumps(data).encode()
+    get_config = AsyncMock()
+    monkeypatch.setattr(legacy_login, "get_config", get_config)
+
+    response = browser_app.client.get(
+        f"{API}/legacy/login?lang=fr",
+        headers={"Accept": accept},
+        follow_redirects=False,
+    )
+
+    if accept == "text/html":
+        assert response.status_code == 303
+        assert response.headers["location"].endswith("/fr/error/missing-rp-context")
+    else:
+        assert response.status_code == 400
+        assert response.json()["code"] == "missing-rp-context"
+    assert response.headers["cache-control"] == "no-store"
+    assert session_data(browser_app)[SessionKeys.CSRF_TOKEN.value] == token
+    get_config.assert_not_awaited()
 
 
 @pytest.mark.parametrize("completed", [False, True])

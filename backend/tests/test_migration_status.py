@@ -211,10 +211,11 @@ async def test_status_reads_attributes_once_and_does_not_change_session():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("provider", ["SIC", "GCCF"])
 @pytest.mark.parametrize("action", ["login", "skip"])
 @pytest.mark.parametrize("evidence", ["LINKED", "SKIPPED", "PAI", "malformed"])
 async def test_completed_or_unreadable_migration_prevents_all_new_writes(
-    action, evidence
+    action, evidence, provider
 ):
     request = MagicMock()
     request.session = {
@@ -242,7 +243,7 @@ async def test_completed_or_unreadable_migration_prevents_all_new_writes(
         rp_client_name="rpname",
         IDP=[
             SimpleNamespace(
-                client_name="SIC",
+                client_name=provider,
                 redirect_uris=["https://legacy.example.test/callback"],
             )
         ],
@@ -259,9 +260,7 @@ async def test_completed_or_unreadable_migration_prevents_all_new_writes(
     ):
         with pytest.raises(RecoveryError) as raised:
             if action == "login":
-                await login.SIC_legacy_login_auth(
-                    request, "user-at", "token", "rp-123", "fr"
-                )
+                await login.legacy_login(request, "user-at", "token", "rp-123", "fr")
             else:
                 await skip.skip_account_linking(request, "user-at", "token", "rp-123")
 
