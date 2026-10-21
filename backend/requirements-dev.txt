@@ -6,4 +6,4 @@ flake8==7.4.1
 black==26.10.0
 pytest-asyncio==1.4.0
 respx==0.23.1
-pre-commit==4.6.2
+pre-commit==4.7.0
