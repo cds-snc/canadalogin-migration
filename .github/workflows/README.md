@@ -1,3 +1,34 @@
+## Releases and environment promotion
+
+The release pipeline runs on every push to `main`. Each environment selects its
+deployment separately:
+
+| Environment | Deployment selection |
+| --- | --- |
+| Dev | The commit that triggered the pipeline |
+| Test | `.deployed_versions/test.json`, updated by the Release Please release PR |
+| Staging | `.deployed_versions/staging.json`, updated by a promotion PR |
+| Production | `.deployed_versions/prod.json`, updated by a promotion PR |
+
+To promote an existing release, open a PR that changes only the relevant
+deployment version file, using a title such as
+`ci(deploy): promote 1.12.21 to staging`. After the required review and merge,
+Actions deploys that selected release. Check the environment's frontend and
+backend deployment jobs for the resolved release SHA and successful completion.
+A backend job may confirm that the selected image is already deployed.
+
+Release Please ignores commits that only change files in `.deployed_versions/`.
+This prevents promoting an existing release from generating another release PR.
+Commits that also change application code, dependencies, workflows or other files
+remain eligible under the existing commit-type rules, including bot
+`chore(deps)` updates. Release Please still updates the test version when its
+release PR is merged. Keep promotion changes separate from other changes.
+
+The pinned Release Please version matches excluded directory prefixes, so use
+`.deployed_versions` rather than individual filenames or globs. Its exclusion
+filter also skips empty commits; do not use an empty `Release-As` commit to force
+a version bump while this filter is configured.
+
 ## Setup ACT to run Github Actions Locally
 
 ### Overview
