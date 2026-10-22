@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.13.1](https://github.com/cds-snc/canadalogin-migration/compare/v1.13.0...v1.13.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* authenticate public ECR pulls ([#442](https://github.com/cds-snc/canadalogin-migration/issues/442)) ([92bd13e](https://github.com/cds-snc/canadalogin-migration/commit/92bd13e4347f5087cc833e8c6105e21ec729d74a))
+* **release:** ignore deployment-only promotion commits ([#433](https://github.com/cds-snc/canadalogin-migration/issues/433)) ([5442c0e](https://github.com/cds-snc/canadalogin-migration/commit/5442c0e4a713f035b2be967ec540a5f34d432afc))
+
 ## [1.13.0](https://github.com/cds-snc/canadalogin-migration/compare/v1.12.21...v1.13.0) (2026-10-21)
 
 
