@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.13.2](https://github.com/cds-snc/canadalogin-migration/compare/v1.13.1...v1.13.2) (2026-10-27)
+
+
+### Miscellaneous Chores
+
+* **deps:** lock file maintenance ([#446](https://github.com/cds-snc/canadalogin-migration/issues/446)) ([f05fa40](https://github.com/cds-snc/canadalogin-migration/commit/f05fa4068345bc7c4880fc876ab24fa5a0f4e9ac))
+* **deps:** update all minor dependencies ([#444](https://github.com/cds-snc/canadalogin-migration/issues/444)) ([0f7b9d8](https://github.com/cds-snc/canadalogin-migration/commit/0f7b9d894e53368ce4e2693f191777af4d940a3d))
+* **deps:** update all non-major github action dependencies ([#445](https://github.com/cds-snc/canadalogin-migration/issues/445)) ([71e29d2](https://github.com/cds-snc/canadalogin-migration/commit/71e29d22bead5afbef75fc5679117fed30557e2a))
+* **deps:** update all patch dependencies ([#443](https://github.com/cds-snc/canadalogin-migration/issues/443)) ([9e8da8f](https://github.com/cds-snc/canadalogin-migration/commit/9e8da8f4a2c11f2f08dc2812cc0f48f5cb8d2ead))
+
 ## [1.13.1](https://github.com/cds-snc/canadalogin-migration/compare/v1.13.0...v1.13.1) (2026-10-22)
 
 
