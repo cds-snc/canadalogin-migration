@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.13.2](https://github.com/cds-snc/canadalogin-migration/compare/v1.13.1...v1.13.2) (2026-11-06)
+
+
+### Bug Fixes
+
+* skip existing ECR image tags during build ([#453](https://github.com/cds-snc/canadalogin-migration/issues/453)) ([68da7f3](https://github.com/cds-snc/canadalogin-migration/commit/68da7f3ca2265211721fdde71f3f5f372f652982))
+
+
+### Miscellaneous Chores
+
+* **deps:** lock file maintenance ([#446](https://github.com/cds-snc/canadalogin-migration/issues/446)) ([f05fa40](https://github.com/cds-snc/canadalogin-migration/commit/f05fa4068345bc7c4880fc876ab24fa5a0f4e9ac))
+* **deps:** update all minor dependencies ([#444](https://github.com/cds-snc/canadalogin-migration/issues/444)) ([0f7b9d8](https://github.com/cds-snc/canadalogin-migration/commit/0f7b9d894e53368ce4e2693f191777af4d940a3d))
+* **deps:** update all non-major github action dependencies ([#445](https://github.com/cds-snc/canadalogin-migration/issues/445)) ([71e29d2](https://github.com/cds-snc/canadalogin-migration/commit/71e29d22bead5afbef75fc5679117fed30557e2a))
+* **deps:** update all patch dependencies ([#443](https://github.com/cds-snc/canadalogin-migration/issues/443)) ([9e8da8f](https://github.com/cds-snc/canadalogin-migration/commit/9e8da8f4a2c11f2f08dc2812cc0f48f5cb8d2ead))
+
+
+### Continuous Integration
+
+* move dev/test to central pipeline ([#456](https://github.com/cds-snc/canadalogin-migration/issues/456)) ([b3ad917](https://github.com/cds-snc/canadalogin-migration/commit/b3ad91739ff82c5dfafdd3e0f767425178a4e4e3))
+* move prod to central pipeline ([#458](https://github.com/cds-snc/canadalogin-migration/issues/458)) ([7b8a568](https://github.com/cds-snc/canadalogin-migration/commit/7b8a5681eee658a971f48b85f857d3d249a905fd))
+* move staging to central pipeline ([#457](https://github.com/cds-snc/canadalogin-migration/issues/457)) ([0f5a131](https://github.com/cds-snc/canadalogin-migration/commit/0f5a131df936a299b5f92325f776a2fd58eb5aed))
+* rename release pipeline workflow ([#460](https://github.com/cds-snc/canadalogin-migration/issues/460)) ([804eeae](https://github.com/cds-snc/canadalogin-migration/commit/804eeae02a3c8df786640924d3f53a5f01f8a0da))
+
 ## [1.13.1](https://github.com/cds-snc/canadalogin-migration/compare/v1.13.0...v1.13.1) (2026-10-22)
 
 
