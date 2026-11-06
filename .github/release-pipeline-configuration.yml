@@ -1,7 +1,7 @@
 schema_version: 2
 application: migration
 profile: spa-ecs
-environments: [dev, test, staging]
+environments: [dev, test, staging, prod]
 frontend:
   environment:
     VITE_BACKEND_API_URL:
