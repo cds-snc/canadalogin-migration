@@ -1,11 +1,15 @@
 ## Releases and environment promotion
 
 Two workflows run on every push to `main` during the pipeline migration.
-[Release pipeline - dev & test](release-pipeline.yml) uses the
+[Release pipeline - dev & test](release-pipeline-central.yml) uses the
 [central release pipeline](https://github.com/cds-snc/canadalogin-release-pipeline)
 with [this configuration](../release-pipeline-configuration.yml).
-[Legacy release pipeline - staging & prod](release-pipeline-legacy.yml) keeps the
+[Legacy release pipeline - staging & prod](release-pipeline.yml) keeps the
 existing deployment path for the remaining environments.
+
+Keep the legacy workflow at its original filename until all environments have
+migrated. Then remove it and rename `release-pipeline-central.yml` to
+`release-pipeline.yml`.
 
 | Environment | Workflow | Deployment selection |
 | --- | --- | --- |
