@@ -1,7 +1,7 @@
 schema_version: 2
 application: migration
 profile: spa-ecs
-environments: [dev, test]
+environments: [dev, test, staging]
 frontend:
   environment:
     VITE_BACKEND_API_URL:
@@ -13,4 +13,4 @@ frontend:
 backend:
   dockerfile: backend/Dockerfile
 load_tests:
-  enabled: false
+  enabled: true
