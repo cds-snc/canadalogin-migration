@@ -19,7 +19,7 @@ env:
   GITHUB_SHA: ${{ github.sha }}
   SLACK_NOTIFICATION_APPLICATION_NAME: "GC Sign-In Migration Application"
 
-name: Legacy release pipeline - staging & prod
+name: Legacy release pipeline - prod
 
 concurrency:
   group: migration-legacy-deploy
@@ -57,7 +57,7 @@ jobs:
         run: |
           ENVS_TO_DEPLOY=""
           for file in $(git diff --name-only ${{ github.event.before }} ${{ github.sha }}); do
-            if [[ "$file" == ".deployed_versions/staging.json" || "$file" == ".deployed_versions/prod.json" ]]; then
+            if [[ "$file" == ".deployed_versions/prod.json" ]]; then
               ENV_NAME=$(basename "$file" .json)
               if [ -z "$ENVS_TO_DEPLOY" ]; then
                 ENVS_TO_DEPLOY="$ENV_NAME"
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [staging, prod]
+        environment: [prod]
     environment: ${{ matrix.environment }}
     needs: notify-slack-about-deploy
     steps:
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [staging, prod]
+        environment: [prod]
     environment: ${{ matrix.environment }}
     steps:
       - run: echo "Deploying frontend to ${{ matrix.environment }} environment..."
@@ -181,7 +181,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [staging, prod]
+        environment: [prod]
     environment: ${{ matrix.environment }}
     steps:
       - run: echo "Deploying backend to ${{ matrix.environment }} environment..."
@@ -298,52 +298,6 @@ jobs:
             --value "${{ vars.ARTIFACT_ECR_REPOSITORY }}:${{ env.DEPLOYMENT_SHA }}" \
             --type "String" \
             --overwrite
-
-  # This runs on every workflow run so the load test image always reflects
-  # the staging-deployed version of the code.
-  build-load-test:
-    runs-on: ubuntu-latest
-    environment: staging
-    needs: [verify-current-main-sha]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-
-      - name: Fetch tags
-        run: git fetch --prune --unshallow --tags
-
-      - name: Resolve staging deployment SHA
-        run: |
-          STAGING_VERSION=$(cat .deployed_versions/staging.json | jq -r '.version')
-          STAGING_SHA=$(git rev-list -n 1 "v${STAGING_VERSION}")
-          echo "Staging version: ${STAGING_VERSION}"
-          echo "Staging SHA: ${STAGING_SHA}"
-          echo "STAGING_SHA=${STAGING_SHA}" >> $GITHUB_ENV
-
-      - name: Checkout staging version
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          ref: ${{ env.STAGING_SHA }}
-
-      - name: Configure AWS credentials using OIDC role
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
-        with:
-          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github_action_manage_push_ecr_ecs-migration-app
-          role-session-name: ECRPushLoadTest
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
-
-      - name: Build and push load test image
-        working-directory: ./load_tests/
-        run: |
-          docker build \
-            --tag "${{ vars.LOAD_TEST_ECR_REPOSITORY }}:latest" \
-            .
-
-          docker push "${{ vars.LOAD_TEST_ECR_REPOSITORY }}:latest"
 
   notify-slack-about-deploy-success:
     runs-on: ubuntu-latest
