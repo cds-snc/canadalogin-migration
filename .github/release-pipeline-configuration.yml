@@ -1,0 +1,16 @@
+schema_version: 2
+application: migration
+profile: spa-ecs
+environments: [dev, test]
+frontend:
+  environment:
+    VITE_BACKEND_API_URL:
+      var: VITE_BACKEND_API_URL
+    VITE_GOOGLE_ANALYTICS_ID:
+      var: VITE_GOOGLE_ANALYTICS_ID
+  delete_stale_files: false
+  invalidation_paths: [/index.html]
+backend:
+  dockerfile: backend/Dockerfile
+load_tests:
+  enabled: false
