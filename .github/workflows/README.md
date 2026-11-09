@@ -8,7 +8,7 @@ deployment separately:
 | Dev | The commit that triggered the pipeline |
 | Test | `.deployed_versions/test.json`, updated by the Release Please release PR |
 | Staging | `.deployed_versions/staging.json`, updated by a promotion PR |
-| Production | `.deployed_versions/prod.json`, updated by a promotion PR |
+| Production | `.deployed_versions/prod.json` is retained, but is no longer deployed by this pipeline |
 
 To promote an existing release, open a PR that changes only the relevant
 deployment version file, using a title such as
