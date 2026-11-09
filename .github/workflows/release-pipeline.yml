@@ -18,7 +18,6 @@ on:
           - dev
           - test
           - staging
-          - prod
       rebuild:
         description: Rebuild application artifacts during this manual deployment
         required: false
