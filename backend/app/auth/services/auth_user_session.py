@@ -8,7 +8,7 @@ from typing import AsyncGenerator
 
 from fastapi import Request, HTTPException
 from fastapi.responses import StreamingResponse
-from starsessions.session import get_session_metadata
+from starsessions.session import get_session_id, get_session_metadata
 from authlib.integrations.starlette_client import OAuthError
 from redis.exceptions import ConnectionError, TimeoutError
 
@@ -21,6 +21,10 @@ from app.auth.schemas import SSEventData, KeepAliveData
 from app.utils.schemas import ResponseModel
 from app.utils.redis import get_redis_client
 from app.constants.redis_keys import RedisKeys
+from app.auth.services.auth_session_index import (
+    associate_oidc_session,
+    get_logout_marker_key,
+)
 from app.utils.recovery_errors import (
     AuthenticationRequiredError,
     RecoveryError,
@@ -215,8 +219,9 @@ async def session_event_sse_generator(request: Request):
         )
 
     sid = user_info.get("sid") if user_info else None
-    if sid is None:
-        logger.error("No sid found in user info")
+    app_session_id = get_session_id(request)
+    if not sid or not app_session_id:
+        logger.error("Session identity not found")
         return StreamingResponse(
             [
                 f"event: error\ndata: {SSEventData(status='error', error='No sid found', code='session-ended').model_dump_json()}\n\n"
@@ -233,17 +238,19 @@ async def session_event_sse_generator(request: Request):
         )
 
     async def event_stream(
-        request: Request, session_id: str
+        request: Request, oidc_session_id: str
     ) -> AsyncGenerator[str, None]:
         """
         Generate Server-Sent Events (SSE) for a user session.
         """
         try:
             while True:
-                session_data = await get_session_data_by_id(request, session_id)
+                session_data = await get_session_data_by_id(request, app_session_id)
                 if session_data is None:
                     logger.info("Session expired or terminated")
-                    backchannellogout = await is_backchannel_logout(request, session_id)
+                    backchannellogout = await is_backchannel_logout(
+                        request, oidc_session_id
+                    )
                     if backchannellogout:
                         message_data = SSEventData(
                             status="terminated", code="session-ended"
@@ -279,7 +286,7 @@ async def session_event_sse_generator(request: Request):
             )
             yield f"event: error\ndata: {message_data.model_dump_json()}\n\n"
         except Exception:
-            logger.exception("Error in event stream for session_id=%s", session_id)
+            logger.exception("Error in session event stream")
             message_data = SSEventData(
                 status="error", error="An internal error has occurred."
             )
@@ -312,9 +319,9 @@ async def session_extend(request: Request):
         return ResponseModel(
             success=False, message="User not authenticated", data=session_status
         )
-    # Get session ID from user info
-    session_id = user_info.get("sid")
-    if not session_id:
+    sid = user_info.get("sid")
+    app_session_id = get_session_id(request)
+    if not sid or not app_session_id:
         session_status = KeepAliveData(status="non-authenticated", login="re-login")
         return ResponseModel(
             success=False, message="User not authenticated", data=session_status
@@ -339,6 +346,8 @@ async def session_extend(request: Request):
         return ResponseModel(
             success=False, message="Session terminated", data=session_status
         )
+
+    await associate_oidc_session(request, sid, app_session_id)
 
     # Session is valid, auto extend last access time
     session_status = KeepAliveData(status="active", expire=int(session_expire))
@@ -366,9 +375,13 @@ async def is_backchannel_logout(request: Request, sid: str) -> bool:
         raise _redis_unavailable() from exc
 
     # Use Redis to check if token was processed
-    cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
     try:
-        result = await redis_client.get(cache_key)
+        result = await redis_client.get(get_logout_marker_key(sid))
+        if result is None:
+            legacy_cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
+            result = await redis_client.get(legacy_cache_key)
     except (ConnectionError, TimeoutError) as exc:
         raise _redis_unavailable() from exc
-    return result is not None and result.decode("utf-8") == "backchannel_logout"
+    if isinstance(result, bytes):
+        result = result.decode("utf-8")
+    return result == "backchannel_logout"

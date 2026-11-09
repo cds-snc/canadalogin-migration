@@ -12,6 +12,11 @@ from app.auth.schemas import LogoutResponseModel
 from app.utils.request_error_handler import RequestErrorHandler
 from app.utils.redis import get_redis_client
 from app.constants.redis_keys import RedisKeys
+from app.auth.services.auth_session_index import (
+    get_associated_session_ids,
+    get_logout_marker_key,
+    remove_oidc_session_association,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,9 +95,15 @@ async def is_logout_processed(request: Request, sid: str) -> bool:
     except ValueError as exc:
         raise _redis_unavailable() from exc
     # Use Redis to check if token was processed
-    cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
-    result = await redis_client.get(cache_key)
-    return result is not None
+    result = await redis_client.get(get_logout_marker_key(sid))
+    if result is None:
+        legacy_cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
+        result = await redis_client.get(legacy_cache_key)
+    if isinstance(result, bytes):
+        result = result.decode("utf-8")
+    # A logout-button marker only clears that browser's session. The provider's
+    # backchannel must still invalidate every other session associated with its SID.
+    return result == "backchannel_logout"
 
 
 async def mark_session_logout(
@@ -115,7 +126,7 @@ async def mark_session_logout(
     except ValueError as exc:
         raise _redis_unavailable() from exc
     # Use Redis to store the processed token with expiration
-    cache_key = f"{RedisKeys.REDIS_LOGOUT_SESSION_KEY.value}{sid}"
+    cache_key = get_logout_marker_key(sid)
     await redis_client.setex(cache_key, expiration_seconds, source)
 
 
@@ -190,9 +201,15 @@ async def backchannel_logout(request: Request):
         except ValueError as exc:
             raise _redis_unavailable() from exc
         logger.info("Processing backchannel logout")
-        # Delete the session from Redis for the given sid
-        cache_key = f"{RedisKeys.REDIS_SESSION_KEY.value}{sid}"
-        await redis_client.delete(cache_key)
+        app_session_ids = await get_associated_session_ids(request, sid)
+        session_keys = {
+            f"{RedisKeys.REDIS_SESSION_KEY.value}{session_id}"
+            for session_id in app_session_ids
+        }
+        # Also invalidate sessions issued before application IDs were separated.
+        session_keys.add(f"{RedisKeys.REDIS_SESSION_KEY.value}{sid}")
+        await redis_client.delete(*sorted(session_keys))
+        await remove_oidc_session_association(request, sid)
 
         # Mark this logout token as processed to prevent duplicate processing
         await mark_session_logout(request, sid, source="backchannel_logout")

@@ -5,7 +5,9 @@ from fastapi import Request
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuthError
 from httpx import AsyncClient
+from starsessions import regenerate_session_id
 from starsessions.session import get_session_handler
+from app.auth.services.auth_session_index import associate_oidc_session
 from app.auth.services.oidc_config import oauth
 from app.auth.services.csrf import rotate_csrf_token
 from app.config import get_configuration
@@ -21,7 +23,7 @@ from app.users.services.custom_attributes import (
     get_user_custom_attributes,
 )
 from app.users.schemas import AuditDataSchema
-from app.utils.auth_flow_logging import hash_identifier, log_auth_flow_event
+from app.utils.auth_flow_logging import log_auth_flow_event
 from app.utils.correlation_id import ensure_session_correlation_id
 from app.utils.recovery_errors import RecoveryError
 
@@ -146,10 +148,21 @@ async def callback_handler(request: Request, lang: str):
             auth_methods=user_info.get("amr"),
         )
 
-        # Get the handler and set your sid as session id. sid is uuid passed in id_token
-        handler = get_session_handler(request)
-        new_session_id = user_info.get("sid")
-        handler.session_id = new_session_id
+        oidc_session_id = user_info.get("sid")
+        if not isinstance(oidc_session_id, str) or not oidc_session_id.strip():
+            raise OAuthError("Required sid claim is missing")
+
+        # Keep the browser credential independent of the identity provider's SID.
+        # Destroy the old stored session before rotating, preserving migration context.
+        await get_session_handler(request).destroy()
+        app_session_id = regenerate_session_id(request)
+        try:
+            await associate_oidc_session(request, oidc_session_id, app_session_id)
+        except RecoveryError:
+            # Reauthentication may retain earlier tokens. Do not save them under
+            # an ID that backchannel logout cannot find if the index write fails.
+            request.session.clear()
+            raise
 
         update_session_tokens(request, oidc_response)
         rotate_csrf_token(request)
@@ -160,7 +173,6 @@ async def callback_handler(request: Request, lang: str):
             outcome="succeeded",
             rp_client_id=rp_client_id,
             user_id=user_info.get("sub"),
-            session_id_hash=hash_identifier(user_info.get("sid")),
         )
 
         if lang in ALLOWED_CALLBACK_LANGS:
