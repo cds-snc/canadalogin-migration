@@ -42,6 +42,8 @@ REDACT_KEYS = [
     "access_token",
     "refresh_token",
     "id_token",
+    "sid",
+    "session_id",
     "csrf_token",
     "x-csrf-token",
     "api_key",
@@ -88,7 +90,7 @@ class StandardizedLoggingMiddleware(BaseHTTPMiddleware):
             if key in HASHING_KEYS and value:
                 # Hash the value
                 processed[key] = hashlib.sha256(str(value).encode("utf-8")).hexdigest()
-            elif key in REDACT_KEYS:
+            elif key.lower() in REDACT_KEYS:
                 processed[key] = REDACTED
             else:
                 processed[key] = value

@@ -2,5 +2,15 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>cds-snc/renovate-config"
+  ],
+  "packageRules": [
+    {
+      "description": "Keep the Semgrep scanner on Python 3.14 until its pinned version supports newer runtimes",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["python"],
+      "matchFileNames": [".github/workflows/backend-lint.yml"],
+      "matchCurrentValue": "/^3\\.14(?:\\.|$)/",
+      "allowedVersions": "<3.15"
+    }
   ]
 }

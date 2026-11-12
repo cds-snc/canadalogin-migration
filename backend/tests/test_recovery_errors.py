@@ -459,6 +459,7 @@ async def test_session_lookup_preserves_redis_diagnostics_in_logs_only(
     redis_client = SimpleNamespace(get=AsyncMock(side_effect=error))
     request = request_for(path="/v1/auth/session-status")
     with (
+        patch.object(auth_user_session, "get_session_id", return_value="app-session"),
         patch.object(auth_user_session, "get_redis_client", return_value=redis_client),
         patch.object(
             auth_user_session,

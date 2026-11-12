@@ -3,7 +3,7 @@
 import json
 import time
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 from authlib.jose import JsonWebKey, jwt
@@ -11,12 +11,17 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.testclient import TestClient
+from redis.exceptions import ConnectionError, TimeoutError
 from starsessions import SessionMiddleware
 from starsessions.stores.memory import InMemoryStore
 
 from app.auth.services import auth, auth_user_session
 from app.auth import v1_router as auth_router
 from app.auth.services.csrf import validate_csrf_token
+from app.auth.services.auth_session_index import (
+    OIDC_SESSION_INDEX_TTL_SECONDS,
+    get_oidc_session_index_key,
+)
 from app.auth_legacy.services import login as legacy_login
 from app.auth_legacy.services import skip
 from app.auth_legacy.services import status as migration_status
@@ -59,6 +64,15 @@ def browser_app(monkeypatch):
     introspect = AsyncMock(return_value={"active": True})
     monkeypatch.setattr(auth_user_session, "introspect_user_token", introspect)
     monkeypatch.setattr(app.state, "request_client", MagicMock(), raising=False)
+    redis = SimpleNamespace(
+        get=AsyncMock(return_value=None),
+        sadd=AsyncMock(),
+        expire=AsyncMock(),
+        smembers=AsyncMock(return_value=set()),
+        setex=AsyncMock(),
+        delete=AsyncMock(),
+    )
+    monkeypatch.setattr(app.state, "redis_client", redis, raising=False)
     effects = {"dependency": 0, "handler": 0}
 
     async def route_dependency():
@@ -74,7 +88,7 @@ def browser_app(monkeypatch):
     )
     client = TestClient(app)
     yield SimpleNamespace(
-        client=client, store=store, effects=effects, introspect=introspect
+        client=client, store=store, effects=effects, introspect=introspect, redis=redis
     )
     client.close()
     app.middleware_stack = None
@@ -103,7 +117,7 @@ def authenticate(browser_app):
             "token": {
                 "access_token": "user-access-token",
                 "id_token": "id-token",
-                "userinfo": {"sid": sid, "sub": "user-id"},
+                "userinfo": {"sid": "oidc-session-id", "sub": "user-id"},
             },
         }
     )
@@ -631,6 +645,10 @@ def test_partial_rp_context_session_requires_recovery(browser_app, monkeypatch):
 
 def test_oidc_callback_accepts_get_and_rotates_token(browser_app, monkeypatch):
     previous_token = authenticate(browser_app)
+    previous_session_id = browser_app.client.cookies.get("session")
+    data = session_data(browser_app)
+    data[SessionKeys.CORRELATION_ID.value] = "original-correlation-id"
+    browser_app.store.data[previous_session_id] = json.dumps(data).encode()
     exchange = AsyncMock(
         return_value={
             "access_token": "new-token",
@@ -648,7 +666,21 @@ def test_oidc_callback_accepts_get_and_rotates_token(browser_app, monkeypatch):
 
     assert response.status_code == 307
     exchange.assert_awaited_once()
-    assert browser_app.client.cookies.get("session") == "new-session-id"
+    app_session_id = browser_app.client.cookies.get("session")
+    assert app_session_id not in {None, previous_session_id, "new-session-id"}
+    assert previous_session_id not in browser_app.store.data
+    assert "new-session-id" not in browser_app.store.data
+    data = session_data(browser_app)
+    assert data[SessionKeys.RP_CLIENT_ID_KEY.value] == "original-rp"
+    assert data[SessionKeys.CORRELATION_ID.value] == "original-correlation-id"
+    assert data[SessionKeys.SESSION_USER_TOKEN.value]["userinfo"]["sid"] == (
+        "new-session-id"
+    )
+    index_key = get_oidc_session_index_key("new-session-id")
+    browser_app.redis.sadd.assert_awaited_once_with(index_key, app_session_id)
+    browser_app.redis.expire.assert_awaited_once_with(
+        index_key, OIDC_SESSION_INDEX_TTL_SECONDS
+    )
     current_token = token_for(browser_app.client)
     assert previous_token != current_token
     assert (
@@ -663,6 +695,111 @@ def test_oidc_callback_accepts_get_and_rotates_token(browser_app, monkeypatch):
         ).status_code
         == 200
     )
+
+
+def test_same_oidc_session_creates_distinct_application_sessions(
+    browser_app, monkeypatch
+):
+    exchange = AsyncMock(
+        return_value={
+            "access_token": "new-token",
+            "userinfo": {"sid": "shared-oidc-session", "sub": "user-id"},
+        }
+    )
+    monkeypatch.setattr(
+        auth,
+        "oauth",
+        SimpleNamespace(verify=SimpleNamespace(authorize_access_token=exchange)),
+    )
+    first_response = browser_app.client.get(
+        f"{API}/callback?state=first-state", follow_redirects=False
+    )
+    assert first_response.status_code == 307
+    first_session_id = browser_app.client.cookies.get("session")
+
+    second_client = TestClient(app)
+    try:
+        second_response = second_client.get(
+            f"{API}/callback?state=second-state", follow_redirects=False
+        )
+        assert second_response.status_code == 307
+        second_session_id = second_client.cookies.get("session")
+    finally:
+        second_client.close()
+
+    assert first_session_id not in {None, "shared-oidc-session"}
+    assert second_session_id not in {None, first_session_id, "shared-oidc-session"}
+    assert set(browser_app.store.data) == {first_session_id, second_session_id}
+    index_key = get_oidc_session_index_key("shared-oidc-session")
+    assert browser_app.redis.sadd.await_args_list == [
+        call(index_key, first_session_id),
+        call(index_key, second_session_id),
+    ]
+
+
+@pytest.mark.parametrize("userinfo", [{}, {"sid": None}, {"sid": ""}, {"sid": 42}])
+def test_oidc_callback_rejects_missing_or_invalid_sid(
+    browser_app, monkeypatch, userinfo
+):
+    previous_token = token_for(browser_app.client)
+    previous_session_id = browser_app.client.cookies.get("session")
+    exchange = AsyncMock(
+        return_value={"access_token": "new-token", "userinfo": userinfo}
+    )
+    monkeypatch.setattr(
+        auth,
+        "oauth",
+        SimpleNamespace(verify=SimpleNamespace(authorize_access_token=exchange)),
+    )
+
+    response = browser_app.client.get(
+        f"{API}/callback?state=oidc-state",
+        headers={"Accept": "application/json"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "session-ended"
+    assert browser_app.client.cookies.get("session") == previous_session_id
+    data = session_data(browser_app)
+    assert SessionKeys.SESSION_USER_ACCESS_TOKEN_KEY.value not in data
+    assert SessionKeys.SESSION_USER_TOKEN.value not in data
+    assert data[SessionKeys.CSRF_TOKEN.value] == previous_token
+    browser_app.redis.sadd.assert_not_awaited()
+
+
+@pytest.mark.parametrize("operation", ["sadd", "expire"])
+@pytest.mark.parametrize("failure", [ConnectionError, TimeoutError])
+def test_oidc_reauthentication_index_failure_does_not_restore_authenticated_session(
+    browser_app, monkeypatch, operation, failure
+):
+    authenticate(browser_app)
+    previous_session_id = browser_app.client.cookies.get("session")
+    exchange = AsyncMock(
+        return_value={
+            "access_token": "new-token",
+            "userinfo": {"sid": "new-oidc-session", "sub": "user-id"},
+        }
+    )
+    monkeypatch.setattr(
+        auth,
+        "oauth",
+        SimpleNamespace(verify=SimpleNamespace(authorize_access_token=exchange)),
+    )
+    getattr(browser_app.redis, operation).side_effect = failure("Redis unavailable")
+
+    response = browser_app.client.get(
+        f"{API}/callback?state=oidc-state",
+        headers={"Accept": "application/json"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "service-unavailable"
+    assert previous_session_id not in browser_app.store.data
+    assert browser_app.store.data == {}
+    assert browser_app.client.cookies.get("session") is None
+    getattr(browser_app.redis, operation).assert_awaited_once()
 
 
 def test_backchannel_logout_requires_signed_logout_token_without_csrf(
@@ -698,7 +835,10 @@ def test_backchannel_exception_still_validates_real_jwt_signature(
         "app.auth.services.auth_logout.oauth", SimpleNamespace(verify=client)
     )
     redis = SimpleNamespace(
-        get=AsyncMock(return_value=None), delete=AsyncMock(), setex=AsyncMock()
+        get=AsyncMock(return_value=None),
+        smembers=AsyncMock(return_value={b"first-app-session", b"second-app-session"}),
+        delete=AsyncMock(),
+        setex=AsyncMock(),
     )
     monkeypatch.setattr(app.state, "redis_client", redis, raising=False)
     signed_token = jwt.encode(
@@ -719,11 +859,17 @@ def test_backchannel_exception_still_validates_real_jwt_signature(
 
     if valid_signature:
         assert response.status_code == 200
-        redis.delete.assert_awaited_once_with(
-            f"{RedisKeys.REDIS_SESSION_KEY.value}signed-out-session"
-        )
+        assert redis.delete.await_args_list == [
+            call(
+                f"{RedisKeys.REDIS_SESSION_KEY.value}first-app-session",
+                f"{RedisKeys.REDIS_SESSION_KEY.value}second-app-session",
+                f"{RedisKeys.REDIS_SESSION_KEY.value}signed-out-session",
+            ),
+            call(get_oidc_session_index_key("signed-out-session")),
+        ]
     else:
         assert response.status_code == 400
+        redis.smembers.assert_not_awaited()
         redis.delete.assert_not_awaited()
 
 

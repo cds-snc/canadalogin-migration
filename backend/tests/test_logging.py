@@ -139,6 +139,29 @@ async def test_log_request_query_string_blacklist(monkeypatch, caplog):
     assert log_json["context"]["request"]["query_string"] == "test=data&secret=REDACTED"
 
 
+@pytest.mark.parametrize("key", ["sid", "SID", "Sid", "session_id", "SESSION_ID"])
+def test_log_request_redacts_session_identifiers(key, caplog):
+    caplog.set_level(logging.WARNING)
+
+    async def bad_request(_request: Request):
+        raise HTTPException(status_code=400, detail="Bad Request")
+
+    client = build_logging_client(bad_request)
+    client.get("/health", params={"test": "data", key: "sensitive-session-value"})
+
+    record = next(
+        record
+        for record in caplog.records
+        if record.name == "app.utils.standardized_logging"
+    )
+    log_json = json.loads(record.message)
+    assert log_json["context"]["request"]["query_string"] == (
+        f"test=data&{key}=REDACTED"
+    )
+    assert "sensitive-session-value" not in record.message
+    assert hash_identifier("sensitive-session-value") not in record.message
+
+
 @pytest.mark.asyncio
 async def test_log_signed_in(monkeypatch, caplog):
     caplog.set_level(logging.WARNING)
@@ -248,7 +271,7 @@ def test_log_auth_flow_event_hashes_sensitive_identifiers(caplog):
             outcome="succeeded",
             rp_client_id="rp-123",
             user_id="user-123",
-            session_id_hash=hash_identifier("sid-123"),
+            auth_methods=["password"],
         )
     finally:
         reset_correlation_id(correlation_token)
@@ -265,7 +288,6 @@ def test_log_auth_flow_event_hashes_sensitive_identifiers(caplog):
     assert log_json["context"]["attempt_id"] == "attempt-123"
     assert log_json["context"]["rp_client_id_hash"] == hash_identifier("rp-123")
     assert log_json["context"]["user_id_hash"] == hash_identifier("user-123")
-    assert log_json["context"]["session_id_hash"] == hash_identifier("sid-123")
+    assert log_json["context"]["auth_methods"] == ["password"]
     assert "rp-123" not in record.message
     assert "user-123" not in record.message
-    assert "sid-123" not in record.message
