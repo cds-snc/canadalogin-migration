@@ -30,7 +30,7 @@ jobs:
       - name: "Install Node"
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "22.23.3"
+          node-version: "22.23.4"
 
       - name: "Install Deps"
         working-directory: ${{ matrix.module }}
@@ -72,7 +72,7 @@ jobs:
           path: ${{ matrix.module }}
 
       - name: "Report Coverage"
-        uses: davelosert/vitest-coverage-report-action@8f86cfb56ed6d5613ea8cdc5259f207fbfd51ece # v2.13.1
+        uses: davelosert/vitest-coverage-report-action@74c2d9210b4fc44c84d8213f61d7ec99837b7aa0 # v2.13.2
         with:
           vite-config-path: "./vitest.config.js"
           working-directory: "./${{ matrix.module }}"
