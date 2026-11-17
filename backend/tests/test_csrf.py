@@ -72,7 +72,8 @@ def browser_app(monkeypatch):
         setex=AsyncMock(),
         delete=AsyncMock(),
     )
-    monkeypatch.setattr(app.state, "redis_client", redis, raising=False)
+    # Patch Starlette's backing dict; pytest>=9.2 setattr undo double-deletes on State.
+    monkeypatch.setitem(app.state._state, "redis_client", redis)
     effects = {"dependency": 0, "handler": 0}
 
     async def route_dependency():
@@ -840,7 +841,7 @@ def test_backchannel_exception_still_validates_real_jwt_signature(
         delete=AsyncMock(),
         setex=AsyncMock(),
     )
-    monkeypatch.setattr(app.state, "redis_client", redis, raising=False)
+    monkeypatch.setitem(app.state._state, "redis_client", redis)
     signed_token = jwt.encode(
         {"alg": "RS256"},
         {
